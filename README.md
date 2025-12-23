@@ -53,6 +53,11 @@ set +a
 cd edge
 uv venv --python /usr/bin/python3.12  # 或 python -m venv .venv
 source .venv/bin/activate
+
+# (若需使用 GPU 推理) 先安裝符合環境的 CUDA 版 PyTorch，以下以 cu124 為例
+uv pip install torch==2.9.0+cu124 torchvision==0.20.0+cu124 torchaudio==2.9.0+cu124 \
+    --index-url https://download.pytorch.org/whl/cu124
+
 # 安裝依賴並註冊 edge 套件
 uv pip install -r requirements.txt
 uv pip install -e .
