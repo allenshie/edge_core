@@ -121,8 +121,8 @@ python main.py
 
 ```bash
 cd edge
-cp env/cam01.env.example env/.env.cam01
-cp env/cam01.env.example env/.env.cam02
+cp .env.example env/.env.cam01
+cp .env.example env/.env.cam02
 # 調整各檔案內容...
 
 ./scripts/run_all.sh           # 讀取 env/.env.*
