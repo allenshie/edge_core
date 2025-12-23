@@ -35,6 +35,10 @@ RTSP / MP4 → IngestionTask → InferenceTask → PublishResultTask → integra
 ```bash
 cd edge
 cp .env.example .env
+# 匯入 .env 讓 main.py 能讀到環境變數
+set -a
+source .env
+set +a
 ```
 
 請務必依實際情境調整以下參數：
@@ -138,6 +142,11 @@ cd edge
 cp .env.example env/.env.cam01
 cp .env.example env/.env.cam02   # 視需求新增更多
 # 調整 env/.env.camXX（MONITOR_ENDPOINT/INTEGRATION_API_BASE/RTSP URL 等）
+
+# 以 cam01 為例，啟動前匯入對應 env 檔
+set -a
+source env/.env.cam01
+set +a
 
 docker compose up --build              # 只啟動 cam01
 docker compose --profile cam02 up -d   # 如需同時啟動 cam02 profile
