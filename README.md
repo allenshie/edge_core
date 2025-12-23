@@ -64,11 +64,11 @@ python main.py
 
 ## 設定
 
-環境變數或 `.env` 可覆寫主要參數。若需管理多個攝影機設定，可複製 `edge/env/cam01.env.example` 為 `edge/env/.env.camXX` 後載入：
+環境變數或 `.env` 可覆寫主要參數。若需管理多個攝影機設定，可複製根目錄的 `.env.example` 為 `edge/env/.env.camXX` 後載入：
 
 ```bash
 cd edge
-cp env/cam01.env.example env/.env.cam02
+cp .env.example env/.env.cam02
 set -a; source env/.env.cam02; set +a
 python main.py
 ```
@@ -135,8 +135,8 @@ cp .env.example env/.env.cam02
 
 ```bash
 cd edge
-cp env/cam01.env.example env/.env.cam01
-cp env/cam02.env.example env/.env.cam02   # 視需求新增更多
+cp .env.example env/.env.cam01
+cp .env.example env/.env.cam02   # 視需求新增更多
 # 調整 env/.env.camXX（MONITOR_ENDPOINT/INTEGRATION_API_BASE/RTSP URL 等）
 
 docker compose up --build              # 只啟動 cam01
