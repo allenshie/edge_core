@@ -1,0 +1,37 @@
+version: "3.9"
+
+x-edge-service: &edge-service
+  build:
+    context: ..
+    dockerfile: edge/Dockerfile
+  restart: unless-stopped
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+  environment:
+    PYTHONUNBUFFERED: "1"
+    NVIDIA_VISIBLE_DEVICES: all
+    NVIDIA_DRIVER_CAPABILITIES: compute,utility
+  networks:
+    - smartware_net
+
+services:
+  edge_cam01:
+    <<: *edge-service
+    env_file:
+      - env/.env.cam01
+
+  edge_cam02:
+    <<: *edge-service
+    env_file:
+      - env/.env.cam02
+    profiles: [cam02]
+
+networks:
+  smartware_net:
+    external: true
+    name: smartware_net

@@ -1,0 +1,32 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+
+# Environment/config secrets
+.env
+.env.*
+env/.env.*
+cam01.env.example
+cam02.env.example
+
+# Model/large artifacts
+*.pt
+*.onnx
+*.engine
+*.mp4
+*.mov
+*.avi
+output_frames/
+
+# Tool caches
+.uv-cache/
+# Logs
+*.log
+logs/
