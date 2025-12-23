@@ -19,6 +19,7 @@ wheels/
 # Environment/config secrets
 .env
 .env.*
+!/.env.example
 env/.env.*
 
 # Model/large artifacts
