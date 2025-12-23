@@ -1,6 +1,7 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
+*.py[codz]
 build/
 dist/
 wheels/
@@ -8,13 +9,17 @@ wheels/
 
 # Virtual environments
 .venv/
+.pixi
+.pdm-python
+.pdm-build/
+.uv-cache/
+.pybuilder/
+.pipenv/
 
 # Environment/config secrets
 .env
 .env.*
 env/.env.*
-cam01.env.example
-cam02.env.example
 
 # Model/large artifacts
 *.pt
@@ -25,8 +30,23 @@ cam02.env.example
 *.avi
 output_frames/
 
-# Tool caches
-.uv-cache/
-# Logs
+# Tool caches & logs
 *.log
 logs/
+.pytest_cache/
+.coverage*
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.pyre/
+.dmypy.json
+dmypy.json
+
+# IDE/editor
+*.idea/
+.vscode/
+
+# Misc
+__pypackages__/
+.Python
+site/

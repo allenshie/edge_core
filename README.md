@@ -126,7 +126,7 @@ cp env/cam01.env.example env/.env.cam02
 # 調整各檔案內容...
 
 ./scripts/run_all.sh           # 讀取 env/.env.*
-./scripts/run_all.sh '.env.ca?'  # (可選) 使用自訂樣式
+./scripts.run_all.sh '.env.ca?'  # (可選) 使用自訂樣式
 ```
 
 ### Docker Compose 部署
