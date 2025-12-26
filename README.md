@@ -39,6 +39,9 @@ cp .env.example .env
 set -a
 source .env
 set +a
+
+# (可選) 若需調整追蹤器配置，可先複製 edge/trackers/bytetrack.yaml / botsort.yaml 後編輯，
+# 並在 .env 內更新 EDGE_TRACKER_CONFIG 指向新的 YAML。
 ```
 
 請務必依實際情境調整以下參數：
@@ -91,6 +94,7 @@ python main.py
 | `EDGE_MODEL_PATH` | `yolo11n.pt` | Ultralytics YOLO 權重路徑，請先下載對應 `.pt` 放到可讀位置。|
 | `EDGE_MODEL_DEVICE` | *(自動)* | 指定 `cpu`、`cuda:0` 等裝置，留空由 Ultralytics 自動判斷。|
 | `EDGE_MODEL_VISUALIZE` | `1` | 是否繪製推論結果（會與下列 EDGE_VISUAL_* 一併判斷）。|
+| `EDGE_TRACKER_CONFIG` | *(未設定；預設使用 ByteTrack)* | Ultralytics tracker 設定檔，填 `botsort.yaml`/`bytetrack.yaml` 使用官方 cfg，或改成相對/絕對路徑指向自訂 YAML。|
 | `EDGE_VISUAL_ENABLED` | *(沿用 `EDGE_MODEL_VISUALIZE` 預設)* | 控制是否執行可視化輸出（write/show）。|
 | `EDGE_VISUAL_MODE` | `write` | `write` 將輸出檔案到 `edge/output_frames/`；設定 `show` 則使用 `cv2.imshow` 顯示視窗（僅建議在開發機使用）。|
 | `EDGE_VISUAL_WINDOW` | `edge-preview` | `show` 模式下的 OpenCV 視窗名稱。|
@@ -113,6 +117,8 @@ python main.py
 
 > PipelineScheduler 會優先依取流模式的 FPS（`EDGE_FILE_FPS` 或 `EDGE_RTSP_FPS`）控制每輪 workflow 節奏；若設為 0，則退回使用 `EDGE_POLL_INTERVAL`。
 可依實際部署（Docker、K8s）調整。
+
+`edge/trackers/` 內已預先放入官方 `bytetrack.yaml`/`botsort.yaml` 範本，`.env.example` 也將 `EDGE_TRACKER_CONFIG` 預設為 `trackers/bytetrack.yaml`。若需自定義，可複製其中一份 YAML 後調整內容並更新 `.env` 指向新檔案；若僅輸入 `botsort.yaml`/`bytetrack.yaml` 則沿用 Ultralytics 內建配置而不需要本地檔案。
 
 ### Logging 與錯誤處理
 

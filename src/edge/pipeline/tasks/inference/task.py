@@ -1,9 +1,9 @@
 """推理佔位邏輯。"""
 from __future__ import annotations
 
-import time
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any, List
 
@@ -12,10 +12,12 @@ from ultralytics import YOLO
 
 from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 from edge.schema import EdgeDetection
+from edge.config import ModelConfig
 
 LOGGER = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parents[4]
 OUTPUT_DIR = PACKAGE_ROOT.parent.parent / "output_frames"
+PROJECT_ROOT = PACKAGE_ROOT.parent  # edge/ root（含 trackers/ 與資料）
 
 
 class InferenceTask(BaseTask):
@@ -68,7 +70,12 @@ class InferenceTask(BaseTask):
         visual_cfg = self._visual_config or context.config.visualization
         should_render = visualize and visual_cfg.enabled
 
-        results = self._model.track(frame, verbose=False)
+        tracker_cfg = self._resolve_tracker_config()
+        track_kwargs = {"verbose": False}
+        if tracker_cfg:
+            track_kwargs["tracker"] = tracker_cfg
+        
+        results = self._model.track(frame, **track_kwargs)
         detections = self._parse_results(results, threshold)
         # detections = []
         context.set_resource("inference_output", detections)
@@ -77,6 +84,15 @@ class InferenceTask(BaseTask):
         LOGGER.debug("推理結果：%s", json.dumps([det.to_dict() for det in detections]))
         print(f"[InferenceTask] 推理耗時: {time.time() - st:.3f} 秒, 偵測到 {len(detections)} 個物件")
         return TaskResult(payload={"detections": detections, "visualized_frame": output_path})
+
+    def _resolve_tracker_config(self) -> str | None:
+        model_cfg: ModelConfig | None = self._model_config  # type: ignore[assignment]
+        if model_cfg is None:
+            return None
+        try:
+            return model_cfg.resolve_tracker_config(PROJECT_ROOT)
+        except FileNotFoundError as exc:
+            raise TaskError(str(exc)) from exc
 
     def _parse_results(self, results: Any, threshold: float) -> List[EdgeDetection]:
         detections: List[EdgeDetection] = []

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 def _to_bool(value: str | None, default: bool = True) -> bool:
@@ -23,6 +24,38 @@ class ModelConfig:
     confidence_threshold: float = float(os.environ.get("EDGE_CONF_THRESHOLD", "0.5"))
     device: str | None = os.environ.get("EDGE_MODEL_DEVICE")
     visualize: bool = _to_bool(os.environ.get("EDGE_MODEL_VISUALIZE"), True)
+    tracker_config: str | None = os.environ.get("EDGE_TRACKER_CONFIG", "trackers/bytetrack.yaml")
+
+    def resolve_tracker_config(self, project_root: Path | None = None) -> str | None:
+        """Return tracker config path or name.
+
+        - If user指定為空則回傳 None，表示使用 Ultralytics 預設（ByteTrack）。
+        - 若為絕對路徑或 repo 相對路徑且檔案存在，回傳實際檔案位置，
+          以支援自訂 tracker 設定。
+        - 其他情況（如 `botsort.yaml`）直接回傳文字，讓 Ultralytics 載入內建 cfg。
+        """
+
+        cfg = (self.tracker_config or "").strip()
+        if not cfg:
+            return None
+
+        cfg_path = Path(cfg)
+        if cfg_path.is_absolute():
+            if not cfg_path.exists():
+                raise FileNotFoundError(f"找不到指定的 tracker config: {cfg_path}")
+            return str(cfg_path)
+
+        search_root = project_root or Path(__file__).resolve().parents[2]
+        candidate = (search_root / cfg_path).resolve()
+        if candidate.exists():
+            return str(candidate)
+
+        # 若 path 含子資料夾，視為自訂檔案但不存在，明確丟出錯誤避免 fallback 到內建配置
+        if len(cfg_path.parts) > 1 or cfg_path.parts[0] in {".", ".."}:
+            raise FileNotFoundError(f"找不到相對於 {search_root} 的 tracker config: {cfg}")
+
+        # 單純檔名則交給 Ultralytics 解析（botsort.yaml / bytetrack.yaml 等）
+        return cfg
 
 
 @dataclass

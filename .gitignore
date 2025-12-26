@@ -31,6 +31,12 @@ env/.env.*
 *.avi
 output_frames/
 
+# Tracker configs (keep default templates, ignore custom ones)
+trackers/*
+!trackers/
+!trackers/bytetrack.yaml
+!trackers/botsort.yaml
+
 # Tool caches & logs
 *.log
 logs/
