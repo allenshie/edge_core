@@ -8,6 +8,7 @@ from smart_workflow import MonitoringClient, TaskContext, WorkflowRunner
 
 from edge.config import EdgeConfig, load_config
 from edge.pipeline import build_edge_workflow
+from edge.api.mode_server import start_mode_server, MODE_RESOURCE
 
 
 def setup_logging() -> None:
@@ -35,6 +36,9 @@ def main() -> None:
         config=config,
         monitor=monitor,
     )
+    default_mode = os.environ.get("EDGE_MODE_DEFAULT")
+    context.set_resource(MODE_RESOURCE, default_mode)
+    start_mode_server(config.mode_server_host, config.mode_server_port, context)
 
     workflow = build_edge_workflow()
     runner = WorkflowRunner(

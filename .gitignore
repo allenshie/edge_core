@@ -57,3 +57,5 @@ dmypy.json
 __pypackages__/
 .Python
 site/
+
+examples/

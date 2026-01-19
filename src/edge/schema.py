@@ -1,7 +1,7 @@
 """資料交換模型。"""
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
@@ -12,6 +12,10 @@ class EdgeDetection:
     class_name: str
     score: float
     bbox: List[int]
+    polygon: List[List[float]] | None = None
+    keypoints: List[List[float]] | None = None
+    category: str = ""
+    extra: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

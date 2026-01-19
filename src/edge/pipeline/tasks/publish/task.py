@@ -1,43 +1,49 @@
-"""發布推理結果至整合端。"""
+"""發布推理結果至整合端（委派至 engine）。"""
 from __future__ import annotations
 
-import json
-import logging
-import urllib.error
-import urllib.request
+import importlib
+from typing import Sequence, Type
 
-from smart_workflow import BaseTask, TaskContext, TaskResult
+from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 
-from edge.schema import EdgeEvent
-
-LOGGER = logging.getLogger(__name__)
+from .engine import BasePublishEngine, DefaultPublishEngine
 
 
 class PublishResultTask(BaseTask):
     name = "edge-publish"
 
     def __init__(self, context: TaskContext | None = None) -> None:
-        self._integration_config = context.config.integration if context else None
-        self._camera_id = context.config.camera.camera_id if context else None
+        self._engine = self._load_engine(context)
 
     def run(self, context: TaskContext) -> TaskResult:  # type: ignore[override]
-        detections = context.get_resource("inference_output") or []
-        camera_id = self._camera_id or context.config.camera.camera_id
-        event = EdgeEvent.now(camera_id=camera_id, detections=detections)
-
-        payload = json.dumps(event.to_dict()).encode("utf-8")
-        integration = self._integration_config or context.config.integration
-        url = f"{integration.api_base}/edge/events"
-        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=integration.timeout_seconds) as resp:
-                status = resp.status
-        except urllib.error.URLError as exc:
-            LOGGER.warning("無法呼叫整合端 API (%s)：%s", url, exc)
-            status = None
+        detections: Sequence = context.get_resource("inference_output") or []
+        outcome = self._engine.publish(context, detections)
         context.monitor.report_event(
             "edge_publish",
-            detail=f"detections={len(detections)} status={status}",
+            detail=f"detections={outcome.published} status={outcome.status}",
             component=self.name,
         )
-        return TaskResult(payload={"published": len(detections), "status": status})
+        return TaskResult(payload={"published": outcome.published, "status": outcome.status})
+
+    def _load_engine(self, context: TaskContext | None) -> BasePublishEngine:
+        engine_path = getattr(context.config, "publish_engine_class", None) if context else None
+        if not engine_path:
+            return DefaultPublishEngine(context=context)
+        engine_cls = self._import_engine(engine_path)
+        try:
+            return engine_cls(context=context)
+        except TypeError:
+            return engine_cls()
+
+    def _import_engine(self, path: str) -> Type[BasePublishEngine]:
+        if ":" in path:
+            module_name, class_name = path.split(":", 1)
+        elif "." in path:
+            module_name, class_name = path.rsplit(".", 1)
+        else:
+            raise TaskError(f"無法解析 Publish Engine：{path}")
+        module = importlib.import_module(module_name)
+        engine_cls = getattr(module, class_name, None)
+        if engine_cls is None or not issubclass(engine_cls, BasePublishEngine):
+            raise TaskError(f"{class_name} 必須繼承 BasePublishEngine")
+        return engine_cls
