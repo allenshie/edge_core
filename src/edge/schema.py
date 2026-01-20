@@ -3,16 +3,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence
 
 
 @dataclass
 class EdgeDetection:
     track_id: int | None
     class_name: str
-    score: float
     bbox: List[int]
-    polygon: List[List[float]] | None = None
+    bbox_confidence_score: float
+    score: float | None = None
+    polygon: List[List[int]] = field(default_factory=list)
+    polygon_confidence_score: float = 0.0
+    keypoint: List[List[int]] = field(default_factory=list)
+    keypoint_confidence_score: float = 0.0
+    state: str | Sequence[str] | None = None
     keypoints: List[List[float]] | None = None
     category: str = ""
     extra: Dict[str, Any] = field(default_factory=dict)

@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
@@ -26,6 +26,7 @@ class ScheduledModelTask:
     model: Any
     last_run: float | None = None
     run_once_completed: bool = False
+    last_results: List[EdgeDetection] = field(default_factory=list)
 
 
 class ScheduledInferenceEngine(BaseInferenceEngine):
@@ -55,16 +56,27 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
         metadata = {
             "phase": phase,
             "camera_id": context.config.camera.camera_id if context else "unknown",
+            "context": context,
         }
+        executed: List[str] = []
+        reused: List[str] = []
 
         for task in tasks:
             if not self._should_execute(task, now):
+                if task.mode in {"interval", "run_once_after_switch"} and task.last_results:
+                    detections.extend(task.last_results)
+                    reused.append(task.name)
                 continue
             LOGGER.debug("running scheduled task=%s (mode=%s)", task.name, task.mode)
-            detections.extend(task.model.run(frame, metadata=metadata))
+            task_results = task.model.run(frame, metadata=metadata)
+            task.last_results = task_results
+            detections.extend(task_results)
             task.last_run = now
             if task.mode == "run_once_after_switch":
                 task.run_once_completed = True
+            executed.append(task.name)
+        if executed or reused:
+            LOGGER.info("scheduled tasks (phase=%s): run=%s reuse=%s", phase, executed, reused)
         return detections
 
     # --- schedule helpers -------------------------------------------------
@@ -174,6 +186,7 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
         for task in tasks:
             task.last_run = None
             task.run_once_completed = False
+            task.last_results = []
 
     def _should_execute(self, task: ScheduledModelTask, now: float) -> bool:
         if task.mode == "every_frame":

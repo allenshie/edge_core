@@ -117,6 +117,7 @@ class DefaultInferenceEngine(BaseInferenceEngine):
                     track_id=track_id,
                     class_name=class_name,
                     bbox=bbox,
+                    bbox_confidence_score=conf,
                     score=conf,
                 )
             )
