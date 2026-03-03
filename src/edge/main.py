@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 
+from smart_messaging_core import MessagingClient, MessagingConfig, MqttConfig
 from smart_workflow import MonitoringClient, TaskContext, WorkflowRunner
 
 from edge.config import EdgeConfig, load_config
@@ -38,7 +39,9 @@ def main() -> None:
     )
     default_mode = os.environ.get("EDGE_MODE_DEFAULT")
     context.set_resource(MODE_RESOURCE, default_mode)
-    start_mode_server(config.mode_server_host, config.mode_server_port, context)
+    if config.mode_server_enabled:
+        start_mode_server(config.mode_server_host, config.mode_server_port, context)
+    _start_messaging_subscriber(config, context)
 
     workflow = build_edge_workflow()
     runner = WorkflowRunner(
@@ -48,6 +51,39 @@ def main() -> None:
         retry_backoff=config.retry_backoff,
     )
     runner.run()
+
+
+def _start_messaging_subscriber(config: EdgeConfig, context: TaskContext) -> None:
+    mqtt_cfg = config.mqtt
+    if not mqtt_cfg.enabled:
+        return
+    client = MessagingClient(
+        MessagingConfig(
+            publish_backend="none",
+            subscribe_backend="mqtt",
+            mqtt=MqttConfig(
+                host=mqtt_cfg.host,
+                port=mqtt_cfg.port,
+                qos=mqtt_cfg.qos,
+                retain=True,
+                client_id=mqtt_cfg.client_id,
+            ),
+        )
+    )
+
+    def _on_phase(payload: dict) -> None:
+        if os.environ.get("EDGE_MODE_STRATEGY", "external").lower() != "external":
+            return
+        mode = (payload.get("phase") or payload.get("mode") or "").strip().lower()
+        if not mode:
+            return
+        context.set_resource(MODE_RESOURCE, mode)
+        context.logger.info("MQTT mode update: %s", mode)
+
+    try:
+        client.subscribe(mqtt_cfg.topic, _on_phase)
+    except Exception as exc:  # pylint: disable=broad-except
+        context.logger.warning("MQTT subscribe failed; continue without broker: %s", exc)
 
 
 if __name__ == "__main__":

@@ -1,33 +1,55 @@
-# Edge 推理服務
+# Edge 推理服務（edge_core）
 
-此模組提供邊緣推理節點骨架：取流 → 推理 → 發佈事件 → 監控回報。支援
-RTSP 與檔案模式，並可透過插件化引擎擴充推理與輸出行為。
+此模組提供邊緣推理節點 runtime：取流、推理、串流輸出、事件發布。
 
-## 流程概述
+## Pipeline
 
 ```text
-RTSP / MP4 → IngestionTask → InferenceTask → PublishResultTask → integration
+RTSP / MP4
+  -> IngestionTask
+  -> InferenceTask
+  -> StreamingTask
+  -> PublishResultTask
 ```
 
-## 快速啟動
+- `InferenceTask` 只做推理與輸出結果。
+- 可視化/串流打出由 `StreamingTask` 處理。
+- `PublishResultTask` 負責推送推理事件。
+
+## 快速啟動（獨立）
 
 ```bash
-cd edge
-cp .env.example .env
-uv venv --python /usr/bin/python3.12  # 或 python -m venv .venv
+uv venv --python /usr/bin/python3.10
 source .venv/bin/activate
 uv pip install -r requirements.txt
 uv pip install -e .
 python main.py
 ```
 
-> 請先調整 `.env` 的取流來源、模型權重、整合端位址等必要參數。
+## 從上層主專案啟動（建議）
+
+```bash
+# 在 smart_warehouse_edge 根目錄
+uv pip install -e .
+uv pip install -e edge_core
+bash scripts/run_edges.sh cam01
+```
+
+## 串流策略
+
+- 全域開關：`EDGE_STREAMING_ENABLED`
+- phase 開關：`schedules/schedule.json` 的 `streaming.enabled`
+- 推流 URL：`EDGE_STREAMING_URL`（例如 RTMP 到 MTX）
+- 無幀 watchdog：`EDGE_STREAMING_IDLE_TIMEOUT`
+- 重啟退避：`EDGE_STREAMING_RESTART_BACKOFF`
+
+詳見：`docs/ENV.md`
 
 ## 參考文件
 
-- [設定與環境變數](docs/CONFIG.md)
+- [設定與環境變數](docs/ENV.md)
+- [設定示例（多相機）](docs/CONFIG.md)
 - [自訂 Inference/Publish 與 Mode 控制](docs/EXTENDING.md)
 - [子模組導入主專案](docs/EDGE_SUBMODULE_GUIDE.md)
-- [EdgeDetection 格式](docs/DETECTIONS.md)
 - [部署與操作（多實例、Docker）](docs/OPERATIONS.md)
 - [測試與品質](docs/TESTING.md)

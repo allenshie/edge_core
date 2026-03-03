@@ -6,7 +6,7 @@ from typing import Sequence, Type
 
 from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 
-from .engine import BasePublishEngine, DefaultPublishEngine
+from .engine import BasePublishEngine, DefaultPublishEngine, MessagingPublishEngine
 
 
 class PublishResultTask(BaseTask):
@@ -28,7 +28,7 @@ class PublishResultTask(BaseTask):
     def _load_engine(self, context: TaskContext | None) -> BasePublishEngine:
         engine_path = getattr(context.config, "publish_engine_class", None) if context else None
         if not engine_path:
-            return DefaultPublishEngine(context=context)
+            return MessagingPublishEngine(context=context)
         engine_cls = self._import_engine(engine_path)
         try:
             return engine_cls(context=context)
@@ -47,3 +47,9 @@ class PublishResultTask(BaseTask):
         if engine_cls is None or not issubclass(engine_cls, BasePublishEngine):
             raise TaskError(f"{class_name} 必須繼承 BasePublishEngine")
         return engine_cls
+
+    def close(self, context: TaskContext) -> None:
+        print("[PublishResultTask] close called")
+        close_fn = getattr(self._engine, "close", None)
+        if callable(close_fn):
+            close_fn()

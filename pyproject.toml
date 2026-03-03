@@ -4,7 +4,15 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "lap>=0.4",
+    "numpy==1.26.0",
+    "ultralytics==8.3.236",
+    "opencv-python-headless>=4.10",
+    "paho-mqtt>=1.6.1",
+    "smart-workflow @ git+https://github.com/allenshie/smart-workflow.git",
+    "smart-messaging-core @ git+https://github.com/allenshie/smart_messaging_core.git",
+]
 
 [project.scripts]
 edge-service = "edge.main:main"

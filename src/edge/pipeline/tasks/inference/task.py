@@ -7,7 +7,7 @@ from typing import Type
 
 from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 
-from .engine import BaseInferenceEngine, DefaultInferenceEngine, render_inference_frame
+from .engine import BaseInferenceEngine, DefaultInferenceEngine
 
 
 class InferenceTask(BaseTask):
@@ -20,7 +20,6 @@ class InferenceTask(BaseTask):
         start = time.time()
         detections = self._engine.process(context)
         context.set_resource("inference_output", detections)
-        self._maybe_render_visualization(context, detections)
         context.logger.info(
             "[InferenceTask] 推理耗時 %.3fs，偵測 %d 個物件",
             time.time() - start,
@@ -50,16 +49,3 @@ class InferenceTask(BaseTask):
         if engine_cls is None or not issubclass(engine_cls, BaseInferenceEngine):
             raise TaskError(f"{class_name} 必須繼承 BaseInferenceEngine")
         return engine_cls
-
-    def _maybe_render_visualization(self, context: TaskContext, detections) -> None:
-        model_cfg = context.config.model
-        visual_cfg = context.config.visualization
-        if not model_cfg.visualize or not visual_cfg.enabled:
-            return
-        frame = context.get_resource("decoded_frame")
-        if frame is None:
-            context.logger.warning("沒有待視覺化的 frame，略過")
-            return
-        frame_path = context.get_resource("decoded_frame_path")
-        output_path = render_inference_frame(frame, detections, frame_path, visual_cfg)
-        context.set_resource("frame_path", output_path)

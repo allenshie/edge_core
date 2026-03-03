@@ -91,6 +91,16 @@ class IntegrationConfig:
 
 
 @dataclass
+class MqttConfig:
+    enabled: bool = _to_bool(os.environ.get("EDGE_MQTT_ENABLED"), False)
+    host: str = os.environ.get("EDGE_MQTT_HOST", "localhost")
+    port: int = int(os.environ.get("EDGE_MQTT_PORT", "1883"))
+    topic: str = os.environ.get("EDGE_PHASE_MQTT_TOPIC", "integration/phase")
+    qos: int = int(os.environ.get("EDGE_MQTT_QOS", "1"))
+    client_id: str | None = os.environ.get("EDGE_MQTT_CLIENT_ID")
+
+
+@dataclass
 class FileSourceConfig:
     path: str | None = os.environ.get("EDGE_FILE_PATH")
     loop: bool = _to_bool(os.environ.get("EDGE_FILE_LOOP"), True)
@@ -111,14 +121,27 @@ class IngestionConfig:
 
 
 @dataclass
+class StreamingConfig:
+    enabled: bool = _to_bool(os.environ.get("EDGE_STREAMING_ENABLED"), False)
+    strategy: str = os.environ.get("EDGE_STREAMING_STRATEGY", "cpu").strip().lower()
+    url: str = os.environ.get("EDGE_STREAMING_URL", "").strip()
+    queue_size: int = int(os.environ.get("EDGE_STREAMING_QUEUE_SIZE", "30"))
+    idle_timeout_seconds: float = float(os.environ.get("EDGE_STREAMING_IDLE_TIMEOUT", "3"))
+    restart_backoff_seconds: float = float(os.environ.get("EDGE_STREAMING_RESTART_BACKOFF", "1"))
+
+
+@dataclass
 class EdgeConfig:
     camera: CameraConfig = field(default_factory=CameraConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     visualization: VisualizationConfig = field(default_factory=VisualizationConfig)
     ingestion: IngestionConfig = field(default_factory=IngestionConfig)
+    streaming: StreamingConfig = field(default_factory=StreamingConfig)
     integration: IntegrationConfig = field(default_factory=IntegrationConfig)
+    mqtt: MqttConfig = field(default_factory=MqttConfig)
     inference_engine_class: str | None = os.environ.get("INFERENCE_ENGINE_CLASS")
     publish_engine_class: str | None = os.environ.get("PUBLISH_ENGINE_CLASS")
+    mode_server_enabled: bool = _to_bool(os.environ.get("EDGE_MODE_SERVER_ENABLED"), False)
     mode_server_host: str = os.environ.get("EDGE_MODE_SERVER_HOST", "0.0.0.0")
     mode_server_port: int = int(os.environ.get("EDGE_MODE_SERVER_PORT", "9100"))
     poll_interval: float = float(os.environ.get("EDGE_POLL_INTERVAL", "5"))

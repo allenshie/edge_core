@@ -1,17 +1,34 @@
-# Edge .env 範本
+# Edge env 使用方式
 
-此目錄用於存放各攝影機節點的環境變數檔案，可依照 `cam01.env.example`、`cam02.env.example` 內容複製成多份 `env/.env.camXX`，再於啟動前載入；若需模擬串流，可將 `EDGE_INGEST_MODE=file` 並設定 `EDGE_FILE_PATH` 指向本地 MP4：
+`smart_warehouse_edge` 啟動腳本會從根目錄 `env/.env.camXX` 載入每台攝影機設定：
 
 ```bash
-cd edge
-cp env/cam01.env.example env/.env.cam01
-cp env/cam02.env.example env/.env.cam02
-vim env/.env.cam02  # 調整 camera_id/RTSP URL/monitor service name
-
-set -a
-source env/.env.cam02
-set +a
-python -m edge.main
+bash scripts/run_edges.sh cam01 cam02
 ```
 
-若使用 Docker/K8s，可直接於 compose 中引用 `env/.env.camXX` 作為 `env_file`，或轉換為 ConfigMap，確保每個 edge 實例擁有獨立的攝影機設定。
+- `cam01` 會讀 `env/.env.cam01`
+- `cam02` 會讀 `env/.env.cam02`
+
+## 新增一台相機
+
+```bash
+cp env/.env.cam01 env/.env.cam05
+```
+
+再修改：
+- `EDGE_CAMERA_ID`
+- `EDGE_FILE_PATH` 或 `EDGE_RTSP_URL`
+- `EDGE_STREAMING_URL`
+- `EDGE_MONITOR_SERVICE_NAME`
+
+## 串流建議最小設定
+
+```env
+EDGE_STREAMING_ENABLED=true
+EDGE_STREAMING_URL=rtmp://127.0.0.1:1935/live/cam01
+EDGE_STREAMING_STRATEGY=cpu
+EDGE_STREAMING_OUT_WIDTH=1280
+EDGE_STREAMING_OUT_HEIGHT=720
+```
+
+完整變數請參考 `edge_core/docs/ENV.md`。

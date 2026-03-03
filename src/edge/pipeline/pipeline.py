@@ -10,6 +10,7 @@ from smart_workflow import BaseTask, TaskContext, TaskResult
 from edge.pipeline.tasks.ingestion import FileIngestionTask, RtspIngestionTask
 from edge.pipeline.tasks.inference import InferenceTask
 from edge.pipeline.tasks.publish import PublishResultTask
+from edge.pipeline.tasks.streaming import StreamingTask
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +28,14 @@ class EdgePipeline:
         for node in self._nodes:
             node.execute(context)
 
+    def close(self, context: TaskContext) -> None:
+        for node in reversed(self._nodes):
+            try:
+                node.close(context)
+            except Exception:  # noqa: BLE001
+                node_name = getattr(node, "name", node.__class__.__name__)
+                context.logger.exception("failed to close node task: %s", node_name)
+
 
 class InitPipelineTask(BaseTask):
     """Bootstrap the pipeline and store it inside TaskContext resources."""
@@ -38,6 +47,7 @@ class InitPipelineTask(BaseTask):
         factories: List[Callable[[TaskContext], BaseTask]] = [
             ingestion_factory,
             InferenceTask,
+            StreamingTask,
             PublishResultTask,
         ]
         context.logger.info("edge ingestion mode: %s", mode)
@@ -110,3 +120,9 @@ class PipelineScheduler(BaseTask):
             if fps_value and fps_value > 0:
                 return fps_value
         return None
+
+    def close(self, context: TaskContext) -> None:
+        pipeline: EdgePipeline | None = context.get_resource("edge_pipeline")
+        if pipeline is None:
+            return
+        pipeline.close(context)

@@ -31,14 +31,23 @@ class EdgeEvent:
     camera_id: str
     timestamp: datetime
     detections: List[EdgeDetection]
+    models: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "camera_id": self.camera_id,
             "timestamp": self.timestamp.isoformat(),
             "detections": [det.to_dict() for det in self.detections],
+            "models": list(self.models),
         }
 
     @classmethod
-    def now(cls, camera_id: str, detections: List[EdgeDetection]) -> "EdgeEvent":
-        return cls(camera_id=camera_id, timestamp=datetime.now(timezone.utc), detections=detections)
+    def now(
+        cls, camera_id: str, detections: List[EdgeDetection], models: List[str] | None = None
+    ) -> "EdgeEvent":
+        return cls(
+            camera_id=camera_id,
+            timestamp=datetime.now(timezone.utc),
+            detections=detections,
+            models=models or [],
+        )

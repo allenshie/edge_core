@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from edge.pipeline.tasks.inference.device import normalize_device
 from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
@@ -10,13 +11,20 @@ class BaseInferenceModel:
     """Base class for scheduled inference models.
 
     ScheduledInferenceEngine will instantiate model classes with
-    name/weights_path/label. Subclass this to ensure compatibility.
+    name/weights_path/label/device. Subclass this to ensure compatibility.
     """
 
-    def __init__(self, name: str, weights_path: str | None = None, label: str | None = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        weights_path: str | None = None,
+        label: str | None = None,
+        device: str | None = None,
+    ) -> None:
         self.name = name
         self.label = label or name
         self.weights_path = Path(weights_path).expanduser() if weights_path else None
+        self.device = normalize_device(device)
         self._load_weights()
 
     def _load_weights(self) -> None:
