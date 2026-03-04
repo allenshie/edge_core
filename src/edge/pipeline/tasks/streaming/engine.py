@@ -167,13 +167,7 @@ class DefaultStreamingEngine(BaseStreamingEngine):
             return
 
         vis_frame = frame.copy()
-        for det in packet.detections:
-            bbox = det.bbox or [0, 0, vis_frame.shape[1] // 2, vis_frame.shape[0] // 2]
-            x1, y1, x2, y2 = [int(v) for v in bbox]
-            score = det.score if det.score is not None else det.bbox_confidence_score
-            label = f"{det.class_name}:{float(score):.2f}"
-            cv2.rectangle(vis_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(vis_frame, label, (x1, max(y1 - 5, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+        self._draw_detections(vis_frame, packet.detections)
 
         try:
             self._ffmpeg.write_frame(vis_frame)
@@ -209,6 +203,37 @@ class DefaultStreamingEngine(BaseStreamingEngine):
             except Exception as restart_exc:  # noqa: BLE001
                 self._last_error = str(restart_exc)
                 LOGGER.warning("streaming ffmpeg restart failed: %s", restart_exc)
+
+    def _draw_detections(self, vis_frame: Any, detections: Sequence[EdgeDetection]) -> None:
+        frame_h, frame_w = vis_frame.shape[:2]
+        # Dynamic thickness based on frame size to keep visibility consistent across resolutions.
+        thickness = max(1, int(min(frame_w, frame_h) / 360))
+        text_thickness = max(1, thickness - 1)
+        font_scale = max(0.4, min(frame_w, frame_h) / 1200)
+
+        for det in detections:
+            bbox = det.bbox
+            if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+                continue
+
+            try:
+                x1, y1, x2, y2 = [int(v) for v in bbox]
+            except (TypeError, ValueError):
+                continue
+
+            score = det.score if det.score is not None else det.bbox_confidence_score
+            score_value = float(score) if score is not None else 0.0
+            label = f"{det.class_name}:{score_value:.2f}"
+            cv2.rectangle(vis_frame, (x1, y1), (x2, y2), (0, 255, 0), thickness)
+            cv2.putText(
+                vis_frame,
+                label,
+                (x1, max(y1 - 5, 0)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                font_scale,
+                (0, 255, 0),
+                text_thickness,
+            )
 
     def _should_stream_for_phase(self, phase: str) -> bool:
         if not self._enabled:

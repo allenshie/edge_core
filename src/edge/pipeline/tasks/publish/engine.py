@@ -1,18 +1,19 @@
 """Engine 實作：負責將推理結果傳遞到整合端。"""
 from __future__ import annotations
-import os
+
 import json
 import logging
+import os
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from typing import Sequence
 
+from smart_messaging_core import MessagingClient
 from smart_workflow import TaskContext
 
+from edge.messaging import MESSAGING_CLIENT_RESOURCE, MessagingClientProvider
 from edge.schema import EdgeDetection, EdgeEvent
-
-from smart_messaging_core import HttpConfig, MessagingClient, MessagingConfig, MqttConfig
 
 LOGGER = logging.getLogger(__name__)
 
@@ -69,9 +70,8 @@ class MessagingPublishEngine(BasePublishEngine):
 
     def __init__(self, context: TaskContext | None = None) -> None:
         super().__init__(context)
-        self._client = self._build_client(context)
+        self._client, self._is_shared_client = self._resolve_client(context)
         self._topic = os.environ.get("EDGE_EVENTS_MQTT_TOPIC", "edge/events").strip() or "edge/events"
-        self._backend = os.environ.get("EDGE_PUBLISH_BACKEND", "http").strip().lower()
 
     def publish(self, context: TaskContext, detections: Sequence[EdgeDetection]) -> PublishOutcome:
         camera_id = self._camera_config.camera_id if self._camera_config else context.config.camera.camera_id
@@ -87,25 +87,22 @@ class MessagingPublishEngine(BasePublishEngine):
         status = 200 if ok else None
         return PublishOutcome(published=len(detections), status=status)
 
-    def _build_client(self, context: TaskContext | None) -> MessagingClient:
-        integration = self._integration_config or (context.config.integration if context else None)
-        mqtt_cfg = getattr(context.config, "mqtt", None) if context else None
-        mqtt = MqttConfig(
-            host=mqtt_cfg.host if mqtt_cfg else os.environ.get("EDGE_MQTT_HOST", "localhost"),
-            port=mqtt_cfg.port if mqtt_cfg else int(os.environ.get("EDGE_MQTT_PORT", "1883")),
-            qos=mqtt_cfg.qos if mqtt_cfg else int(os.environ.get("EDGE_MQTT_QOS", "1")),
-            retain=False,
-            client_id=getattr(mqtt_cfg, "client_id", None) if mqtt_cfg else os.environ.get("EDGE_MQTT_CLIENT_ID"),
-        )
-        http = None
-        if integration:
-            http = HttpConfig(base_url=integration.api_base, timeout_seconds=integration.timeout_seconds)
-        topic_routes = {"edge/events": "/edge/events"}
-        cfg = MessagingConfig(
-            publish_backend=os.environ.get("EDGE_PUBLISH_BACKEND", "http").strip().lower(),
-            subscribe_backend="none",
-            mqtt=mqtt,
-            http=http,
-            topic_routes=topic_routes,
-        )
-        return MessagingClient(cfg)
+    def _resolve_client(self, context: TaskContext | None) -> tuple[MessagingClient, bool]:
+        if context is not None:
+            client = context.get_resource(MESSAGING_CLIENT_RESOURCE)
+            if isinstance(client, MessagingClient):
+                return client, True
+
+            provider = MessagingClientProvider(context.config)
+            created_client = provider.build()
+            context.set_resource(MESSAGING_CLIENT_RESOURCE, created_client)
+            return created_client, False
+
+        raise ValueError("MessagingPublishEngine requires TaskContext to initialize messaging client")
+
+    def close(self) -> None:
+        if self._is_shared_client:
+            return
+        close_fn = getattr(self._client, "close", None)
+        if callable(close_fn):
+            close_fn()
