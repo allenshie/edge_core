@@ -63,6 +63,7 @@ bash scripts/run_edges.sh cam01
 - [設定與環境變數](docs/ENV.md)
 - [設定示例（多相機）](docs/CONFIG.md)
 - [自訂 Inference/Publish 與 Mode 控制](docs/EXTENDING.md)
+- [Orin 部署指南（ARM）](docs/DEPLOY_ORIN.md)
 - [子模組導入主專案](docs/EDGE_SUBMODULE_GUIDE.md)
 - [部署與操作（多實例、Docker）](docs/OPERATIONS.md)
 - [測試與品質](docs/TESTING.md)
