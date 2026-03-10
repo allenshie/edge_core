@@ -6,12 +6,16 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "lap>=0.4",
-    "numpy==1.26.0",
+    "numpy>=1.26,<2",
+    "paho-mqtt>=1.6.1",
+    "smart-workflow @ git+https://github.com/allenshie/smart-workflow.git@346a65f87394d0fe39b8761734447940b901ab62",
+    "smart-messaging-core @ git+https://github.com/allenshie/smart_messaging_core.git@9dcfcf2bdc816eb4ef37910b00e33b9f96e88065",
+]
+
+[project.optional-dependencies]
+vision = [
     "ultralytics==8.3.236",
     "opencv-python-headless>=4.10",
-    "paho-mqtt>=1.6.1",
-    "smart-workflow @ git+https://github.com/allenshie/smart-workflow.git",
-    "smart-messaging-core @ git+https://github.com/allenshie/smart_messaging_core.git",
 ]
 
 [project.scripts]

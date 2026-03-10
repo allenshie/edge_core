@@ -1,0 +1,26 @@
+# 自定義 BoTSORT 追蹤器配置 - 啟用 ReID 功能
+
+# 追蹤器類型
+tracker_type: botsort       # 不能改，目前只支持 botsort 自定義參數
+
+# 檢測關聯閾值
+track_high_thresh: 0.4       # 第一次關聯的信心度閾值，提高可減少假陽性
+track_low_thresh: 0.1        # 第二次關聯的較低閾值，允許更寬鬆的匹配
+new_track_thresh: 0.2        # 創建新軌跡的閾值，提高可減少噪聲軌跡
+
+# 軌跡管理
+track_buffer: 150            # 軌跡丟失後保持的幀數，增加可提高遮擋處理
+match_thresh: 1.0            # 匹配軌跡的閾值。 數值越高，匹配越寬鬆。
+
+# 分數融合
+fuse_score: true             # 融合檢測分數和 IoU，提高匹配準確性
+
+# 全域運動補償（處理相機移動）
+gmc_method: none
+# 或使用 sparseOptFlow / ecc / sift / orb / none
+
+# ReID（重新識別）設定
+with_reid: true              # 啟用基於外觀的重新識別
+proximity_thresh: 0.7        # ReID 匹配前的最小 IoU 要求
+appearance_thresh: 0.75      # ReID 的外觀相似度閾值，降低可提高重識別率
+model: auto                  # 自動選擇 ReID 模型。默认为 auto，如果检测器是 YOLO，则使用原生特征，否则使用 yolo11n-cls.pt.

@@ -64,6 +64,22 @@
 | `EDGE_POLL_INTERVAL` | `5` | workflow loop 間隔。 |
 | `EDGE_RETRY_BACKOFF` | `5` | 任務失敗重試間隔。 |
 
+## 健康檢查（K8s Probe）
+
+| 變數 | 預設 | 說明 |
+| --- | --- | --- |
+| `EDGE_HEALTH_SERVER_ENABLED` | `0` | 啟用內建健康檢查 HTTP server。 |
+| `EDGE_HEALTH_SERVER_HOST` | `0.0.0.0` | 健康檢查 server 綁定 host。 |
+| `EDGE_HEALTH_SERVER_PORT` | `8081` | 健康檢查 server port。 |
+| `EDGE_HEALTH_LIVENESS_TIMEOUT_SECONDS` | `30` | `/healthz` loop 心跳逾時門檻。 |
+| `EDGE_HEALTH_READINESS_TIMEOUT_SECONDS` | `30` | `/readyz` 最近進度逾時門檻。 |
+| `EDGE_HEALTH_STARTUP_GRACE_SECONDS` | `10` | startup 完成後首次 loop/progress 寬限秒數。 |
+
+啟用後提供：
+- `/startupz`：startup task 是否完成。
+- `/healthz`：workflow loop 是否仍在更新。
+- `/readyz`：startup 完成、近期有進度且不在 backoff。
+
 ## MQTT
 
 | 變數 | 預設 | 說明 |
@@ -74,6 +90,9 @@
 | `EDGE_PHASE_MQTT_TOPIC` | `integration/phase` | phase topic。 |
 | `EDGE_MQTT_QOS` | `1` | MQTT QoS。 |
 | `EDGE_MQTT_CLIENT_ID` | *(未設定)* | MQTT client id。 |
+| `EDGE_MQTT_AUTH_ENABLED` | `0` | 是否啟用 MQTT 帳密驗證。 |
+| `EDGE_MQTT_USERNAME` | *(未設定)* | MQTT 使用者名稱（`EDGE_MQTT_AUTH_ENABLED=1` 時必填）。 |
+| `EDGE_MQTT_PASSWORD` | *(未設定)* | MQTT 密碼（建議透過 Secret 或 env 注入）。 |
 
 ## 發布與整合
 

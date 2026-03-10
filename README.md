@@ -21,8 +21,7 @@ RTSP / MP4
 ```bash
 uv venv --python /usr/bin/python3.10
 source .venv/bin/activate
-uv pip install -r requirements.txt
-uv pip install -e .
+uv pip install -e ".[vision]"
 python main.py
 ```
 
@@ -30,8 +29,7 @@ python main.py
 
 ```bash
 # 在 smart_warehouse_edge 根目錄
-uv pip install -e .
-uv pip install -e edge_core
+uv pip install -e . -e "edge_core[vision]"
 bash scripts/run_edges.sh cam01
 ```
 
@@ -40,10 +38,25 @@ bash scripts/run_edges.sh cam01
 - 全域開關：`EDGE_STREAMING_ENABLED`
 - phase 開關：`schedules/schedule.json` 的 `streaming.enabled`
 - 推流 URL：`EDGE_STREAMING_URL`（例如 RTMP 到 MTX）
+- 本機部署目前僅支援 CPU 編碼：`EDGE_STREAMING_STRATEGY=cpu`
 - 無幀 watchdog：`EDGE_STREAMING_IDLE_TIMEOUT`
 - 重啟退避：`EDGE_STREAMING_RESTART_BACKOFF`
 
 詳見：`docs/ENV.md`
+
+## 健康檢查（可選）
+
+可透過環境變數啟用健康檢查 HTTP 端點：
+
+- `EDGE_HEALTH_SERVER_ENABLED=1`
+- `EDGE_HEALTH_SERVER_HOST=0.0.0.0`
+- `EDGE_HEALTH_SERVER_PORT=8081`
+
+啟用後可提供 Kubernetes probes：
+
+- `GET /startupz`
+- `GET /healthz`
+- `GET /readyz`
 
 ## 參考文件
 

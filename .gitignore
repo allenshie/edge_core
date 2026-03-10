@@ -36,7 +36,7 @@ trackers/*
 !trackers/
 !trackers/bytetrack.yaml
 !trackers/botsort.yaml
-
+!trackers/custom_tracker.yaml
 # Tool caches & logs
 *.log
 logs/

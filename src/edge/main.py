@@ -5,7 +5,15 @@ import os
 import sys
 from typing import Any
 
-from smart_workflow import MonitoringClient, TaskContext, WorkflowRunner
+from smart_workflow import (
+    HealthAwareWorkflowRunner,
+    HealthServer,
+    HealthState,
+    MonitoringClient,
+    ProbeConfig,
+    TaskContext,
+    WorkflowRunner,
+)
 
 from edge.api.mode_server import MODE_RESOURCE, start_mode_server
 from edge.config import EdgeConfig, load_config
@@ -21,6 +29,12 @@ def setup_logging() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         stream=sys.stdout,
     )
+
+
+def _to_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
 def main() -> None:
@@ -49,15 +63,55 @@ def main() -> None:
     _start_messaging_subscriber(config, context, messaging_client)
 
     workflow = build_edge_workflow()
-    runner = WorkflowRunner(
-        context=context,
-        workflow=workflow,
-        loop_interval=config.poll_interval,
-        retry_backoff=config.retry_backoff,
-    )
+    health_server: HealthServer | None = None
+    health_state: HealthState | None = None
+    health_enabled = _to_bool(os.environ.get("EDGE_HEALTH_SERVER_ENABLED"), False)
+    if health_enabled:
+        health_state = HealthState()
+        context.set_resource("health_state", health_state)
+        health_server = HealthServer(
+            health_state=health_state,
+            host=os.environ.get("EDGE_HEALTH_SERVER_HOST", "0.0.0.0"),
+            port=int(os.environ.get("EDGE_HEALTH_SERVER_PORT", "8081")),
+            probe_config=ProbeConfig(
+                liveness_timeout_seconds=float(
+                    os.environ.get("EDGE_HEALTH_LIVENESS_TIMEOUT_SECONDS", "30")
+                ),
+                readiness_timeout_seconds=float(
+                    os.environ.get("EDGE_HEALTH_READINESS_TIMEOUT_SECONDS", "30")
+                ),
+                startup_grace_seconds=float(
+                    os.environ.get("EDGE_HEALTH_STARTUP_GRACE_SECONDS", "10")
+                ),
+            ),
+        )
+        health_server.start()
+        logger.info(
+            "health server started at %s:%s",
+            os.environ.get("EDGE_HEALTH_SERVER_HOST", "0.0.0.0"),
+            os.environ.get("EDGE_HEALTH_SERVER_PORT", "8081"),
+        )
+
+    if health_state is not None:
+        runner = HealthAwareWorkflowRunner(
+            context=context,
+            workflow=workflow,
+            loop_interval=config.poll_interval,
+            retry_backoff=config.retry_backoff,
+            health_state=health_state,
+        )
+    else:
+        runner = WorkflowRunner(
+            context=context,
+            workflow=workflow,
+            loop_interval=config.poll_interval,
+            retry_backoff=config.retry_backoff,
+        )
     try:
         runner.run()
     finally:
+        if health_server is not None:
+            health_server.stop()
         _shutdown_messaging_client(messaging_client, logger)
 
 

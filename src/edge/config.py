@@ -98,6 +98,9 @@ class MqttConfig:
     topic: str = os.environ.get("EDGE_PHASE_MQTT_TOPIC", "integration/phase")
     qos: int = int(os.environ.get("EDGE_MQTT_QOS", "1"))
     client_id: str | None = os.environ.get("EDGE_MQTT_CLIENT_ID")
+    auth_enabled: bool = _to_bool(os.environ.get("EDGE_MQTT_AUTH_ENABLED"), False)
+    username: str | None = os.environ.get("EDGE_MQTT_USERNAME")
+    password: str | None = os.environ.get("EDGE_MQTT_PASSWORD")
 
 
 @dataclass
