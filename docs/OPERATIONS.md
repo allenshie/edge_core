@@ -9,12 +9,11 @@
 
 ### 同時啟動多個 Edge 實例
 
-`edge/scripts/run_all.sh` 會遍歷 `env/.env.*` 檔案並依序啟動多個 edge 節點：
+專案自己的啟動腳本可遍歷多份 `.env.camXX` 或其他實例設定檔，依序啟動多個 edge 節點：
 
 ```bash
-cd edge
-cp .env.example env/.env.cam01
-cp .env.example env/.env.cam02
+cp .env.example .env.cam01
+cp .env.example .env.cam02
 # 調整各檔案內容...
 
 ./scripts/run_all.sh
@@ -24,12 +23,11 @@ cp .env.example env/.env.cam02
 ### Docker Compose 部署
 
 ```bash
-cd edge
-cp .env.example env/.env.cam01
-cp .env.example env/.env.cam02
-# 調整 env/.env.camXX（MONITOR_ENDPOINT/INTEGRATION_API_BASE/RTSP URL 等）
+cp .env.example .env.cam01
+cp .env.example .env.cam02
+# 調整 .env.camXX（MONITOR_ENDPOINT/INTEGRATION_API_BASE/RTSP URL 等）
 
-set -a; source env/.env.cam01; set +a
+set -a; source .env.cam01; set +a
 
 docker compose up --build              # 只啟動 cam01
 docker compose --profile cam02 up -d   # 同時啟動 cam02 profile

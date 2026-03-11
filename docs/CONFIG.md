@@ -1,17 +1,29 @@
 ## Edge 設定參考
 
-環境變數完整說明請見 [`ENV.md`](ENV.md)。本文件保留多相機啟動示例與注意事項。
+環境變數完整說明請見 [`ENV.md`](ENV.md)。
+若目前專案採用 `ScheduledInferenceEngine`，請優先參考 [`SCHEDULED_INFERENCE.md`](SCHEDULED_INFERENCE.md)；
+本文件保留多實例啟動示例與操作注意事項。
 
 ### 多相機 .env 範例
 
 ```bash
-cd edge
-cp .env.example env/.env.cam02
-set -a; source env/.env.cam02; set +a
+cp .env.example .env.cam02
+set -a; source .env.cam02; set +a
 python main.py
 ```
 
 ### 常用參數
+
+若使用 `ScheduledInferenceEngine`，常用核心參數實際上是：
+
+| 變數 | 說明 |
+|------|------|
+| `EDGE_RESOURCE_ROOT` | 相對路徑根目錄。 |
+| `EDGE_SCHEDULE_PATH` | 指向 `schedule.json`。 |
+| `INFERENCE_ENGINE_CLASS` | 設為 `edge.pipeline.tasks.inference.scheduled:ScheduledInferenceEngine`。 |
+| `EDGE_CAMERA_ID` | 提供 camera-specific config 選擇。 |
+
+其餘模型層設定建議改放到 `configs/models.yaml`，不要全部塞在 `.env`。
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|

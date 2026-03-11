@@ -25,13 +25,19 @@ uv pip install -e ".[vision]"
 python main.py
 ```
 
-## 從上層主專案啟動（建議）
+## 從 site repo / 上層專案啟動（建議）
 
 ```bash
-# 在 smart_warehouse_edge 根目錄
-uv pip install -e . -e "edge_core[vision]"
-bash scripts/run_edges.sh cam01
+# 在 site repo 或上層專案根目錄
+uv pip install -e .          # 安裝專案自己的 models / configs package
+uv pip install -e "edge_core[vision]"
+# 之後以專案自己的 entrypoint 啟動
 ```
+
+建議做法：
+
+- `edge_core`：提供 runtime、`ScheduledInferenceEngine`、共通 inference models
+- `site repo` / 專案套件：提供具體實作類、`schedule.json`、`configs/`、`weights/`
 
 ## 串流策略
 
@@ -61,9 +67,10 @@ bash scripts/run_edges.sh cam01
 ## 參考文件
 
 - [設定與環境變數](docs/ENV.md)
+- [ScheduledInferenceEngine 使用說明](docs/SCHEDULED_INFERENCE.md)
 - [設定示例（多相機）](docs/CONFIG.md)
 - [自訂 Inference/Publish 與 Mode 控制](docs/EXTENDING.md)
 - [Orin 部署指南（ARM）](docs/DEPLOY_ORIN.md)
-- [子模組導入主專案](docs/EDGE_SUBMODULE_GUIDE.md)
+- [主專案 / site repo 整合指南](docs/EDGE_SUBMODULE_GUIDE.md)
 - [部署與操作（多實例、Docker）](docs/OPERATIONS.md)
 - [測試與品質](docs/TESTING.md)

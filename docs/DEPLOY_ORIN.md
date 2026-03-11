@@ -37,17 +37,20 @@ PY
 ## 建議安裝流程（Orin）
 
 ```bash
-# 1) 建議使用 venv 隔離
-python3 -m venv .venv
+# 1) 建議使用 venv 隔離；若 torch 安裝在系統層，可考慮沿用 system site-packages
+python3 -m venv .venv --system-site-packages
 source .venv/bin/activate
 
-# 2) 先確認 torch 可用（需為你在 Orin 準備好的版本）
+# 2) 先升級建置工具鏈，避免舊版 pip/setuptools 無法正確處理 pyproject
+python -m pip install --upgrade pip setuptools wheel
+
+# 3) 先確認 torch 可用（需為你在 Orin 準備好的版本）
 python -c "import torch; print(torch.cuda.is_available())"
 
-# 3) 安裝 edge_core 本體，但不自動安裝 dependencies
+# 4) 安裝 edge_core 本體，但不自動安裝 dependencies
 pip install -e . --no-deps
 
-# 4) 依需求手動安裝其餘套件（避免覆蓋 torch / opencv）
+# 5) 依需求手動安裝其餘套件（避免覆蓋 torch / opencv）
 #    下面為示例，請依你的 Orin 驗證版本調整
 pip install "numpy>=1.26,<2" "lap>=0.4" "paho-mqtt>=1.6.1"
 pip install "ultralytics==8.3.236"
@@ -84,3 +87,6 @@ python main.py
 
 - 問題：安裝過程把既有 GPU 套件版本改掉  
   處理：改用 `pip install -e . --no-deps`，再手動安裝其餘依賴。
+
+- 問題：`pip install -e .` 出現 `UNKNOWN-0.0.0` 或 `build_editable` 相關錯誤  
+  處理：先升級 `pip setuptools wheel`，再重新安裝。
