@@ -37,6 +37,7 @@
 | `EDGE_MODEL_DEVICE` | *(未設定)* | `cpu` / `cuda:0` 等。 |
 | `EDGE_TRACKER_CONFIG` | `trackers/bytetrack.yaml` | Ultralytics tracker 設定。 |
 | `EDGE_SCHEDULE_PATH` | `schedule.json` | phase 排程檔。 |
+| `EDGE_MODELS_CONFIG` | `configs/models.yaml` | 模型共用設定檔路徑；`YoloDetectionModel` / `YoloPoseModel` 預設從此載入設定。 |
 | `EDGE_RESOURCE_ROOT` | *(執行目錄)* | 相對路徑解析根目錄。 |
 
 ## 串流輸出（StreamingTask）

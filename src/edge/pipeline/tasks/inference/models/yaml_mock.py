@@ -8,6 +8,7 @@ from typing import Any, List, Protocol
 from edge.schema import EdgeDetection
 
 from .base import BaseEdgeModel
+from .config import load_yaml, resolve_path
 
 
 class PathResolver(Protocol):
@@ -31,8 +32,8 @@ class BaseYamlMockModel(BaseEdgeModel):
         env_var: str,
         default_config_path: str,
         config_loader: callable | None = None,
-        path_resolver: PathResolver,
-        yaml_loader: YamlLoader,
+        path_resolver: PathResolver | None = None,
+        yaml_loader: YamlLoader | None = None,
     ) -> None:
         super().__init__(
             name=name,
@@ -43,8 +44,8 @@ class BaseYamlMockModel(BaseEdgeModel):
         )
         self._env_var = env_var
         self._default_config_path = default_config_path
-        self._resolve_path = path_resolver
-        self._load_yaml = yaml_loader
+        self._resolve_path = path_resolver or resolve_path
+        self._load_yaml = yaml_loader or load_yaml
         self._records = self._load_records()
 
     def _resolve_config_path(self):

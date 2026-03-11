@@ -6,6 +6,7 @@ from typing import Any, List
 from edge.schema import EdgeDetection
 
 from ..model import BaseInferenceModel
+from .config import get_model_config
 
 
 class BaseEdgeModel(BaseInferenceModel, ABC):
@@ -21,7 +22,8 @@ class BaseEdgeModel(BaseInferenceModel, ABC):
         config_loader: callable | None = None,
     ) -> None:
         super().__init__(name=name, weights_path=weights_path, label=label, device=device)
-        self._config = config_loader(name) if config_loader else {}
+        loader = config_loader or get_model_config
+        self._config = loader(name)
         if self.device is None and self._config.get("device") is not None:
             self.device = self._config.get("device")
 

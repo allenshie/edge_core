@@ -115,6 +115,9 @@ site 層只應保留具體實作類，例如：
 `configs/models.yaml` 用來提供模型共用設定。site 實作類可透過自己的
 `config_loader` 讀取這份檔案，再傳給 `YoloDetectionModel` / `YoloPoseModel`。
 
+若直接使用 `edge_core` 提供的 `YoloDetectionModel` / `YoloPoseModel`，
+且未自行覆寫 `config_loader`，也會預設讀取 `EDGE_RESOURCE_ROOT/configs/models.yaml`。
+
 範例：
 
 ```yaml
