@@ -30,6 +30,17 @@ env/.env.*
 *.mov
 *.avi
 output_frames/
+uv.lock
+
+# Runtime project resources
+configs/*
+!configs/.gitkeep
+!configs/*.example.yaml
+weights/*
+!weights/.gitkeep
+schedules/*
+!schedules/.gitkeep
+!schedules/*.example.json
 
 # Tracker configs (keep default templates, ignore custom ones)
 trackers/*
