@@ -7,7 +7,7 @@ from typing import Callable, Iterable, List
 
 from smart_workflow import BaseTask, TaskContext, TaskResult
 
-from edge.pipeline.tasks.ingestion import FileIngestionTask, RtspIngestionTask
+from edge.pipeline.tasks.ingestion import IngestionTask
 from edge.pipeline.tasks.inference import InferenceTask
 from edge.pipeline.tasks.publish import PublishResultTask
 from edge.pipeline.tasks.streaming import StreamingTask
@@ -43,27 +43,17 @@ class InitPipelineTask(BaseTask):
     name = "edge-pipeline-init"
 
     def run(self, context: TaskContext) -> TaskResult:
-        ingestion_factory, mode = self._select_ingestion_factory(context)
         factories: List[Callable[[TaskContext], BaseTask]] = [
-            ingestion_factory,
+            IngestionTask,
             InferenceTask,
             StreamingTask,
             PublishResultTask,
         ]
-        context.logger.info("edge ingestion mode: %s", mode)
         nodes = [factory(context) for factory in factories]
         pipeline = EdgePipeline(nodes)
         pipeline.warmup(context)
         context.set_resource("edge_pipeline", pipeline)
         return TaskResult()
-
-    def _select_ingestion_factory(self, context: TaskContext) -> tuple[Callable[[TaskContext], BaseTask], str]:
-        ingestion_cfg = getattr(context.config, "ingestion", None)
-        mode = (ingestion_cfg.mode if ingestion_cfg else "rtsp") if hasattr(ingestion_cfg, "mode") else "rtsp"
-        mode = (mode or "rtsp").strip().lower()
-        if mode == "file":
-            return FileIngestionTask, mode
-        return RtspIngestionTask, mode
 
 
 class PipelineScheduler(BaseTask):
@@ -110,6 +100,10 @@ class PipelineScheduler(BaseTask):
                 fallback = getattr(ingestion_cfg.rtsp, "fps", None)
                 if fallback and fallback > 0:
                     return fallback
+            elif mode == "camera":
+                fps_value = getattr(ingestion_cfg.camera, "fps", None)
+                if fps_value and fps_value > 0:
+                    return fps_value
             else:
                 fps_value = getattr(ingestion_cfg.rtsp, "fps", None)
                 if fps_value and fps_value > 0:

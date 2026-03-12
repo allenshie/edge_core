@@ -41,11 +41,15 @@ python main.py
 | `EDGE_VISUAL_MODE` | `write` | `write` 輸出檔案；`show` 使用 `cv2.imshow`。|
 | `EDGE_VISUAL_WINDOW` | `edge-preview` | `show` 模式下的視窗名稱。|
 | `EDGE_VISUAL_WIDTH` / `EDGE_VISUAL_HEIGHT` | `1280` / `720` | `show` 模式下的視窗尺寸（px）。|
-| `EDGE_INGEST_MODE` | `rtsp` | 取流模式：`rtsp` 或 `file`。|
+| `EDGE_INGEST_MODE` | `rtsp` | 取流模式：`rtsp`、`file` 或 `camera`。|
 | `EDGE_FILE_PATH` | *(不設定)* | `file` 模式時必填，指向影片路徑。|
 | `EDGE_FILE_LOOP` | `1` | 影片結束後是否自動從頭播放。|
 | `EDGE_FILE_FPS` | *(不設定)* | `file` 模式下覆寫 workflow 節奏的 FPS。|
 | `EDGE_FILE_DROP_FRAMES` | *(沿用 `EDGE_RTSP_DROP_FRAMES` 預設)* | 影片模式下每圈捨棄的影格數。|
+| `EDGE_CAMERA_DEVICE` | `0` | `camera` 模式時使用的 device index。|
+| `EDGE_CAMERA_FPS` | *(不設定)* | `camera` 模式目標 FPS。|
+| `EDGE_CAMERA_WIDTH` / `EDGE_CAMERA_HEIGHT` | *(不設定)* | `camera` 模式解析度。|
+| `EDGE_CAMERA_DROP_FRAMES` | `0` | `camera` 模式每圈捨棄的影格數。|
 | `EDGE_RTSP_URL` | `rtsp://localhost:554/stream` | RTSP 模式的串流來源 URL。|
 | `EDGE_RTSP_DROP_FRAMES` | `2` | 每圈讀取時丟棄的舊影格數。|
 | `EDGE_RTSP_FPS` | `30` | 目標串流 FPS，決定取流節奏；設 `0` 表示不節流。|
@@ -59,6 +63,6 @@ python main.py
 
 ### 設定注意事項
 
-- `PipelineScheduler` 會優先依 `EDGE_FILE_FPS` 或 `EDGE_RTSP_FPS` 控制節奏；若設為 0，回退使用 `EDGE_POLL_INTERVAL`。
+- `PipelineScheduler` 會優先依 `EDGE_FILE_FPS`、`EDGE_CAMERA_FPS` 或 `EDGE_RTSP_FPS` 控制節奏；若設為 0，回退使用 `EDGE_POLL_INTERVAL`。
 - `edge/trackers/` 內已附 `bytetrack.yaml`/`botsort.yaml` 範本；若填寫相對路徑，會以 `edge` 專案根目錄解析。
 - EdgeDetection 欄位定義與擴充方式請見 `edge/docs/DETECTIONS.md`。

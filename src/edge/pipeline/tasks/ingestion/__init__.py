@@ -1,6 +1,12 @@
 """Ingestion task exports."""
 
-from .file import FileIngestionTask
-from .rtsp import RtspIngestionTask
+from .engines import BaseIngestionEngine, CameraIngestionEngine, FileIngestionEngine, RtspIngestionEngine
+from .task import IngestionTask
 
-__all__ = ["FileIngestionTask", "RtspIngestionTask"]
+__all__ = [
+    "IngestionTask",
+    "BaseIngestionEngine",
+    "FileIngestionEngine",
+    "RtspIngestionEngine",
+    "CameraIngestionEngine",
+]

@@ -114,10 +114,24 @@ class FileSourceConfig:
 
 
 @dataclass
+class CameraSourceConfig:
+    device: int = int(os.environ.get("EDGE_CAMERA_DEVICE", "0"))
+    drop_frames: int = int(os.environ.get("EDGE_CAMERA_DROP_FRAMES", "0"))
+    fps: float | None = float(os.environ["EDGE_CAMERA_FPS"]) if os.environ.get("EDGE_CAMERA_FPS") else None
+    frame_width: int | None = (
+        int(os.environ.get("EDGE_CAMERA_WIDTH")) if os.environ.get("EDGE_CAMERA_WIDTH") else None
+    )
+    frame_height: int | None = (
+        int(os.environ.get("EDGE_CAMERA_HEIGHT")) if os.environ.get("EDGE_CAMERA_HEIGHT") else None
+    )
+
+
+@dataclass
 class IngestionConfig:
     mode: str = os.environ.get("EDGE_INGEST_MODE", "rtsp")
     rtsp: RtspConfig = field(default_factory=RtspConfig)
     file: FileSourceConfig = field(default_factory=FileSourceConfig)
+    camera: CameraSourceConfig = field(default_factory=CameraSourceConfig)
 
     def __post_init__(self) -> None:
         self.mode = (self.mode or "rtsp").strip().lower()

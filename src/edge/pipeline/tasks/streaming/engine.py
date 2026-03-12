@@ -382,6 +382,10 @@ class DefaultStreamingEngine(BaseStreamingEngine):
                 rtsp_fps = getattr(ingestion_cfg.rtsp, "fps", None)
                 if rtsp_fps and rtsp_fps > 0:
                     return float(rtsp_fps)
+            elif mode == "camera":
+                camera_fps = getattr(ingestion_cfg.camera, "fps", None)
+                if camera_fps and camera_fps > 0:
+                    return float(camera_fps)
             else:
                 rtsp_fps = getattr(ingestion_cfg.rtsp, "fps", None)
                 if rtsp_fps and rtsp_fps > 0:

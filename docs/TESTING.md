@@ -8,13 +8,15 @@
 2. 依測試場景選擇取流模式：
    - `EDGE_INGEST_MODE=file`：設定 `EDGE_FILE_PATH=/path/to/your/video.mp4`，必要時調整 `EDGE_FILE_FPS`、`EDGE_FILE_LOOP`。
    - `EDGE_INGEST_MODE=rtsp`：設定 `EDGE_RTSP_URL` 指向可用的 RTSP source，並確認測試環境可連線。
+   - `EDGE_INGEST_MODE=camera`：設定 `EDGE_CAMERA_DEVICE=0`（或其他 device index），可選擇調整 `EDGE_CAMERA_FPS`、`EDGE_CAMERA_WIDTH`、`EDGE_CAMERA_HEIGHT`。
 3. 以 `uv pip install -e ".[vision]"` 或專案實際安裝方式安裝執行依賴；若要跑測試/靜態分析，可額外建立 dev 依賴安裝 `pytest`、`ruff`、`mypy` 等工具。
 
 ## 測試分層
 
 ### 單元測試
-- `FileIngestionTask`：模擬 `cv2.VideoCapture`，驗證 EOF 迴圈/錯誤處理與 drop frame 行為。
-- `RtspIngestionTask`：模擬連線失敗、frame 解碼失敗，確認會釋放 capture 並拋出 `TaskError`。
+- `FileIngestionEngine`：模擬 `cv2.VideoCapture`，驗證 EOF 迴圈/錯誤處理與 drop frame 行為。
+- `RtspIngestionEngine`：模擬連線失敗、frame 解碼失敗，確認會釋放 capture 並拋出 `TaskError`。
+- `CameraIngestionEngine`：模擬本機 camera 開啟失敗與 drop frame 行為。
 - `InferenceTask` 與 `PublishResultTask`：使用 mock 模型與 mock integration client，確認輸入/輸出與 TaskContext 資源更新正確。
 
 執行方式（待對應測試檔案建立後）：
@@ -36,6 +38,7 @@ pytest tests/pipeline
 
 ### E2E smoke test
 - 在 `.env` 指向實際 RTSP 或 MP4 檔案後，直接執行 `python main.py` 或專案自己的 entrypoint，觀察 log 中的 ingestion/inference/publish 階段。
+- 若暫時沒有 RTSP source，可使用 `EDGE_INGEST_MODE=camera` 以本機 webcam/USB camera 做 live source 驗證。
 - 可選：搭配簡單的 mock integration server（例如以 `uvicorn scripts.mock_integration:app --reload` 啟動）驗證 HTTP 交握。
 
 ## 品質檢查

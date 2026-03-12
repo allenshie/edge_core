@@ -15,7 +15,7 @@
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
-| `EDGE_INGEST_MODE` | `rtsp` | `rtsp` 或 `file`。 |
+| `EDGE_INGEST_MODE` | `rtsp` | `rtsp` / `file` / `camera`。 |
 | `EDGE_RTSP_URL` | `rtsp://localhost:554/stream` | RTSP 來源 URL。 |
 | `EDGE_RTSP_DROP_FRAMES` | `2` | 每輪丟棄舊影格數。 |
 | `EDGE_RTSP_RECONNECT` | `1` | RTSP 斷線重連秒數。 |
@@ -25,6 +25,10 @@
 | `EDGE_FILE_LOOP` | `1` | 影片結束後是否重播。 |
 | `EDGE_FILE_FPS` | *(未設定)* | `file` 模式目標 FPS。 |
 | `EDGE_FILE_DROP_FRAMES` | *(沿用 RTSP)* | `file` 模式丟幀數。 |
+| `EDGE_CAMERA_DEVICE` | `0` | `camera` 模式的本機攝影機 device index。 |
+| `EDGE_CAMERA_FPS` | *(未設定)* | `camera` 模式希望設定的 FPS。 |
+| `EDGE_CAMERA_WIDTH` / `EDGE_CAMERA_HEIGHT` | *(未設定)* | `camera` 模式解析度設定。 |
+| `EDGE_CAMERA_DROP_FRAMES` | `0` | `camera` 模式每輪丟棄舊影格數。 |
 
 ## 推理與排程
 
