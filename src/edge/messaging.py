@@ -1,28 +1,22 @@
 """Messaging client provider for edge runtime."""
 from __future__ import annotations
 
-import os
-
-from smart_messaging_core import HttpConfig, MessagingClient, MessagingConfig, MqttConfig
+from smart_messaging_core import HttpConfig, MessagingClient, MessagingConfig, MqttConfig, RouteConfig
 
 from edge.config import EdgeConfig
 
 MESSAGING_CLIENT_RESOURCE = "messaging_client"
+EDGE_EVENTS_ROUTE = "edge_events"
+PHASE_UPDATES_ROUTE = "phase_updates"
 
 
 class MessagingClientProvider:
-    """Build MessagingClient from edge config and environment variables."""
+    """Build MessagingClient from edge config."""
 
     def __init__(self, config: EdgeConfig) -> None:
         self._config = config
 
     def build(self) -> MessagingClient:
-        publish_backend = (os.environ.get("EDGE_PUBLISH_BACKEND") or "http").strip().lower()
-        subscribe_backend = self._resolve_subscribe_backend()
-
-        self._validate_backend("publish", publish_backend, {"http", "mqtt", "none"})
-        self._validate_backend("subscribe", subscribe_backend, {"mqtt", "none"})
-
         mqtt_cfg = self._config.mqtt
         mqtt = MqttConfig(
             host=mqtt_cfg.host,
@@ -35,29 +29,47 @@ class MessagingClientProvider:
             password=mqtt_cfg.password,
         )
 
+        http_cfg = self._config.http_messaging
         http = HttpConfig(
             base_url=self._config.integration.api_base,
             timeout_seconds=self._config.integration.timeout_seconds,
+            listen_host=http_cfg.listen_host,
+            listen_port=http_cfg.listen_port,
         )
-        topic_routes = {"edge/events": "/edge/events"}
-        client_cfg = MessagingConfig(
-            publish_backend=publish_backend,
-            subscribe_backend=subscribe_backend,
-            mqtt=mqtt,
-            http=http,
-            topic_routes=topic_routes,
-        )
-        return MessagingClient(client_cfg)
 
-    def _resolve_subscribe_backend(self) -> str:
-        raw = os.environ.get("EDGE_SUBSCRIBE_BACKEND")
-        if raw:
-            return raw.strip().lower()
-        return "mqtt" if self._config.mqtt.enabled else "none"
+        routes: dict[str, RouteConfig] = {}
 
-    @staticmethod
-    def _validate_backend(kind: str, backend: str, allowed: set[str]) -> None:
-        if backend in allowed:
-            return
-        allowed_text = ",".join(sorted(allowed))
-        raise ValueError(f"unsupported {kind} backend: {backend}; allowed={allowed_text}")
+        events_route = resolve_events_route(self._config)
+        if events_route is not None:
+            routes[EDGE_EVENTS_ROUTE] = RouteConfig(*events_route)
+
+        phase_route = resolve_phase_updates_route(self._config)
+        if phase_route is not None:
+            routes[PHASE_UPDATES_ROUTE] = RouteConfig(*phase_route)
+
+        return MessagingClient(MessagingConfig(mqtt=mqtt, http=http, routes=routes))
+
+
+def resolve_events_route(config: EdgeConfig) -> tuple[str, str] | None:
+    events_cfg = config.edge_events
+    if events_cfg.backend == "none":
+        return None
+    _validate_backend("events", events_cfg.backend, {"http", "mqtt", "none"})
+    return events_cfg.backend, events_cfg.channel
+
+
+
+def resolve_phase_updates_route(config: EdgeConfig) -> tuple[str, str] | None:
+    phase_cfg = config.phase_messaging
+    if phase_cfg.backend == "none":
+        return None
+    _validate_backend("phase", phase_cfg.backend, {"http", "mqtt", "none"})
+    return phase_cfg.backend, phase_cfg.channel
+
+
+
+def _validate_backend(kind: str, backend: str, allowed: set[str]) -> None:
+    if backend in allowed:
+        return
+    allowed_text = ",".join(sorted(allowed))
+    raise ValueError(f"unsupported {kind} backend: {backend}; allowed={allowed_text}")

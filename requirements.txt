@@ -4,4 +4,4 @@ ultralytics==8.3.236
 opencv-python-headless>=4.10
 paho-mqtt>=1.6.1
 git+https://github.com/allenshie/smart-workflow.git
-git+https://github.com/allenshie/smart_messaging_core.git
+smart-messaging-core==0.1.1

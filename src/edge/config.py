@@ -12,6 +12,25 @@ def _to_bool(value: str | None, default: bool = True) -> bool:
     return value.lower() not in {"0", "false", "no"}
 
 
+def _get_env(*names: str, default: str | None = None) -> str | None:
+    for name in names:
+        value = os.environ.get(name)
+        if value is not None:
+            return value
+    return default
+
+
+def _normalize_backend(value: str | None, default: str) -> str:
+    return (value or default).strip().lower()
+
+
+def _normalize_channel(backend: str, value: str | None, default: str) -> str:
+    channel = (value or default).strip() or default
+    if backend == "http":
+        return channel if channel.startswith("/") else f"/{channel}"
+    return channel[1:] if channel.startswith("/") else channel
+
+
 @dataclass
 class CameraConfig:
     camera_id: str = os.environ.get("EDGE_CAMERA_ID", "cam01")
@@ -50,11 +69,9 @@ class ModelConfig:
         if candidate.exists():
             return str(candidate)
 
-        # 若 path 含子資料夾，視為自訂檔案但不存在，明確丟出錯誤避免 fallback 到內建配置
         if len(cfg_path.parts) > 1 or cfg_path.parts[0] in {".", ".."}:
             raise FileNotFoundError(f"找不到相對於 {search_root} 的 tracker config: {cfg}")
 
-        # 單純檔名則交給 Ultralytics 解析（botsort.yaml / bytetrack.yaml 等）
         return cfg
 
 
@@ -95,12 +112,43 @@ class MqttConfig:
     enabled: bool = _to_bool(os.environ.get("EDGE_MQTT_ENABLED"), False)
     host: str = os.environ.get("EDGE_MQTT_HOST", "localhost")
     port: int = int(os.environ.get("EDGE_MQTT_PORT", "1883"))
-    topic: str = os.environ.get("EDGE_PHASE_MQTT_TOPIC", "integration/phase")
     qos: int = int(os.environ.get("EDGE_MQTT_QOS", "1"))
     client_id: str | None = os.environ.get("EDGE_MQTT_CLIENT_ID")
     auth_enabled: bool = _to_bool(os.environ.get("EDGE_MQTT_AUTH_ENABLED"), False)
     username: str | None = os.environ.get("EDGE_MQTT_USERNAME")
     password: str | None = os.environ.get("EDGE_MQTT_PASSWORD")
+
+
+@dataclass
+class HttpMessagingConfig:
+    listen_host: str = os.environ.get("EDGE_HTTP_LISTEN_HOST", "0.0.0.0")
+    listen_port: int = int(os.environ.get("EDGE_HTTP_LISTEN_PORT", "9000"))
+
+
+@dataclass
+class PhaseMessagingConfig:
+    backend: str = field(default_factory=lambda: _normalize_backend(
+        os.environ.get("EDGE_PHASE_BACKEND"), "none"
+    ))
+    channel: str = os.environ.get("EDGE_PHASE_CHANNEL", "")
+
+    def __post_init__(self) -> None:
+        if self.backend == "none" and _to_bool(os.environ.get("EDGE_MQTT_ENABLED"), False):
+            self.backend = "mqtt"
+        default_channel = "/integration/phase" if self.backend == "http" else "integration/phase"
+        self.channel = _normalize_channel(self.backend, self.channel, default_channel)
+
+
+@dataclass
+class EdgeEventMessagingConfig:
+    backend: str = field(default_factory=lambda: _normalize_backend(
+        os.environ.get("EDGE_EVENTS_BACKEND"), "http"
+    ))
+    channel: str = os.environ.get("EDGE_EVENTS_CHANNEL", "")
+
+    def __post_init__(self) -> None:
+        default_channel = "/edge/events" if self.backend == "http" else "edge/events"
+        self.channel = _normalize_channel(self.backend, self.channel, default_channel)
 
 
 @dataclass
@@ -156,6 +204,9 @@ class EdgeConfig:
     streaming: StreamingConfig = field(default_factory=StreamingConfig)
     integration: IntegrationConfig = field(default_factory=IntegrationConfig)
     mqtt: MqttConfig = field(default_factory=MqttConfig)
+    http_messaging: HttpMessagingConfig = field(default_factory=HttpMessagingConfig)
+    phase_messaging: PhaseMessagingConfig = field(default_factory=PhaseMessagingConfig)
+    edge_events: EdgeEventMessagingConfig = field(default_factory=EdgeEventMessagingConfig)
     inference_engine_class: str | None = os.environ.get("INFERENCE_ENGINE_CLASS")
     publish_engine_class: str | None = os.environ.get("PUBLISH_ENGINE_CLASS")
     mode_server_enabled: bool = _to_bool(os.environ.get("EDGE_MODE_SERVER_ENABLED"), False)

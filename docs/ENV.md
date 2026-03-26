@@ -85,29 +85,37 @@
 - `/healthz`：workflow loop 是否仍在更新。
 - `/readyz`：startup 完成、近期有進度且不在 backoff。
 
-## MQTT
+## MQTT 協議參數
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
-| `EDGE_MQTT_ENABLED` | `0` | 啟用 phase MQTT 訂閱。 |
+| `EDGE_MQTT_ENABLED` | `0` | 是否啟用 MQTT 協議設定；若 `EDGE_PHASE_BACKEND` 未設定，會影響 phase route 的預設 backend。 |
 | `EDGE_MQTT_HOST` | `localhost` | broker host。 |
 | `EDGE_MQTT_PORT` | `1883` | broker port。 |
-| `EDGE_PHASE_MQTT_TOPIC` | `integration/phase` | phase topic。 |
 | `EDGE_MQTT_QOS` | `1` | MQTT QoS。 |
 | `EDGE_MQTT_CLIENT_ID` | *(未設定)* | MQTT client id。 |
 | `EDGE_MQTT_AUTH_ENABLED` | `0` | 是否啟用 MQTT 帳密驗證。 |
 | `EDGE_MQTT_USERNAME` | *(未設定)* | MQTT 使用者名稱（`EDGE_MQTT_AUTH_ENABLED=1` 時必填）。 |
 | `EDGE_MQTT_PASSWORD` | *(未設定)* | MQTT 密碼（建議透過 Secret 或 env 注入）。 |
 
+## Messaging Routes
+
+| 變數 | 預設 | 說明 |
+| --- | --- | --- |
+| `EDGE_PHASE_BACKEND` | `mqtt`（若 `EDGE_MQTT_ENABLED=1`）或 `none` | phase 更新路由 backend；可設 `mqtt` / `http` / `none`。 |
+| `EDGE_PHASE_CHANNEL` | `integration/phase` | phase 更新 route channel。若 backend=`http` 會自動正規化成 `/...`。 |
+| `EDGE_EVENTS_BACKEND` | `http` | edge 推理事件 route backend；可設 `http` / `mqtt` / `none`。 |
+| `EDGE_EVENTS_CHANNEL` | `/edge/events`（backend=`http`）或 `edge/events`（backend=`mqtt`） | edge 推理事件 route channel。 |
+| `EDGE_HTTP_LISTEN_HOST` | `0.0.0.0` | 當 route backend=`http` 且需要接收 webhook subscribe 時，本地 HTTP listen host。 |
+| `EDGE_HTTP_LISTEN_PORT` | `9000` | 當 route backend=`http` 且需要接收 webhook subscribe 時，本地 HTTP listen port。 |
+
 ## 發布與整合
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
 | `PUBLISH_ENGINE_CLASS` | *(未設定)* | 自訂 publish 引擎 class path。 |
-| `INTEGRATION_API_BASE` | `http://localhost:9000` | 整合端 API。 |
+| `INTEGRATION_API_BASE` | `http://localhost:9000` | 整合端 API base URL。 |
 | `INTEGRATION_API_TIMEOUT` | `5` | API timeout 秒數。 |
-| `EDGE_PUBLISH_BACKEND` | `http` | `http` / `mqtt` / `none`。 |
-| `EDGE_EVENTS_MQTT_TOPIC` | `edge/events` | 事件 topic。 |
 
 ## 視覺化
 

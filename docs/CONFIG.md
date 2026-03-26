@@ -12,6 +12,20 @@ set -a; source .env.cam02; set +a
 python main.py
 ```
 
+Messaging route 建議最少設定：
+
+```env
+EDGE_PHASE_BACKEND=mqtt
+EDGE_PHASE_CHANNEL=integration/phase
+EDGE_EVENTS_BACKEND=http
+EDGE_EVENTS_CHANNEL=/edge/events
+```
+
+- `EDGE_PHASE_*` 控制 phase 更新來源。
+- `EDGE_EVENTS_*` 控制 publish 目的地。
+- 若 `EDGE_EVENTS_BACKEND=http`，channel 建議寫 `/edge/events`。
+- 若 `EDGE_EVENTS_BACKEND=mqtt`，channel 建議寫 `edge/events`。
+
 ### 常用參數
 
 若使用 `ScheduledInferenceEngine`，常用核心參數實際上是：
@@ -37,6 +51,8 @@ python main.py
 | `PUBLISH_ENGINE_CLASS` | *(未設定)* | 指定 `BasePublishEngine` 子類處理推論輸出。|
 | `EDGE_MODE_SERVER_HOST` / `EDGE_MODE_SERVER_PORT` | `0.0.0.0` / `9100` | mode 更新 API 的監聽位置。|
 | `EDGE_MODE_DEFAULT` | `working` | 未被整合端更新時的初始 mode。|
+| `EDGE_PHASE_BACKEND` / `EDGE_PHASE_CHANNEL` | `mqtt` / `integration/phase` | phase 更新 route 設定。|
+| `EDGE_EVENTS_BACKEND` / `EDGE_EVENTS_CHANNEL` | `http` / `/edge/events` | edge 事件 publish route 設定。|
 | `EDGE_VISUAL_ENABLED` | *(沿用 `EDGE_MODEL_VISUALIZE` 預設)* | 控制是否執行可視化輸出（write/show）。|
 | `EDGE_VISUAL_MODE` | `write` | `write` 輸出檔案；`show` 使用 `cv2.imshow`。|
 | `EDGE_VISUAL_WINDOW` | `edge-preview` | `show` 模式下的視窗名稱。|
@@ -65,4 +81,5 @@ python main.py
 
 - `PipelineScheduler` 會優先依 `EDGE_FILE_FPS`、`EDGE_CAMERA_FPS` 或 `EDGE_RTSP_FPS` 控制節奏；若設為 0，回退使用 `EDGE_POLL_INTERVAL`。
 - `edge/trackers/` 內已附 `bytetrack.yaml`/`botsort.yaml` 範本；若填寫相對路徑，會以 `edge` 專案根目錄解析。
+- `EDGE_MQTT_*` 僅負責 broker 連線參數；phase / event 的 backend 與 channel 請改由 `EDGE_PHASE_*`、`EDGE_EVENTS_*` 設定。
 - EdgeDetection 欄位定義與擴充方式請見 `edge/docs/DETECTIONS.md`。

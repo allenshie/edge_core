@@ -55,7 +55,7 @@ pip install -e . --no-deps
 pip install "numpy>=1.26,<2" "lap>=0.4" "paho-mqtt>=1.6.1"
 pip install "ultralytics==8.3.236"
 pip install "smart-workflow @ git+https://github.com/allenshie/smart-workflow.git@346a65f87394d0fe39b8761734447940b901ab62"
-pip install "smart-messaging-core @ git+https://github.com/allenshie/smart_messaging_core.git@9dcfcf2bdc816eb4ef37910b00e33b9f96e88065"
+pip install "smart-messaging-core==0.1.1"
 ```
 
 ## 版本相容建議

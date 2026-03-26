@@ -69,10 +69,15 @@ EDGE_RESOURCE_ROOT=.
 EDGE_SCHEDULE_PATH=./schedules/schedule.json
 EDGE_MODE_DEFAULT=working_stage_1
 INFERENCE_ENGINE_CLASS=edge.pipeline.tasks.inference.scheduled:ScheduledInferenceEngine
+EDGE_PHASE_BACKEND=mqtt
+EDGE_PHASE_CHANNEL=integration/phase
+EDGE_EVENTS_BACKEND=http
+EDGE_EVENTS_CHANNEL=/edge/events
 ```
 
 > `EDGE_RESOURCE_ROOT` 讓排程檔/權重/其他相對路徑統一以主專案根目錄解析。
 > `schedule.json` 與 `configs/models.yaml` 的詳細格式請見 `SCHEDULED_INFERENCE.md`。
+> `EDGE_PHASE_*` / `EDGE_EVENTS_*` 為 route-based messaging 設定；`EDGE_MQTT_*` 僅提供 MQTT 協議連線參數。
 
 ### 4) site repo 內模型類規範
 
@@ -101,5 +106,5 @@ engine 內可透過 `context.get_resource("edge_mode")` 取得目前 mode。
 
 1) 先用 `EDGE_MODE_DEFAULT` 確認排程是否能切換  
 2) 再用 `curl /mode` 模擬 integration 端切換  
-3) 檢查 log 是否有 phase 變更與任務執行
+3) 檢查 log 是否有 phase 變更與任務執行  
 4) 若使用 `ScheduledInferenceEngine`，同步確認 `schedule.json` 與 `configs/models.yaml` 可被正確讀取

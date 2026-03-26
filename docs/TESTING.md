@@ -10,6 +10,9 @@
    - `EDGE_INGEST_MODE=rtsp`：設定 `EDGE_RTSP_URL` 指向可用的 RTSP source，並確認測試環境可連線。
    - `EDGE_INGEST_MODE=camera`：設定 `EDGE_CAMERA_DEVICE=0`（或其他 device index），可選擇調整 `EDGE_CAMERA_FPS`、`EDGE_CAMERA_WIDTH`、`EDGE_CAMERA_HEIGHT`。
 3. 以 `uv pip install -e ".[vision]"` 或專案實際安裝方式安裝執行依賴；若要跑測試/靜態分析，可額外建立 dev 依賴安裝 `pytest`、`ruff`、`mypy` 等工具。
+4. 若測 messaging，請優先使用新變數：
+   - `EDGE_PHASE_BACKEND` / `EDGE_PHASE_CHANNEL`
+   - `EDGE_EVENTS_BACKEND` / `EDGE_EVENTS_CHANNEL`
 
 ## 測試分層
 
@@ -40,6 +43,10 @@ pytest tests/pipeline
 - 在 `.env` 指向實際 RTSP 或 MP4 檔案後，直接執行 `python main.py` 或專案自己的 entrypoint，觀察 log 中的 ingestion/inference/publish 階段。
 - 若暫時沒有 RTSP source，可使用 `EDGE_INGEST_MODE=camera` 以本機 webcam/USB camera 做 live source 驗證。
 - 可選：搭配簡單的 mock integration server（例如以 `uvicorn scripts.mock_integration:app --reload` 啟動）驗證 HTTP 交握。
+- 若 phase 走 MQTT、events 走 HTTP，建議至少驗證一次：
+  - `EDGE_PHASE_BACKEND=mqtt`
+  - `EDGE_EVENTS_BACKEND=http`
+  以確認 route-based messaging 配置正確。
 
 ## 品質檢查
 

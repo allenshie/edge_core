@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -12,7 +11,7 @@ from typing import Sequence
 from smart_messaging_core import MessagingClient
 from smart_workflow import TaskContext
 
-from edge.messaging import MESSAGING_CLIENT_RESOURCE, MessagingClientProvider
+from edge.messaging import EDGE_EVENTS_ROUTE, MESSAGING_CLIENT_RESOURCE, MessagingClientProvider
 from edge.schema import EdgeDetection, EdgeEvent
 
 LOGGER = logging.getLogger(__name__)
@@ -71,7 +70,6 @@ class MessagingPublishEngine(BasePublishEngine):
     def __init__(self, context: TaskContext | None = None) -> None:
         super().__init__(context)
         self._client, self._is_shared_client = self._resolve_client(context)
-        self._topic = os.environ.get("EDGE_EVENTS_MQTT_TOPIC", "edge/events").strip() or "edge/events"
 
     def publish(self, context: TaskContext, detections: Sequence[EdgeDetection]) -> PublishOutcome:
         camera_id = self._camera_config.camera_id if self._camera_config else context.config.camera.camera_id
@@ -83,7 +81,7 @@ class MessagingPublishEngine(BasePublishEngine):
                 models.append(name)
         event = EdgeEvent.now(camera_id=camera_id, detections=list(detections), models=models)
         payload = event.to_dict()
-        ok = self._client.publish(self._topic, payload)
+        ok = self._client.publish(EDGE_EVENTS_ROUTE, payload)
         status = 200 if ok else None
         return PublishOutcome(published=len(detections), status=status)
 
