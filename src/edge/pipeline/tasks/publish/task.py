@@ -6,7 +6,7 @@ from typing import Sequence, Type
 
 from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 
-from .engine import BasePublishEngine, DefaultPublishEngine, MessagingPublishEngine
+from .engine import BasePublishEngine, MessagingPublishEngine
 
 
 class PublishResultTask(BaseTask):

@@ -400,7 +400,7 @@ class ShmStreamingEngine(DefaultStreamingEngine):
     極速版優化：
     1. 使用固定雙緩衝視圖 (Static Dual Views)，減少 MMAP 重建開銷。
     2. 移除後台 .copy()，直接在 SHM 映射視圖上操作 (Zero-copy 繪圖)。
-    3. 嚴格限制隊列 (Queue Size = 1)，確保極低延遲且不破圖。
+    3. 嚴格限制隊列 (Queue Size = 2)，確保極低延遲且不破圖。
     """
 
     def __init__(self, context: TaskContext | None = None) -> None:
@@ -424,9 +424,7 @@ class ShmStreamingEngine(DefaultStreamingEngine):
 
         # 診斷統計
         self._overrun_count = 0
-        self._starvation_count = 0
         self._last_enq_ts = 0.0
-        self._target_interval = 1.0 / self._resolve_fps(context)
 
         # 增加緩衝至 2：這能吸收 Pipeline 的微小抖動，同時延遲僅增加 66ms，對即時性無感，但能解決破圖。
         if context and hasattr(context.config, "streaming"):
@@ -445,8 +443,6 @@ class ShmStreamingEngine(DefaultStreamingEngine):
 
     def push(self, context: TaskContext, frame: Any, detections: Sequence[EdgeDetection], phase: str) -> StreamingStatus:
         if frame is not None and self._enabled:
-            now = time.time()
-            
             # 診斷：寫 > 讀 (Overrun) - 檢查 Worker 是否處理得夠快
             if self._packet_queue.full():
                 self._overrun_count += 1
@@ -493,7 +489,6 @@ class ShmStreamingEngine(DefaultStreamingEngine):
             return super()._process_packet(packet)
 
         try:
-            start_proc = time.monotonic()
             shm_name = shm_info["shm_name"]
             
             if shm_name not in self._worker._shm_readers:
@@ -503,24 +498,18 @@ class ShmStreamingEngine(DefaultStreamingEngine):
             reader = self._worker._shm_readers[shm_name]
             frame_view = np.ndarray(shm_info["shape"], dtype=shm_info["dtype"], buffer=reader.buf)
 
-            # 1. 繪圖耗時
-            start_draw = time.monotonic()
+            # 1. 繪圖
             self._draw_detections(frame_view, packet.detections)
-            draw_time = time.monotonic() - start_draw
 
-            # 2. Resize 耗時
-            start_resize = time.monotonic()
+            # 2. Resize
             h, w = frame_view.shape[:2]
             if w != self._out_w or h != self._out_h:
                 final_frame = cv2.resize(frame_view, (self._out_w, self._out_h), interpolation=cv2.INTER_LINEAR)
             else:
                 final_frame = frame_view
-            resize_time = time.monotonic() - start_resize
 
-            # 3. 編碼 (FFmpeg Write) 耗時
-            start_enc = time.monotonic()
+            # 3. 編碼 (FFmpeg Write)
             self._ffmpeg.write_frame(final_frame)
-            enc_time = time.monotonic() - start_enc
             
             self._last_write_ts = time.time()
             self._state = STATE_STREAMING
