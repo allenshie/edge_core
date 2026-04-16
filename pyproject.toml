@@ -17,6 +17,11 @@ vision = [
     "ultralytics==8.3.236",
     "opencv-python-headless>=4.10",
 ]
+test = [
+    "pytest",
+    "pytest-mock",
+    "pytest-cov",
+]
 
 [project.scripts]
 edge-service = "edge.main:main"

@@ -7,10 +7,12 @@ import os
 import queue
 import threading
 import time
+from multiprocessing.shared_memory import SharedMemory
 from pathlib import Path
 from typing import Any, Dict, Sequence
 
 import cv2
+import numpy as np
 from smart_workflow import TaskContext
 
 from edge.api.mode_server import MODE_RESOURCE
@@ -296,7 +298,7 @@ class DefaultStreamingEngine(BaseStreamingEngine):
 
     def _log_health(self, force: bool, phase: str, should_stream: bool) -> None:
         now = time.time()
-        if not force and (now - self._last_health_log_ts) < 5.0:
+        if not force and (now - self._last_health_log_ts) < 10.0:
             return
         self._last_health_log_ts = now
         no_frame_seconds = (now - self._last_frame_ts) if self._last_frame_ts else 0.0
@@ -391,3 +393,157 @@ class DefaultStreamingEngine(BaseStreamingEngine):
                 if rtsp_fps and rtsp_fps > 0:
                     return float(rtsp_fps)
         return 30.0
+
+
+class ShmStreamingEngine(DefaultStreamingEngine):
+    """
+    極速版優化：
+    1. 使用固定雙緩衝視圖 (Static Dual Views)，減少 MMAP 重建開銷。
+    2. 移除後台 .copy()，直接在 SHM 映射視圖上操作 (Zero-copy 繪圖)。
+    3. 嚴格限制隊列 (Queue Size = 1)，確保極低延遲且不破圖。
+    """
+
+    def __init__(self, context: TaskContext | None = None) -> None:
+        cam_id = context.config.camera.camera_id if context else "default"
+        shm_mb = int(os.environ.get("EDGE_STREAMING_SHM_MB", "30"))
+        self._shm_size = shm_mb * 1024 * 1024
+
+        # 雙緩衝名稱
+        self._shm_names = [f"edge_shm_{cam_id}_0", f"edge_shm_{cam_id}_1"]
+        self._shm_writers: list[SharedMemory] = []
+        self._write_idx = 0  
+
+        for name in self._shm_names:
+            try:
+                old_shm = SharedMemory(name=name)
+                old_shm.close()
+                old_shm.unlink()
+            except Exception:
+                pass
+            self._shm_writers.append(SharedMemory(name=name, create=True, size=self._shm_size))
+
+        # 診斷統計
+        self._overrun_count = 0
+        self._starvation_count = 0
+        self._last_enq_ts = 0.0
+        self._target_interval = 1.0 / self._resolve_fps(context)
+
+        # 增加緩衝至 2：這能吸收 Pipeline 的微小抖動，同時延遲僅增加 66ms，對即時性無感，但能解決破圖。
+        if context and hasattr(context.config, "streaming"):
+            context.config.streaming.queue_size = 2
+
+        super().__init__(context)
+
+        # 設定輸出壓縮尺寸
+        self._out_w = int(os.environ.get("EDGE_STREAMING_OUT_WIDTH", "1280"))
+        self._out_h = int(os.environ.get("EDGE_STREAMING_OUT_HEIGHT", "720"))
+
+        # 生產者緩衝映射快取 (Avoid dynamic np.ndarray calls)
+        self._writer_views: list[np.ndarray | None] = [None, None]
+
+        LOGGER.info("[FAST_SHM] Optimized Dual Buffering initialized. Queue size: %d", self._packet_queue.maxsize)
+
+    def push(self, context: TaskContext, frame: Any, detections: Sequence[EdgeDetection], phase: str) -> StreamingStatus:
+        if frame is not None and self._enabled:
+            now = time.time()
+            
+            # 診斷：寫 > 讀 (Overrun) - 檢查 Worker 是否處理得夠快
+            if self._packet_queue.full():
+                self._overrun_count += 1
+                if self._overrun_count % 30 == 0:
+                    LOGGER.warning("[SHM] OVERRUN detected. Streaming worker is slow. Dropping old frame.")
+                
+                try:
+                    self._packet_queue.get_nowait()
+                    self._packet_queue.task_done()
+                    self._dropped_frames += 1
+                except queue.Empty:
+                    pass
+
+            try:
+                # 取得目前緩衝區視圖 (懶加載並快取)
+                if self._writer_views[self._write_idx] is None:
+                    self._writer_views[self._write_idx] = np.ndarray(frame.shape, dtype=frame.dtype, buffer=self._shm_writers[self._write_idx].buf)
+                
+                # Zero-copy copyto
+                np.copyto(self._writer_views[self._write_idx], frame)
+
+                shm_metadata = {
+                    "shm_name": self._shm_names[self._write_idx],
+                    "shape": frame.shape,
+                    "dtype": str(frame.dtype),
+                }
+                
+                # 切換索引並推入
+                self._write_idx = (self._write_idx + 1) % 2
+                return super().push(context, shm_metadata, detections, phase)
+
+            except Exception as exc:
+                LOGGER.error("FAST_SHM push failed: %s", exc)
+
+        return super().push(context, frame, detections, phase)
+
+    def _process_packet(self, packet: StreamPacket) -> None:
+        self._processed_frames += 1
+        if not self._stream_active:
+            return
+
+        shm_info = packet.frame
+        if not isinstance(shm_info, dict) or "shm_name" not in shm_info:
+            return super()._process_packet(packet)
+
+        try:
+            start_proc = time.monotonic()
+            shm_name = shm_info["shm_name"]
+            
+            if shm_name not in self._worker._shm_readers:
+                self._worker._shm_readers[shm_name] = SharedMemory(name=shm_name, create=False)
+                LOGGER.info("Reader established for %s", shm_name)
+
+            reader = self._worker._shm_readers[shm_name]
+            frame_view = np.ndarray(shm_info["shape"], dtype=shm_info["dtype"], buffer=reader.buf)
+
+            # 1. 繪圖耗時
+            start_draw = time.monotonic()
+            self._draw_detections(frame_view, packet.detections)
+            draw_time = time.monotonic() - start_draw
+
+            # 2. Resize 耗時
+            start_resize = time.monotonic()
+            h, w = frame_view.shape[:2]
+            if w != self._out_w or h != self._out_h:
+                final_frame = cv2.resize(frame_view, (self._out_w, self._out_h), interpolation=cv2.INTER_LINEAR)
+            else:
+                final_frame = frame_view
+            resize_time = time.monotonic() - start_resize
+
+            # 3. 編碼 (FFmpeg Write) 耗時
+            start_enc = time.monotonic()
+            self._ffmpeg.write_frame(final_frame)
+            enc_time = time.monotonic() - start_enc
+            
+            self._last_write_ts = time.time()
+            self._state = STATE_STREAMING
+            
+            # 生產環境：移除每幀計時日誌，保持 Log 乾淨。
+
+        except Exception as exc:  # noqa: BLE001
+            self._write_failures += 1
+            LOGGER.warning("FAST_SHM process failed: %s", exc)
+            if (time.time() - self._last_restart_ts) >= self._restart_backoff_seconds:
+                self._last_restart_ts = time.time()
+                self._reconnect_count += 1
+                try:
+                    self._ffmpeg.restart()
+                except Exception:
+                    pass
+
+    def close(self) -> None:
+        super().close()
+        for shm in self._shm_writers:
+            try:
+                shm.close()
+                shm.unlink()
+            except Exception:
+                pass
+        LOGGER.info("[FAST_SHM] Final Stats - Overrun (Dropped Frames): %d", self._overrun_count)

@@ -23,6 +23,7 @@ class StreamingWorker:
         self._queue = packet_queue
         self._stop_event = stop_event
         self._process_packet = process_packet
+        self._shm_readers: dict[str, Any] = {}  # 資源槽位：供特定的 Engine 實現多緩衝讀取
         self._thread = threading.Thread(
             target=self._loop,
             name="EdgeStreamingWorker",
@@ -35,6 +36,13 @@ class StreamingWorker:
     def stop(self, timeout: float = 2.0) -> None:
         self._stop_event.set()
         self._thread.join(timeout=timeout)
+        for name, reader in self._shm_readers.items():
+            try:
+                reader.close()
+                LOGGER.info("Streaming worker SHM reader [%s] closed", name)
+            except Exception as exc:
+                LOGGER.warning("Failed to close SHM reader [%s] in worker: %s", name, exc)
+        self._shm_readers.clear()
         if self._thread.is_alive():
             LOGGER.warning("streaming worker still alive after %.1fs timeout", timeout)
 

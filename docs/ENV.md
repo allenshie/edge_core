@@ -48,14 +48,17 @@
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
+| `STREAMING_ENGINE_CLASS` | *(未設定)* | 自訂串流引擎 class path。例如使用優化版：`edge.pipeline.tasks.streaming.engine:ShmStreamingEngine`。 |
 | `EDGE_STREAMING_ENABLED` | `0` | 是否啟用串流輸出。 |
 | `EDGE_STREAMING_URL` | *(空字串)* | 推流目標 URL（通常 RTMP）。 |
 | `EDGE_STREAMING_STRATEGY` | `cpu` | `cpu` (`libx264`) 或 `gpu` (`h264_nvenc`)。 |
 | `EDGE_STREAMING_QUEUE_SIZE` | `30` | streaming queue 長度。 |
 | `EDGE_STREAMING_IDLE_TIMEOUT` | `3` | 無幀超時秒數；超時會停流並關 ffmpeg。 |
 | `EDGE_STREAMING_RESTART_BACKOFF` | `1` | ffmpeg 重啟最小間隔秒數。 |
-| `EDGE_STREAMING_OUT_WIDTH` | `0` | 輸出縮放寬（0 表示不縮放）。 |
-| `EDGE_STREAMING_OUT_HEIGHT` | `0` | 輸出縮放高（0 表示不縮放）。 |
+| `EDGE_STREAMING_OUT_WIDTH` | `1280` | 輸出縮放寬（在 `ShmStreamingEngine` 中用於 Pipe 傳輸前的壓縮）。 |
+| `EDGE_STREAMING_OUT_HEIGHT` | `720` | 輸出縮放高（在 `ShmStreamingEngine` 中用於 Pipe 傳輸前的壓縮）。 |
+| `EDGE_STREAMING_SHM_MB` | `30` | `ShmStreamingEngine` 專用：共享記憶體大小（MB）。4K 建議 30，1080p 建議 10。 |
+
 
 ## Mode 與流程控制
 
@@ -66,7 +69,7 @@
 | `EDGE_MODE_SERVER_ENABLED` | `0` | 是否啟用 mode HTTP server。 |
 | `EDGE_MODE_SERVER_HOST` | `0.0.0.0` | mode server host。 |
 | `EDGE_MODE_SERVER_PORT` | `9100` | mode server port。 |
-| `EDGE_POLL_INTERVAL` | `5` | workflow loop 間隔。 |
+| `EDGE_POLL_INTERVAL` | `5` | workflow loop 間隔。設為 `0` 以啟用高效能精確 FPS 控制（由 PipelineScheduler 控制）。 |
 | `EDGE_RETRY_BACKOFF` | `5` | 任務失敗重試間隔。 |
 
 ## 健康檢查（K8s Probe）
@@ -113,7 +116,7 @@
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
-| `PUBLISH_ENGINE_CLASS` | *(未設定)* | 自訂 publish 引擎 class path。 |
+| `PUBLISH_ENGINE_CLASS` | *(未設定)* | 自訂發布引擎 class path。預設使用 `MessagingPublishEngine`。 |
 | `INTEGRATION_API_BASE` | `http://localhost:9000` | 整合端 API base URL。 |
 | `INTEGRATION_API_TIMEOUT` | `5` | API timeout 秒數。 |
 

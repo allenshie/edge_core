@@ -71,14 +71,8 @@ class PipelineScheduler(BaseTask):
 
         elapsed = time.monotonic() - start_time
         sleep_time = max(0.0, target_interval - elapsed) if target_interval else 0.0
-        LOGGER.debug(
-            "pipeline finished in %.4fs (target %.4fs), sleep=%.4fs",
-            elapsed,
-            (target_interval or 0.0),
-            sleep_time,
-        )
-        if sleep_time > 0:
-            time.sleep(sleep_time)
+        
+        # 修正：不在此處執行 sleep，而是交給 WorkflowRunner 統一調度，避免 Double-Sleep。
         return TaskResult(payload={"sleep": sleep_time})
 
     def _get_target_interval(self, context: TaskContext) -> float | None:
