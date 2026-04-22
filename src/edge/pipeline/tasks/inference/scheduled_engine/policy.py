@@ -7,17 +7,17 @@ from typing import Any
 LOGGER = logging.getLogger(__name__)
 
 
-def should_execute(task: Any, now: float, context: Any, engine: Any) -> bool:
+def should_execute(task: Any, now: float, engine: Any) -> bool:
     mode = task.mode
     if mode == "every_frame":
         return True
     if mode == "interval":
         return task.last_run is None or (now - task.last_run) >= task.interval_seconds
     if mode == "interval_when_idle":
-        if not engine._forklift_is_idle(context, now):
+        if not engine._forklift_is_idle(now):
             return False
-        if task.last_run is None or engine._last_run_before_idle(context, task.last_run):
-            return engine._idle_for_at_least(context, task.min_interval_seconds, now)
+        if task.last_run is None or engine._last_run_before_idle(task.last_run):
+            return engine._idle_for_at_least(task.min_interval_seconds, now)
         if task.interval_seconds <= 0:
             return False
         return (now - task.last_run) >= task.interval_seconds

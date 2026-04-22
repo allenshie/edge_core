@@ -11,11 +11,17 @@ from smart_workflow import (
     WorkflowRunner,
 )
 
-from edge.api.mode_server import MODE_RESOURCE, start_mode_server
+from edge.api.mode_server import MODE_RESOURCE, start_mode_server, stop_mode_server
 from edge.config import EdgeConfig, load_config
 from edge.pipeline import build_edge_workflow
 from edge.runtime.health_runtime import start_health_server, stop_health_server
 from edge.runtime.messaging_runtime import close_messaging_client, init_messaging_client, start_messaging_subscriber
+from edge.runtime.shutdown_summary import (
+    append_shutdown_records,
+    emit_shutdown_summary,
+    get_shutdown_records,
+    normalize_cleanup_records,
+)
 
 
 def setup_logging() -> None:
@@ -50,8 +56,9 @@ def run_daemon(config: EdgeConfig) -> None:
 
     init_messaging_client(context, logger)
 
+    mode_server = None
     if config.mode_server_enabled:
-        start_mode_server(config.mode_server_host, config.mode_server_port, context)
+        mode_server = start_mode_server(config.mode_server_host, config.mode_server_port, context)
     start_messaging_subscriber(context)
 
     workflow = build_edge_workflow()
@@ -76,8 +83,24 @@ def run_daemon(config: EdgeConfig) -> None:
     try:
         runner.run()
     finally:
-        close_messaging_client(context)
-        stop_health_server(health_server)
+        logger.info("shutting down")
+        shutdown_records: list[dict[str, object]] = []
+        pipeline = context.get_resource("edge_pipeline")
+        if pipeline is not None:
+            close_fn = getattr(pipeline, "close", None)
+            if callable(close_fn):
+                shutdown_records.extend(normalize_cleanup_records(close_fn(context), fallback_type="task"))
+
+        shutdown_records.extend(append_shutdown_records(context, stop_mode_server(mode_server)))
+        shutdown_records.extend(append_shutdown_records(context, close_messaging_client(context)))
+        shutdown_records.extend(append_shutdown_records(context, stop_health_server(health_server)))
+
+        context_records = get_shutdown_records(context)
+        if context_records:
+            shutdown_records.extend(
+                record for record in context_records if record not in shutdown_records
+            )
+        emit_shutdown_summary(logger, shutdown_records)
 
 
 def main() -> None:

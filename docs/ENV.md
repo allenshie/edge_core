@@ -52,6 +52,7 @@
 | `EDGE_STREAMING_ENABLED` | `0` | 是否啟用串流輸出。 |
 | `EDGE_STREAMING_URL` | *(空字串)* | 推流目標 URL（通常 RTMP）。 |
 | `EDGE_STREAMING_STRATEGY` | `cpu` | `cpu` (`libx264`) 或 `gpu` (`h264_nvenc`)。 |
+| `EDGE_STREAMING_FPS` | *(未設定)* | 推流輸出 FPS，與取流節奏獨立。 |
 | `EDGE_STREAMING_QUEUE_SIZE` | `30` | streaming queue 長度。 |
 | `EDGE_STREAMING_IDLE_TIMEOUT` | `3` | 無幀超時秒數；超時會停流並關 ffmpeg。 |
 | `EDGE_STREAMING_RESTART_BACKOFF` | `1` | ffmpeg 重啟最小間隔秒數。 |
@@ -69,7 +70,7 @@
 | `EDGE_MODE_SERVER_ENABLED` | `0` | 是否啟用 mode HTTP server。 |
 | `EDGE_MODE_SERVER_HOST` | `0.0.0.0` | mode server host。 |
 | `EDGE_MODE_SERVER_PORT` | `9100` | mode server port。 |
-| `EDGE_POLL_INTERVAL` | `5` | workflow loop 間隔。設為 `0` 以啟用高效能精確 FPS 控制（由 PipelineScheduler 控制）。 |
+| `EDGE_POLL_INTERVAL` | `5` | workflow loop 間隔，也是 pipeline scheduler 的等待節拍；設為 `0` 時不額外 sleep，loop 以處理速度為準。 |
 | `EDGE_RETRY_BACKOFF` | `5` | 任務失敗重試間隔。 |
 
 ## 健康檢查（K8s Probe）
@@ -79,6 +80,8 @@
 | `EDGE_HEALTH_SERVER_ENABLED` | `0` | 啟用內建健康檢查 HTTP server。 |
 | `EDGE_HEALTH_SERVER_HOST` | `0.0.0.0` | 健康檢查 server 綁定 host。 |
 | `EDGE_HEALTH_SERVER_PORT` | `8081` | 健康檢查 server port。 |
+| `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康摘要輸出間隔秒數。 |
+| `EDGE_HEALTH_STALE_THRESHOLD_SEC` | `5` | 距離上次更新超過多久視為 stale / degraded。 |
 | `EDGE_HEALTH_LIVENESS_TIMEOUT_SECONDS` | `30` | `/healthz` loop 心跳逾時門檻。 |
 | `EDGE_HEALTH_READINESS_TIMEOUT_SECONDS` | `30` | `/readyz` 最近進度逾時門檻。 |
 | `EDGE_HEALTH_STARTUP_GRACE_SECONDS` | `10` | startup 完成後首次 loop/progress 寬限秒數。 |
@@ -138,13 +141,13 @@
   "working": {
     "streaming": { "enabled": true },
     "tasks": [
-      {"name": "detect_and_track", "mode": "every_frame", "model_class": "models.detection_tracking:DetectionTrackingModel"}
+      {"name": "detect_and_track", "mode": "every_frame", "model_class": "edge.pipeline.tasks.inference.models:YoloDetectionModel"}
     ]
   },
   "non_working": {
     "streaming": { "enabled": false },
     "tasks": [
-      {"name": "cargo_pose", "mode": "replay_last", "source_task": "cargo_pose", "interval_seconds": 180}
+      {"name": "cargo_pose", "mode": "replay_last", "source_task": "cargo_pose", "interval_seconds": 180, "model_class": "models.cargo_pose:CargoPoseModel"}
     ]
   }
 }

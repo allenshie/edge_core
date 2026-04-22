@@ -43,7 +43,7 @@ my_edge_site/
       {
         "name": "detect_and_track",
         "mode": "every_frame",
-        "model_class": "<site_pkg>.models.detection_tracking:DetectionTrackingModel",
+        "model_class": "edge.pipeline.tasks.inference.models:YoloDetectionModel",
         "weights_path": "./weights/detect.pt"
       },
       {
@@ -104,16 +104,17 @@ my_edge_site/
 - `edge.pipeline.tasks.inference.models.YoloPoseModel`
 - `edge.pipeline.tasks.inference.models.BaseYamlMockModel`
 
-site 層只應保留具體實作類，例如：
+site 層只應保留需要額外客製化邏輯的具體實作類，例如：
 
-- `DetectionTrackingModel(YoloDetectionModel)`
-- `CargoPoseModel(YoloPoseModel)`
 - `IronGateStateModel(BaseYamlMockModel)`
+- `CargoPoseModel(YoloPoseModel)`
+
+其他模型可直接使用 `edge_core` 提供的共通類，不必再在 site repo 維護對應 wrapper。
 
 ### 5. configs/models.yaml 用途
 
 `configs/models.yaml` 用來提供模型共用設定。site 實作類可透過自己的
-`config_loader` 讀取這份檔案，再傳給 `YoloDetectionModel` / `YoloPoseModel`。
+`config_loader` 讀取這份檔案，再傳給 `YoloDetectionModel` / `YoloPoseModel` / `BaseYamlMockModel`。
 
 若直接使用 `edge_core` 提供的 `YoloDetectionModel` / `YoloPoseModel`，
 且未自行覆寫 `config_loader`，也會預設讀取 `EDGE_RESOURCE_ROOT/configs/models.yaml`。

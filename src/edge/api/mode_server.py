@@ -8,6 +8,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from smart_workflow import TaskContext
 
+from edge.runtime.shutdown_summary import cleanup_record
+
 LOGGER = logging.getLogger(__name__)
 MODE_RESOURCE = "edge_mode"
 
@@ -51,3 +53,46 @@ def start_mode_server(host: str, port: int, context: TaskContext) -> ModeServer:
     thread.start()
     LOGGER.info("mode server listening on %s:%s", host, port)
     return server
+
+
+def stop_mode_server(server: ModeServer | None) -> list[dict]:
+    if server is None:
+        return [
+            cleanup_record(
+                item="mode.server",
+                type="server",
+                state="skipped",
+                ok=True,
+                alive_before=False,
+                alive_after=False,
+                detail="mode server disabled",
+            )
+        ]
+    try:
+        server.shutdown()
+        server.server_close()
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.warning("mode server stop failed: %s", exc)
+        return [
+            cleanup_record(
+                item="mode.server",
+                type="server",
+                state="failed",
+                ok=False,
+                alive_before=True,
+                alive_after=True,
+                detail="mode server stop failed",
+                error=str(exc),
+            )
+        ]
+    return [
+        cleanup_record(
+            item="mode.server",
+            type="server",
+            state="done",
+            ok=True,
+            alive_before=True,
+            alive_after=False,
+            detail="mode server stopped",
+        )
+    ]

@@ -19,6 +19,7 @@ class CameraIngestionEngine(BaseIngestionEngine):
     def __init__(self, context: TaskContext | None = None) -> None:
         super().__init__(context)
         self._camera_config = context.config.ingestion.camera if context else None
+        self._cached_config = self._camera_config
 
     def _get_config(self, context: TaskContext) -> CameraSourceConfig:
         cfg = self._camera_config

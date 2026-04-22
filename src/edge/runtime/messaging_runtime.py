@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import os
-from contextlib import suppress
 
+from edge.runtime.shutdown_summary import cleanup_record
 from edge.api.mode_server import MODE_RESOURCE
 from edge.messaging import (
     MESSAGING_CLIENT_RESOURCE,
@@ -58,9 +58,43 @@ def start_messaging_subscriber(context) -> None:
     context.logger.info("phase subscriber ready (backend=%s route=%s)", phase_route[0], PHASE_UPDATES_ROUTE)
 
 
-def close_messaging_client(context) -> None:
+def close_messaging_client(context) -> list[dict]:
     messaging = context.get_resource(MESSAGING_CLIENT_RESOURCE)
     if messaging is None:
-        return
-    with suppress(Exception):
+        return [
+            cleanup_record(
+                item="runtime.messaging_client",
+                type="resource",
+                state="skipped",
+                ok=True,
+                alive_before=False,
+                alive_after=False,
+                detail="messaging client not initialized",
+            )
+        ]
+    try:
         messaging.close()
+    except Exception as exc:  # noqa: BLE001
+        return [
+            cleanup_record(
+                item="runtime.messaging_client",
+                type="resource",
+                state="failed",
+                ok=False,
+                alive_before=True,
+                alive_after=True,
+                detail="messaging client close failed",
+                error=str(exc),
+            )
+        ]
+    return [
+        cleanup_record(
+            item="runtime.messaging_client",
+            type="resource",
+            state="done",
+            ok=True,
+            alive_before=True,
+            alive_after=False,
+            detail="messaging client closed",
+        )
+    ]

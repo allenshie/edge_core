@@ -53,6 +53,9 @@ EDGE_EVENTS_CHANNEL=/edge/events
 | `EDGE_MODE_DEFAULT` | `working` | 未被整合端更新時的初始 mode。|
 | `EDGE_PHASE_BACKEND` / `EDGE_PHASE_CHANNEL` | `mqtt` / `integration/phase` | phase 更新 route 設定。|
 | `EDGE_EVENTS_BACKEND` / `EDGE_EVENTS_CHANNEL` | `http` / `/edge/events` | edge 事件 publish route 設定。|
+| `EDGE_STREAMING_FPS` | *(不設定)* | 串流輸出 FPS，與 ingestion 節奏分離。|
+| `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康摘要輸出間隔。|
+| `EDGE_HEALTH_STALE_THRESHOLD_SEC` | `5` | 健康摘要判定 stale / degraded 的時間門檻。|
 | `EDGE_VISUAL_ENABLED` | *(沿用 `EDGE_MODEL_VISUALIZE` 預設)* | 控制是否執行可視化輸出（write/show）。|
 | `EDGE_VISUAL_MODE` | `write` | `write` 輸出檔案；`show` 使用 `cv2.imshow`。|
 | `EDGE_VISUAL_WINDOW` | `edge-preview` | `show` 模式下的視窗名稱。|
@@ -71,7 +74,7 @@ EDGE_EVENTS_CHANNEL=/edge/events
 | `EDGE_RTSP_FPS` | `30` | 目標串流 FPS，決定取流節奏；設 `0` 表示不節流。|
 | `EDGE_RTSP_WIDTH` / `EDGE_RTSP_HEIGHT` | *(不設定)* | 指定 RTSP 解碼後影格解析度。|
 | `EDGE_RTSP_RECONNECT` | `1` 秒 | RTSP 連線失敗後重新連線等待秒數。|
-| `EDGE_POLL_INTERVAL` | `5` 秒 | Workflow 迴圈等待秒數。|
+| `EDGE_POLL_INTERVAL` | `5` 秒 | Workflow 迴圈等待秒數，也是 pipeline scheduler 的節拍控制。|
 | `INTEGRATION_API_BASE` | `http://localhost:9000` | 模擬整合端 API 伺服器。|
 | `MONITOR_ENDPOINT` | `http://localhost:9400` | monitoring sidecar base URL。|
 | `EDGE_MONITOR_SERVICE_NAME` | `edge-{EDGE_CAMERA_ID}` | 上報到 monitoring server 的服務名稱。|
@@ -79,7 +82,7 @@ EDGE_EVENTS_CHANNEL=/edge/events
 
 ### 設定注意事項
 
-- `PipelineScheduler` 會優先依 `EDGE_FILE_FPS`、`EDGE_CAMERA_FPS` 或 `EDGE_RTSP_FPS` 控制節奏；若設為 0，回退使用 `EDGE_POLL_INTERVAL`。
+- `PipelineScheduler` 不再依 `EDGE_FILE_FPS`、`EDGE_CAMERA_FPS` 或 `EDGE_RTSP_FPS` 控制節奏；若設為 0，loop 以處理速度為準，否則使用 `EDGE_POLL_INTERVAL` 作為等待節拍。
 - `edge/trackers/` 內已附 `bytetrack.yaml`/`botsort.yaml` 範本；若填寫相對路徑，會以 `edge` 專案根目錄解析。
 - `EDGE_MQTT_*` 僅負責 broker 連線參數；phase / event 的 backend 與 channel 請改由 `EDGE_PHASE_*`、`EDGE_EVENTS_*` 設定。
 - EdgeDetection 欄位定義與擴充方式請見 `edge/docs/DETECTIONS.md`。

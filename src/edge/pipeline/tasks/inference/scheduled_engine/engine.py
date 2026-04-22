@@ -10,8 +10,10 @@ from typing import Any, Dict, List, Sequence
 
 from smart_workflow import TaskContext, TaskError
 
-from edge.pipeline.tasks.inference.engine import BaseInferenceEngine
+from edge.pipeline.tasks.inference.engine import BaseInferenceEngine, InferenceOutcome
 from edge.pipeline.tasks.inference.device import normalize_device
+from edge.pipeline.tasks.inference.models import BaseYamlMockModel
+from edge.pipeline.tasks.inference.models.utils import compute_bbox_from_polygon
 from edge.schema import EdgeDetection
 
 from .activity import (
@@ -33,10 +35,12 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
 
     def __init__(self, context: TaskContext | None = None) -> None:
         super().__init__(context)
+        self._camera_config = context.config.camera if context else None
         self._resource_root = self._resolve_resource_root()
         self._default_schedule = self._resource_root / "schedule.json"
         self._tasks_by_phase: Dict[str, List[ScheduledModelTask]] = self._load_schedule()
         self._active_phase: str | None = None
+        self._cached_results: Dict[str, List[EdgeDetection]] = {}
         self._forklift_source_tasks = self._parse_csv(
             os.environ.get("EDGE_FORKLIFT_SOURCE_TASKS", "detect_and_track")
         )
@@ -46,13 +50,23 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
         self._forklift_idle_seconds = float(
             os.environ.get("EDGE_FORKLIFT_IDLE_SECONDS", str(self._forklift_active_hold))
         )
+        self._forklift_last_seen_ts: float | None = None
+        self._forklift_active = False
+        self._forklift_idle = True
+        self._forklift_idle_since_ts: float | None = None
 
-    def process(self, context: TaskContext) -> List[EdgeDetection]:
-        phase = self._resolve_phase(context)
+    def process(
+        self,
+        frame: Any,
+        *,
+        phase: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> InferenceOutcome:
+        phase = str(phase or (metadata or {}).get("phase") or "working_stage_1")
         tasks = self._tasks_by_phase.get(phase)
         if tasks is None:
             LOGGER.warning("no scheduled tasks for phase=%s", phase)
-            return []
+            return InferenceOutcome(detections=[])
         if phase != self._active_phase:
             LOGGER.info("phase changed: %s -> %s", self._active_phase, phase)
             self._reset_phase_state(tasks)
@@ -60,23 +74,27 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
 
         detections: List[EdgeDetection] = []
         now = time.time()
-        frame = context.get_resource("decoded_frame")
+        camera_id = None
+        if metadata:
+            camera_id = metadata.get("camera_id")
+        if camera_id is None and self._camera_config is not None:
+            camera_id = getattr(self._camera_config, "camera_id", "unknown")
         metadata = {
             "phase": phase,
-            "camera_id": context.config.camera.camera_id if context else "unknown",
-            "context": context,
+            "camera_id": camera_id or "unknown",
+            **(metadata or {}),
         }
         executed: List[str] = []
         reused: List[str] = []
 
         for task in tasks:
             if task.mode == "replay_last":
-                if not self._should_execute(task, now, context):
+                if not self._should_execute(task, now):
                     if task.last_results:
                         detections.extend(task.last_results)
                         reused.append(task.name)
                     continue
-                cached = self._get_cached_results(context, task.source_task or task.name)
+                cached = self._get_cached_results(task.source_task or task.name)
                 if cached is None:
                     continue
                 task.last_results = list(cached)
@@ -85,26 +103,30 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
                 executed.append(task.name)
                 continue
             if task.mode == "interval_when_idle":
-                if not self._should_execute(task, now, context):
-                    if self._forklift_is_idle(context, now) and task.last_results:
+                if not self._should_execute(task, now):
+                    if self._forklift_is_idle(now) and task.last_results:
                         detections.extend(task.last_results)
                         reused.append(task.name)
                     continue
                 LOGGER.debug("running scheduled task=%s (mode=%s)", task.name, task.mode)
+                if frame is None:
+                    continue
                 task_results = task.model.run(frame, metadata=metadata)
                 task.last_results = task_results
                 detections.extend(task_results)
                 task.last_run = now
                 executed.append(task.name)
-                self._store_cached_results(context, task.name, task_results)
-                self._update_forklift_activity(context, task.name, task_results, now)
+                self._store_cached_results(task.name, task_results)
+                self._update_forklift_activity(task.name, task_results, now)
                 continue
-            if not self._should_execute(task, now, context):
+            if not self._should_execute(task, now):
                 if task.mode in {"interval", "run_once_after_switch", "replay_last"} and task.last_results:
                     detections.extend(task.last_results)
                     reused.append(task.name)
                 continue
             LOGGER.debug("running scheduled task=%s (mode=%s)", task.name, task.mode)
+            if frame is None:
+                continue
             task_results = task.model.run(frame, metadata=metadata)
             task.last_results = task_results
             detections.extend(task_results)
@@ -112,14 +134,11 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
             if task.mode == "run_once_after_switch":
                 task.run_once_completed = True
             executed.append(task.name)
-            self._store_cached_results(context, task.name, task_results)
-            self._update_forklift_activity(context, task.name, task_results, now)
-        if context is not None:
-            context.set_resource("inference_models_run", executed)
-            context.set_resource("inference_models_reuse", reused)
+            self._store_cached_results(task.name, task_results)
+            self._update_forklift_activity(task.name, task_results, now)
         if executed or reused:
-            LOGGER.info("scheduled tasks (phase=%s): run=%s reuse=%s", phase, executed, reused)
-        return detections
+            LOGGER.debug("scheduled tasks (phase=%s): run=%s reuse=%s", phase, executed, reused)
+        return InferenceOutcome(detections=detections, models_run=executed, models_reuse=reused)
 
     # --- schedule helpers -------------------------------------------------
 
@@ -186,6 +205,8 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
             "label": entry.get("label"),
             "device": device,
         }
+        if model_cls is BaseYamlMockModel:
+            model_cls = self._build_yaml_mock_model(entry)
         try:
             return model_cls(**kwargs)
         except TypeError as exc:
@@ -193,6 +214,65 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
                 kwargs.pop("device", None)
                 return model_cls(**kwargs)
             raise TaskError(f"載入模型失敗（{class_path}）：{exc}") from exc
+
+    def _build_yaml_mock_model(self, entry: Dict[str, Any]):
+        name = str(entry.get("name", "")).strip()
+        defaults: Dict[str, tuple[str, str]] = {
+            "sidewalk_seg": ("EDGE_SIDEWALKS_CONFIG", "configs/sidewalks.yaml"),
+        }
+        if name not in defaults:
+            raise TaskError(f"BaseYamlMockModel 目前未提供預設設定：{name}")
+        env_var, default_config_path = defaults[name]
+        class _ScheduledYamlMockModel(BaseYamlMockModel):
+            def __init__(
+                self,
+                name: str,
+                weights_path: str | None = None,
+                label: str | None = None,
+                device: str | None = None,
+            ) -> None:
+                super().__init__(
+                    name=name,
+                    weights_path=weights_path,
+                    label=label,
+                    device=device,
+                    env_var=entry.get("env_var", env_var),
+                    default_config_path=entry.get("default_config_path", default_config_path),
+                )
+
+            def _postprocess_records(self, records: List[dict], frame: Any, metadata: dict[str, Any] | None) -> List[EdgeDetection]:
+                _ = (frame, metadata)
+                detections: List[EdgeDetection] = []
+                for idx, record in enumerate(records):
+                    polygon = record.get("polygon")
+                    if not polygon:
+                        continue
+                    points = [[int(p[0]), int(p[1])] for p in polygon]
+                    bbox = compute_bbox_from_polygon(points)
+                    if not bbox:
+                        continue
+                    x1, y1, x2, y2 = [int(round(v)) for v in bbox]
+                    track_id = record.get("track_id")
+                    if track_id is None:
+                        track_id = idx
+                    try:
+                        track_id = int(track_id)
+                    except Exception:
+                        track_id = idx
+                    detections.append(
+                        EdgeDetection(
+                            track_id=track_id,
+                            class_name=record.get("class_name", "sidewalk"),
+                            bbox=[int(x1), int(y1), int(x2), int(y2)],
+                            bbox_confidence_score=1.0,
+                            score=1.0,
+                            polygon=points,
+                            polygon_confidence_score=1.0,
+                        )
+                    )
+                return detections
+
+        return _ScheduledYamlMockModel
 
     def _resolve_weights(self, entry: Dict[str, Any]) -> str | None:
         if entry.get("weights_path"):
@@ -219,51 +299,32 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
 
     # --- execution helpers ------------------------------------------------
 
-    def _resolve_phase(self, context: TaskContext) -> str:
-        phase = context.get_resource("edge_mode")
-        if not phase:
-            phase = (
-                os.environ.get("EDGE_MODE_DEFAULT")
-                or os.environ.get("EDGE_DEMO_DEFAULT")
-                or os.environ.get("EDGE_DEMO_DEFAULT_PHASE")
-                or "working_stage_1"
-            )
-        return str(phase)
-
     def _reset_phase_state(self, tasks: Sequence[ScheduledModelTask]) -> None:
         for task in tasks:
             task.last_run = None
             task.run_once_completed = False
             task.last_results = []
 
-    def _should_execute(self, task: ScheduledModelTask, now: float, context: TaskContext | None) -> bool:
-        return should_execute(task=task, now=now, context=context, engine=self)
+    def _should_execute(self, task: ScheduledModelTask, now: float) -> bool:
+        return should_execute(task=task, now=now, engine=self)
 
-    def _get_cached_results(self, context: TaskContext | None, name: str) -> List[EdgeDetection] | None:
-        return get_cached_results(context, name)
+    def _get_cached_results(self, name: str) -> List[EdgeDetection] | None:
+        return get_cached_results(self, name)
 
-    def _store_cached_results(
-        self, context: TaskContext | None, name: str, results: List[EdgeDetection]
-    ) -> None:
-        store_cached_results(context, name, results)
+    def _store_cached_results(self, name: str, results: List[EdgeDetection]) -> None:
+        store_cached_results(self, name, results)
 
-    def _update_forklift_activity(
-        self,
-        context: TaskContext | None,
-        task_name: str,
-        results: List[EdgeDetection],
-        now: float,
-    ) -> None:
-        update_forklift_activity(self, context, task_name, results, now)
+    def _update_forklift_activity(self, task_name: str, results: List[EdgeDetection], now: float) -> None:
+        update_forklift_activity(self, task_name, results, now)
 
-    def _forklift_is_idle(self, context: TaskContext | None, now: float) -> bool:
-        return forklift_is_idle(self, context, now)
+    def _forklift_is_idle(self, now: float) -> bool:
+        return forklift_is_idle(self, now)
 
-    def _last_run_before_idle(self, context: TaskContext | None, last_run: float) -> bool:
-        return last_run_before_idle(context, last_run)
+    def _last_run_before_idle(self, last_run: float) -> bool:
+        return last_run_before_idle(self, last_run)
 
-    def _idle_for_at_least(self, context: TaskContext | None, seconds: float, now: float) -> bool:
-        return idle_for_at_least(context, seconds, now)
+    def _idle_for_at_least(self, seconds: float, now: float) -> bool:
+        return idle_for_at_least(self, seconds, now)
 
     def _has_forklift(self, results: List[EdgeDetection]) -> bool:
         return has_forklift(self, results)

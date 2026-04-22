@@ -81,12 +81,18 @@ EDGE_EVENTS_CHANNEL=/edge/events
 
 ### 4) site repo 內模型類規範
 
-- 具體模型類建議直接繼承 `edge_core` 提供的共通類：
+- 目前主專案只需要保留需要額外狀態判斷的模型，例如：
+  - `<site_pkg>.models.iron_gate_state:IronGateStateModel`
+  - `<site_pkg>.models.cargo_pose:CargoPoseModel`
+- 其他模型類可直接使用 `edge_core` 提供的共通類：
   - `edge.pipeline.tasks.inference.models.YoloDetectionModel`
   - `edge.pipeline.tasks.inference.models.YoloPoseModel`
   - `edge.pipeline.tasks.inference.models.BaseYamlMockModel`
-- `model_class` 應指向專案套件內的路徑，例如：
-  - `<site_pkg>.models.detection_tracking:DetectionTrackingModel`
+- `model_class` 應指向實際可載入的模組路徑，例如：
+  - `edge.pipeline.tasks.inference.models:YoloDetectionModel`
+  - `edge.pipeline.tasks.inference.models:YoloPoseModel`
+  - `edge.pipeline.tasks.inference.models:BaseYamlMockModel`
+  - `<site_pkg>.models.iron_gate_state:IronGateStateModel`
   - `<site_pkg>.models.cargo_pose:CargoPoseModel`
 - `EdgeDetection` 欄位定義請見 `edge/docs/DETECTIONS.md`
 

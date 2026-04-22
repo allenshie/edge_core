@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 import cv2  # type: ignore[import]
@@ -20,6 +21,7 @@ class FileIngestionEngine(BaseIngestionEngine):
     def __init__(self, context: TaskContext | None = None) -> None:
         super().__init__(context)
         self._file_config = context.config.ingestion.file if context else None
+        self._cached_config = self._file_config
 
     def _get_config(self, context: TaskContext) -> FileSourceConfig:
         cfg = self._file_config
@@ -53,3 +55,10 @@ class FileIngestionEngine(BaseIngestionEngine):
             self._capture.release()
             self._capture = self._open_capture(config)
         return True
+
+    def _get_capture_interval_seconds(self, config: FileSourceConfig, cycle_start: float) -> float:
+        fps = config.fps or 0.0
+        if fps <= 0:
+            return 0.0
+        elapsed = time.monotonic() - cycle_start
+        return max(0.0, (1.0 / fps) - elapsed)

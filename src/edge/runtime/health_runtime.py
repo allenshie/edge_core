@@ -5,6 +5,8 @@ import os
 
 from smart_workflow import HealthServer, HealthState, ProbeConfig
 
+from edge.runtime.shutdown_summary import cleanup_record
+
 
 def is_health_enabled() -> bool:
     value = os.getenv("EDGE_HEALTH_SERVER_ENABLED")
@@ -44,7 +46,42 @@ def start_health_server(context, logger):
     return server, health_state
 
 
-def stop_health_server(server) -> None:
+def stop_health_server(server) -> list[dict]:
     if server is None:
-        return
-    server.stop()
+        return [
+            cleanup_record(
+                item="health.server",
+                type="server",
+                state="skipped",
+                ok=True,
+                alive_before=False,
+                alive_after=False,
+                detail="health server disabled",
+            )
+        ]
+    try:
+        server.stop()
+    except Exception as exc:  # noqa: BLE001
+        return [
+            cleanup_record(
+                item="health.server",
+                type="server",
+                state="failed",
+                ok=False,
+                alive_before=True,
+                alive_after=True,
+                detail="health server stop failed",
+                error=str(exc),
+            )
+        ]
+    return [
+        cleanup_record(
+            item="health.server",
+            type="server",
+            state="done",
+            ok=True,
+            alive_before=True,
+            alive_after=False,
+            detail="health server stopped",
+        )
+    ]

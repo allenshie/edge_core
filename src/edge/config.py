@@ -189,6 +189,9 @@ class StreamingConfig:
     enabled: bool = field(default_factory=lambda: _to_bool(os.environ.get("EDGE_STREAMING_ENABLED"), False))
     strategy: str = field(default_factory=lambda: os.environ.get("EDGE_STREAMING_STRATEGY", "cpu").strip().lower())
     url: str = field(default_factory=lambda: os.environ.get("EDGE_STREAMING_URL", "").strip())
+    fps: float | None = field(
+        default_factory=lambda: float(os.environ["EDGE_STREAMING_FPS"]) if os.environ.get("EDGE_STREAMING_FPS") else None
+    )
     queue_size: int = field(default_factory=lambda: int(os.environ.get("EDGE_STREAMING_QUEUE_SIZE", "30")))
     idle_timeout_seconds: float = field(
         default_factory=lambda: float(os.environ.get("EDGE_STREAMING_IDLE_TIMEOUT", "3"))
@@ -220,6 +223,12 @@ class EdgeConfig:
     mode_server_port: int = field(default_factory=lambda: int(os.environ.get("EDGE_MODE_SERVER_PORT", "9100")))
     poll_interval: float = field(default_factory=lambda: float(os.environ.get("EDGE_POLL_INTERVAL", "5")))
     retry_backoff: float = field(default_factory=lambda: float(os.environ.get("EDGE_RETRY_BACKOFF", "5")))
+    health_report_interval_seconds: float = field(
+        default_factory=lambda: float(os.environ.get("EDGE_HEALTH_REPORT_INTERVAL_SEC", "5"))
+    )
+    health_stale_threshold_seconds: float = field(
+        default_factory=lambda: float(os.environ.get("EDGE_HEALTH_STALE_THRESHOLD_SEC", "5"))
+    )
     monitor_endpoint: str | None = field(default_factory=lambda: os.environ.get("MONITOR_ENDPOINT"))
     monitor_service_name: str | None = field(
         default_factory=lambda: os.environ.get("EDGE_MONITOR_SERVICE_NAME") or os.environ.get("MONITOR_SERVICE_NAME")

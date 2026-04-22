@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import time
 
 import cv2  # type: ignore[import]
 
@@ -20,6 +19,7 @@ class RtspIngestionEngine(BaseIngestionEngine):
     def __init__(self, context: TaskContext | None = None) -> None:
         super().__init__(context)
         self._rtsp_config = context.config.ingestion.rtsp if context else None
+        self._cached_config = self._rtsp_config
 
     def _get_config(self, context: TaskContext) -> RtspConfig:
         if self._rtsp_config:
@@ -52,7 +52,11 @@ class RtspIngestionEngine(BaseIngestionEngine):
         reconnect = max(getattr(config, "reconnect_seconds", 0.0) or 0.0, 0.0)
         if reconnect:
             LOGGER.info("%.2f 秒後嘗試重新連線 RTSP", reconnect)
-            time.sleep(reconnect)
+            # stop() 時以 Event.wait 取代 time.sleep，讓關閉流程可以即時中斷重連等待。
+            if self._stop_event.wait(timeout=reconnect):
+                return False
+        if self._stop_event.is_set():
+            return False
         try:
             new_capture = self._open_capture(config)
         except TaskError:

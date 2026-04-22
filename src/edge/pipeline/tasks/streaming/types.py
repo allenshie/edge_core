@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Sequence
 
-from edge.schema import EdgeDetection
+from edge.schema import EdgeDetection, FrameMeta
 
 
 @dataclass
@@ -13,10 +13,12 @@ class StreamPacket:
     detections: Sequence[EdgeDetection]
     phase: str
     timestamp: float
+    frame_meta: FrameMeta | None = None
 
 
 @dataclass
 class StreamingStatus:
+    # 單一 streaming thread 版本不再使用 queue；保留欄位僅為了 summary 相容，固定回傳 0。
     queue_size: int
     dropped_frames: int
     processed_frames: int
@@ -30,6 +32,7 @@ class StreamingStatus:
     write_failures: int = 0
     no_frame_seconds: float = 0.0
     since_last_write_seconds: float = 0.0
+    ffmpeg_alive: bool = True
 
     def to_dict(self) -> dict:
         return {
@@ -46,4 +49,5 @@ class StreamingStatus:
             "write_failures": self.write_failures,
             "no_frame_seconds": self.no_frame_seconds,
             "since_last_write_seconds": self.since_last_write_seconds,
+            "ffmpeg_alive": self.ffmpeg_alive,
         }

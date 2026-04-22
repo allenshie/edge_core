@@ -12,7 +12,7 @@ cleanup() {
     if [ ${#pids[@]} -gt 0 ]; then
         echo "\n[run_all] 停止 edge 實例..."
         for pid in "${pids[@]}"; do
-            kill "$pid" >/dev/null 2>&1 || true
+            kill -INT "$pid" >/dev/null 2>&1 || true
         done
         wait "${pids[@]}" 2>/dev/null || true
     fi

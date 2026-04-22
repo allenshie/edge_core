@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import List
+from dataclasses import dataclass, field
+from typing import Any, List
 
 import cv2  # type: ignore[import]
 from ultralytics import YOLO
 
 from smart_workflow import TaskContext, TaskError
+from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection
 from edge.config import ModelConfig
 
@@ -18,14 +20,42 @@ OUTPUT_DIR = PACKAGE_ROOT.parent.parent / "output_frames"
 PROJECT_ROOT = PACKAGE_ROOT.parent
 
 
+@dataclass
+class InferenceOutcome:
+    """Standardized inference output returned by engines."""
+
+    detections: List[EdgeDetection]
+    models_run: List[str] = field(default_factory=list)
+    models_reuse: List[str] = field(default_factory=list)
+
+
 class BaseInferenceEngine:
     """Base class for custom inference engines."""
 
     def __init__(self, context: TaskContext | None = None) -> None:
         self._context = context
 
-    def process(self, context: TaskContext) -> List[EdgeDetection]:
+    def process(
+        self,
+        frame: Any,
+        *,
+        phase: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> InferenceOutcome:
         raise NotImplementedError
+
+    def close(self) -> list[dict[str, Any]]:
+        return [
+            cleanup_record(
+                item="inference.engine",
+                type="engine",
+                state="done",
+                ok=True,
+                alive_before=False,
+                alive_after=False,
+                detail="no-op",
+            )
+        ]
 
 
 class DefaultInferenceEngine(BaseInferenceEngine):
@@ -38,29 +68,36 @@ class DefaultInferenceEngine(BaseInferenceEngine):
         self._visual_config = context.config.visualization if context else None
         self._show_warning_logged = False
 
-    def process(self, context: TaskContext) -> List[EdgeDetection]:
-        frame = context.get_resource("decoded_frame")
+    def process(
+        self,
+        frame: Any,
+        *,
+        phase: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> InferenceOutcome:
+        _ = (phase, metadata)
         if frame is None:
             LOGGER.warning("沒有待推理的 frame，略過")
-            return []
-        self._ensure_model(context)
-        threshold = (
-            self._model_config.confidence_threshold  # type: ignore[union-attr]
-            if self._model_config
-            else context.config.model.confidence_threshold
-        )
+            return InferenceOutcome(detections=[])
+        self._ensure_model()
+        model_cfg = self._model_config
+        if model_cfg is None:
+            raise TaskError("找不到模型設定")
+        threshold = model_cfg.confidence_threshold
         tracker_cfg = self._resolve_tracker_config()
         track_kwargs = {"verbose": False}
         if tracker_cfg:
             track_kwargs["tracker"] = tracker_cfg
         results = self._model.track(frame, **track_kwargs)  # type: ignore[union-attr]
         detections = self._parse_results(results, threshold)
-        return detections
+        return InferenceOutcome(detections=detections)
 
-    def _ensure_model(self, context: TaskContext) -> None:
+    def _ensure_model(self) -> None:
         if self._model is not None:
             return
-        model_cfg = self._model_config or context.config.model
+        model_cfg = self._model_config
+        if model_cfg is None:
+            raise TaskError("找不到模型設定")
         try:
             model = YOLO(model_cfg.weights_path)
             if model_cfg.device:

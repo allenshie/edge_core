@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
 import threading
 from dataclasses import dataclass
@@ -20,29 +19,21 @@ class EncoderSpec:
 class EncoderCommandFactory:
     @staticmethod
     def build(spec: EncoderSpec, width: int, height: int) -> list[str]:
-        fps = int(spec.fps if spec.fps > 0 else 30.0)
+        fps = max(1, int(round(spec.fps if spec.fps > 0 else 30.0)))
         strategy = (spec.strategy or "cpu").strip().lower()
         codec = "h264_nvenc" if strategy == "gpu" else "libx264"
-
-        # Optional downscale to reduce decoder pressure and RTSP write queue backpressure.
-        out_w = int(os.environ.get("EDGE_STREAMING_OUT_WIDTH", "0") or 0)
-        out_h = int(os.environ.get("EDGE_STREAMING_OUT_HEIGHT", "0") or 0)
 
         cmd = [
             "ffmpeg",
             "-y",
             "-f",
             "rawvideo",
-            "-vcodec",
-            "rawvideo",
             "-pix_fmt",
             "bgr24",
-            "-s",
+            "-video_size",
             f"{width}x{height}",
-            "-r",
+            "-framerate",
             str(fps),
-            "-use_wallclock_as_timestamps",
-            "1",
             "-i",
             "-",
             "-an",
@@ -50,8 +41,6 @@ class EncoderCommandFactory:
             codec,
             "-tune",
             "zerolatency",
-            "-vsync",
-            "vfr",
             "-g",
             str(fps),
             "-keyint_min",
@@ -69,9 +58,6 @@ class EncoderCommandFactory:
             "-max_muxing_queue_size",
             "1024",
         ]
-
-        if out_w > 0 and out_h > 0:
-            cmd.extend(["-vf", f"scale={out_w}:{out_h}"])
 
         if codec == "h264_nvenc":
             cmd.extend(["-preset", "p4", "-rc", "cbr", "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k"])
@@ -95,6 +81,8 @@ class EncoderCommandFactory:
                 ]
             )
 
+        # Ubuntu 20.04 內建的 ffmpeg 4.2.7 不支援 -fps_mode，因此改用舊版相容的 -vsync cfr。
+        cmd.extend(["-vsync", "cfr"])
         cmd.extend(["-f", "flv", spec.url])
         return cmd
 
@@ -224,15 +212,14 @@ class FfmpegProcessManager:
         if process.stderr is None:
             return
         try:
-            lines = []
-            for _ in range(6):
-                line = process.stderr.readline()
-                if not line:
-                    break
-                if isinstance(line, bytes):
-                    line = line.decode("utf-8", errors="replace")
-                lines.append(line.rstrip())
+            data = process.stderr.read()
+            if not data:
+                return
+            if isinstance(data, bytes):
+                data = data.decode("utf-8", errors="replace")
+            lines = [line.rstrip() for line in data.splitlines() if line.strip()]
             if lines:
-                LOGGER.warning("%s stderr: %s", prefix, " | ".join(lines))
+                tail = lines[-12:]
+                LOGGER.warning("%s stderr: %s", prefix, " | ".join(tail))
         except Exception:
             pass
