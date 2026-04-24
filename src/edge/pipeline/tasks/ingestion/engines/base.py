@@ -12,6 +12,7 @@ import cv2  # type: ignore[import]
 from smart_workflow import TaskContext, TaskError
 from edge.runtime.rate_meter import RateMeter
 from edge.runtime.shutdown_summary import cleanup_record
+from edge.pipeline.tasks.ingestion.health import IngestionHealthTracker
 
 LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class BaseIngestionEngine:
         self._latest_capture_ts: datetime | None = None
         self._latest_frame_seq: int = 0
         self._last_error: str | None = None
+        self._health = IngestionHealthTracker(source_label=self.source_label)
         self._started = False
         self._capture_rate = RateMeter()
 
@@ -107,6 +109,15 @@ class BaseIngestionEngine:
     def close(self) -> list[dict[str, Any]]:
         return self.stop()
 
+    def restart(self) -> list[dict[str, Any]]:
+        cleanup_records = self.stop()
+        self.start()
+        self._health.record_reconnect()
+        return cleanup_records
+
+    def begin_shutdown(self) -> None:
+        self._stop_event.set()
+
     def is_started(self) -> bool:
         thread = self._capture_thread
         return self._started and thread is not None and thread.is_alive()
@@ -118,6 +129,7 @@ class BaseIngestionEngine:
             "frame_seq": frame_seq,
             "capture_ts": capture_ts,
             "last_error": self._last_error,
+            **self._health.snapshot(),
         }
 
     @property
@@ -210,6 +222,7 @@ class BaseIngestionEngine:
             self._latest_frame = frame
             self._latest_capture_ts = capture_ts
             self._last_error = None
+            self._health.mark_frame_success()
             self._frame_ready.set()
             self._capture_rate.mark(frame_seq=self._latest_frame_seq, ts=capture_ts)
 

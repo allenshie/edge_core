@@ -39,10 +39,20 @@ class EdgePipeline:
                 rows.append(dict(snapshot))
         return rows
 
+    def begin_shutdown(self) -> None:
+        for node in self._nodes:
+            begin_shutdown = getattr(node, "begin_shutdown", None)
+            if callable(begin_shutdown):
+                try:
+                    begin_shutdown()
+                except Exception:  # noqa: BLE001
+                    continue
+
     def close(self, context: TaskContext) -> list[dict[str, Any]]:
         if self._closed:
             return []
         records: list[dict[str, Any]] = []
+        self.begin_shutdown()
         for node in reversed(self._nodes):
             try:
                 result = node.close(context)
@@ -139,4 +149,7 @@ class PipelineScheduler(BaseTask):
         pipeline: EdgePipeline | None = context.get_resource("edge_pipeline")
         if pipeline is None:
             return
+        begin_shutdown = getattr(pipeline, "begin_shutdown", None)
+        if callable(begin_shutdown):
+            begin_shutdown()
         pipeline.close(context)

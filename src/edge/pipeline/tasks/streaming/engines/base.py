@@ -49,10 +49,13 @@ class BaseStreamingEngine(ABC):
         # 再交由 _output_loop() 以固定節拍輸出。
         raise NotImplementedError
 
+    def begin_shutdown(self) -> None:
+        self._stop_event.set()
+
     def close(self) -> list[dict[str, Any]]:
+        self.begin_shutdown()
         alive_before = self._output_thread is not None and self._output_thread.is_alive()
         started = time.perf_counter()
-        self._stop_event.set()
         if alive_before and self._output_thread is not None:
             self._output_thread.join(timeout=2.0)
         alive_after = self._output_thread is not None and self._output_thread.is_alive()
@@ -187,7 +190,7 @@ class BaseStreamingEngine(ABC):
             self._next_output_deadline += self._target_period
 
     def _emit_packet(self, packet: StreamPacket) -> None:
-        if not self._stream_active:
+        if self._stop_event.is_set() or not self._stream_active:
             return
 
         vis_frame = self._prepare_output_frame(packet)
@@ -201,6 +204,8 @@ class BaseStreamingEngine(ABC):
         raise NotImplementedError
 
     def _write_output_frame(self, vis_frame: Any, phase: str, frame_meta: FrameMeta | None = None) -> None:
+        if self._stop_event.is_set():
+            return
         try:
             self._ffmpeg.write_frame(vis_frame)
             # 只有真的寫進 ffmpeg 才算一次有效輸出，這個 rate 才是 stream_output_fps。
@@ -218,6 +223,15 @@ class BaseStreamingEngine(ABC):
             self._write_failures += 1
             self._last_error = str(exc)
             self._state = STATE_DEGRADED
+
+            if self._stop_event.is_set():
+                LOGGER.debug(
+                    "streaming write failed during shutdown; skip ffmpeg restart: phase=%s error=%s failures=%d",
+                    phase,
+                    exc,
+                    self._write_failures,
+                )
+                return
 
             now = time.time()
             if (now - self._last_restart_ts) < self._restart_backoff_seconds:

@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import subprocess
 import threading
+import time
 from dataclasses import dataclass
 
 LOGGER = logging.getLogger(__name__)
@@ -184,24 +185,53 @@ class FfmpegProcessManager:
         process = self._process
         self._process = None
         if process is None:
+            LOGGER.debug("ffmpeg stop skipped: process already absent")
             return
+        pid = process.pid
+        started_at = time.monotonic()
+        LOGGER.info(
+            "ffmpeg stop begin: pid=%s returncode=%s stdin=%s stderr=%s",
+            pid,
+            process.returncode,
+            bool(process.stdin),
+            bool(process.stderr),
+        )
         try:
             if process.stdin:
+                LOGGER.debug("ffmpeg stop: closing stdin (pid=%s)", pid)
                 process.stdin.close()
+                LOGGER.debug("ffmpeg stop: stdin closed (pid=%s)", pid)
         except Exception:
-            pass
+            LOGGER.exception("ffmpeg stop: stdin close failed (pid=%s)", pid)
         try:
+            LOGGER.debug("ffmpeg stop: sending terminate (pid=%s)", pid)
             process.terminate()
+            LOGGER.debug("ffmpeg stop: waiting for exit (pid=%s)", pid)
             process.wait(timeout=1.5)
+            LOGGER.debug(
+                "ffmpeg stop: wait completed (pid=%s returncode=%s elapsed_ms=%.2f)",
+                pid,
+                process.returncode,
+                (time.monotonic() - started_at) * 1000.0,
+            )
             self._log_stderr_tail_from_process(process, prefix="ffmpeg terminated")
             LOGGER.info("ffmpeg process terminated")
         except Exception:
             try:
+                LOGGER.warning("ffmpeg stop: terminate/wait failed, killing process (pid=%s)", pid)
                 process.kill()
+                LOGGER.debug("ffmpeg stop: waiting after kill (pid=%s)", pid)
+                process.wait(timeout=1.5)
+                LOGGER.debug(
+                    "ffmpeg stop: kill wait completed (pid=%s returncode=%s elapsed_ms=%.2f)",
+                    pid,
+                    process.returncode,
+                    (time.monotonic() - started_at) * 1000.0,
+                )
                 self._log_stderr_tail_from_process(process, prefix="ffmpeg killed")
                 LOGGER.warning("ffmpeg process killed")
             except Exception:
-                pass
+                LOGGER.exception("ffmpeg stop: kill path failed (pid=%s)", pid)
 
     def _log_stderr_tail_locked(self, prefix: str) -> None:
         if self._process is None:

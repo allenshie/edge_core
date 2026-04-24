@@ -10,9 +10,10 @@ from typing import Type
 from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 
 from .engines import BaseIngestionEngine, CameraIngestionEngine, FileIngestionEngine, RtspIngestionEngine
+from edge.runtime.task_health import TaskHealthReporter
 from edge.schema import FrameMeta
-from edge.runtime.stage_logging import emit_task_health
 from edge.schema import StageStats
+from .health import IngestionHealthPolicy, IngestionRecoveryPolicy
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,8 +33,8 @@ class IngestionTask(BaseTask):
         self._mode_logged = False
         self._session_id: str | None = None
         self._last_frame_meta: FrameMeta | None = None
-        self._last_health_snapshot: dict | None = None
         self._stats = StageStats(task_name="ingest")
+        self._health = TaskHealthReporter(self._stats)
         if context is not None:
             self._engine, self._mode = self._build_engine(context)
 
@@ -73,18 +74,18 @@ class IngestionTask(BaseTask):
         try:
             payload = self._engine.fetch()
         except TaskError as exc:
+            engine_snapshot = self._engine.health_snapshot() if self._engine is not None else {}
             self._stats.record_error(str(exc), worker_alive=self._engine.is_started())
-            emit_task_health(
+            report_interval = float(getattr(context.config, "health_report_interval_seconds", 5.0) or 5.0)
+            self._health.report_ingestion_failure(
                 context,
-                self._stats,
-                health_state="error",
-                reason=str(exc),
+                mode=self._mode,
+                source_label=self.source_label,
+                engine_snapshot=engine_snapshot,
+                capture_rate_meter=self._engine.capture_rate_meter if self._engine is not None else None,
+                error_message=str(exc),
                 worker_alive=self._engine.is_started(),
-                extra_fields={"mode": self._mode, "source": self.source_label},
-                force=True,
-                level=logging.WARNING,
-                rate_meter=self._engine.capture_rate_meter if self._engine is not None else None,
-                rate_prefix="capture",
+                report_interval_seconds=report_interval,
             )
             LOGGER.warning("%s ingestion failed: %s", self.source_label, exc)
             raise
@@ -114,68 +115,80 @@ class IngestionTask(BaseTask):
             latency_ms=(time.perf_counter() - started_at) * 1000.0,
             worker_alive=worker_alive,
         )
-        self._report_health(context, frame_meta, worker_alive=worker_alive)
+        engine_snapshot = self._engine.health_snapshot() if self._engine is not None else {}
+        capture_fps = self._engine.capture_rate_meter.fps() if self._engine is not None else None
+        stale_threshold = float(getattr(context.config, "health_stale_threshold_seconds", 0.0) or 0.0)
+        report_interval = float(getattr(context.config, "health_report_interval_seconds", 5.0) or 5.0)
+        evaluation = IngestionHealthPolicy.evaluate(
+            tracker_snapshot=engine_snapshot,
+            mode=self._mode,
+            source_label=self.source_label,
+            session_id=frame_meta.session_id,
+            frame_seq=frame_meta.frame_seq,
+            capture_fps=capture_fps,
+            capture_age_seconds=frame_meta.age_seconds(),
+            stale_threshold_seconds=stale_threshold,
+            worker_alive=worker_alive,
+            capture_ts=frame_meta.capture_ts,
+        )
+        self._health.report_ingestion(
+            context,
+            evaluation=evaluation,
+            capture_rate_meter=self._engine.capture_rate_meter if self._engine is not None else None,
+            report_interval_seconds=report_interval,
+        )
+        recovery = IngestionRecoveryPolicy.evaluate(
+            evaluation=evaluation,
+            tracker_snapshot=engine_snapshot,
+            recovery_cooldown_seconds=float(
+                getattr(context.config, "ingestion_recovery_cooldown_seconds", 30.0) or 30.0
+            ),
+        )
+        if recovery.action == "restart" and self._engine is not None:
+            context.logger.warning(
+                "%s source unhealthy, attempting restart: %s",
+                self.source_label,
+                recovery.reason,
+            )
+            try:
+                self._engine.restart()
+            except TaskError as exc:
+                self._stats.record_error(str(exc), worker_alive=self._engine.is_started())
+                LOGGER.warning("%s ingestion restart failed: %s", self.source_label, exc)
+                raise
+            context.monitor.report_event(
+                "warning",
+                detail=(
+                    f"{self.source_label} recovery action=restart reason={recovery.reason} "
+                    f"cooldown_remaining_s={recovery.cooldown_remaining_s}"
+                ),
+                component=self.name,
+            )
         payload = dict(payload)
         payload.pop("frame", None)
         payload["frame_meta"] = frame_meta.to_dict()
         return TaskResult(payload=payload)
 
-    def _report_health(self, context: TaskContext, frame_meta: FrameMeta, *, worker_alive: bool) -> None:
-        report_interval = float(getattr(context.config, "health_report_interval_seconds", 5.0) or 5.0)
-        stale_threshold = float(getattr(context.config, "health_stale_threshold_seconds", 0.0) or 0.0)
-        capture_age_s = frame_meta.age_seconds()
-        health_state = "degraded" if stale_threshold > 0 and capture_age_s >= stale_threshold else "ok"
-        capture_fps = self._engine.capture_rate_meter.fps() if self._engine is not None else None
-        snapshot = {
-            "stage": "ingest",
-            "state": health_state,
-            "session_id": frame_meta.session_id,
-            "frame_seq": frame_meta.frame_seq,
-            "capture_fps": capture_fps,
-            "infer_fps": None,
-            "stream_output_fps": None,
-            "stream_unique_fps": None,
-            "age_s": capture_age_s,
-            "alive": worker_alive,
-            "note": f"mode={self._mode or 'rtsp'} source={self.source_label}",
-        }
-        line = emit_task_health(
-            context,
-            self._stats,
-            health_state=health_state,
-            reason="stale_capture" if health_state == "degraded" else None,
-            worker_alive=worker_alive,
-            extra_fields={
-                "mode": self._mode,
-                "source": self.source_label,
-                "capture_ts": frame_meta.capture_ts,
-            },
-            report_interval_seconds=report_interval,
-            force=False,
-            rate_meter=self._engine.capture_rate_meter if self._engine is not None else None,
-            rate_prefix="capture",
-        )
-        if line is not None:
-            self._last_health_snapshot = snapshot
-
     def health_snapshot(self, context: TaskContext | None = None) -> dict:
-        _ = context
-        if self._last_health_snapshot is not None:
-            return dict(self._last_health_snapshot)
-        capture_fps = self._engine.capture_rate_meter.fps() if self._engine is not None else None
-        return {
-            "stage": "ingest",
-            "state": self._stats.health_state,
-            "session_id": self._stats.session_id,
-            "frame_seq": self._stats.last_frame_seq,
-            "capture_fps": capture_fps,
-            "infer_fps": None,
-            "stream_output_fps": None,
-            "stream_unique_fps": None,
-            "age_s": self._stats.capture_age_seconds(),
-            "alive": bool(self._engine.is_started()) if self._engine is not None else False,
-            "note": f"mode={self._mode or 'rtsp'} source={self.source_label}",
-        }
+        engine_snapshot = self._engine.health_snapshot() if self._engine is not None else {}
+        stale_threshold = float(
+            getattr(context.config, "health_stale_threshold_seconds", 0.0) if context is not None else 0.0
+        )
+        evaluation = IngestionHealthPolicy.evaluate(
+            tracker_snapshot=engine_snapshot,
+            mode=self._mode,
+            source_label=self.source_label,
+            session_id=self._stats.session_id or "",
+            frame_seq=self._stats.last_frame_seq or 0,
+            capture_fps=self._engine.capture_rate_meter.fps() if self._engine is not None else None,
+            capture_age_seconds=self._stats.capture_age_seconds(),
+            stale_threshold_seconds=stale_threshold,
+            worker_alive=bool(self._engine.is_started()) if self._engine is not None else False,
+        )
+        return self._health.snapshot_ingestion(
+            evaluation=evaluation,
+            capture_rate_meter=self._engine.capture_rate_meter if self._engine is not None else None,
+        )
 
     def close(self, context: TaskContext) -> list[dict]:
         _ = context
@@ -190,3 +203,9 @@ class IngestionTask(BaseTask):
             if result is not None:
                 return [result]
         return []
+
+    def begin_shutdown(self) -> None:
+        engine = self._engine
+        begin_shutdown = getattr(engine, "begin_shutdown", None) if engine is not None else None
+        if callable(begin_shutdown):
+            begin_shutdown()

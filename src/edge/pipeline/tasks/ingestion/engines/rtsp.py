@@ -46,6 +46,7 @@ class RtspIngestionEngine(BaseIngestionEngine):
 
     def _handle_failed_read(self, config: RtspConfig) -> bool:
         LOGGER.warning("RTSP 讀取失敗，嘗試重新連線：%s", config.url)
+        self._health.record_read_failure(f"rtsp read failed: {config.url}")
         if self._capture is not None:
             self._capture.release()
             self._capture = None
@@ -64,5 +65,6 @@ class RtspIngestionEngine(BaseIngestionEngine):
         if not new_capture.isOpened():
             return False
         self._capture = new_capture
+        self._health.record_reconnect()
         LOGGER.info("RTSP 重新連線成功：%s", config.url)
         return True
