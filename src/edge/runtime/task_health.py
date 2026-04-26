@@ -5,6 +5,7 @@ from collections.abc import Mapping
 import logging
 from typing import Any
 
+from edge.runtime.duration_meter import DurationMeter
 from edge.runtime.rate_meter import RateMeter
 from edge.runtime.stage_logging import emit_task_health
 from edge.schema import FrameMeta
@@ -25,10 +26,7 @@ class TaskHealthReporter:
         state: str,
         session_id: str | None,
         frame_seq: int | None,
-        capture_fps: float | None,
-        infer_fps: float | None,
-        stream_output_fps: float | None,
-        stream_unique_fps: float | None,
+        fps: float | None,
         age_s: float | None,
         alive: bool,
         note: str,
@@ -39,10 +37,7 @@ class TaskHealthReporter:
             "state": state,
             "session_id": session_id,
             "frame_seq": frame_seq,
-            "capture_fps": capture_fps,
-            "infer_fps": infer_fps,
-            "stream_output_fps": stream_output_fps,
-            "stream_unique_fps": stream_unique_fps,
+            "fps": fps,
             "age_s": age_s,
             "alive": alive,
             "note": note,
@@ -64,7 +59,7 @@ class TaskHealthReporter:
         report_interval_seconds: float | None = None,
         level: int | None = None,
         force: bool = False,
-        rate_meter: RateMeter | None = None,
+        rate_meter: RateMeter | DurationMeter | None = None,
         rate_prefix: str | None = None,
         snapshot: Mapping[str, Any] | None = None,
     ) -> str | None:
@@ -94,6 +89,87 @@ class TaskHealthReporter:
             return dict(fallback_snapshot)
         return self._stats.snapshot()
 
+    def report_skip(
+        self,
+        context: Any,
+        *,
+        stage: str,
+        frame_meta: FrameMeta | None,
+        note: str,
+        reason: str,
+        extra_fields: Mapping[str, Any] | None = None,
+        report_interval_seconds: float,
+        rate_meter: RateMeter | DurationMeter | None = None,
+        rate_prefix: str | None = None,
+        level: int | None = None,
+    ) -> str | None:
+        return self.report_execution(
+            context,
+            stage=stage,
+            health_state="inactive",
+            frame_meta=frame_meta,
+            note=note,
+            reason=reason,
+            extra_fields=extra_fields,
+            report_interval_seconds=report_interval_seconds,
+            level=level,
+            rate_meter=rate_meter,
+            rate_prefix=rate_prefix,
+            worker_alive=bool(self._stats.worker_alive),
+            emit=False,
+        )
+
+    def report_execution(
+        self,
+        context: Any,
+        *,
+        stage: str,
+        health_state: str,
+        frame_meta: FrameMeta | None,
+        note: str,
+        reason: str | None = None,
+        extra_fields: Mapping[str, Any] | None = None,
+        report_interval_seconds: float,
+        rate_meter: RateMeter | DurationMeter | None = None,
+        rate_prefix: str | None = None,
+        worker_alive: bool | None = None,
+        queue_size: int | None = None,
+        event_type: str | None = None,
+        level: int | None = None,
+        force: bool = False,
+        emit: bool = True,
+    ) -> str | None:
+        capture_age_s = frame_meta.age_seconds() if isinstance(frame_meta, FrameMeta) else self._stats.capture_age_seconds()
+        snapshot = self.build_snapshot(
+            stage=stage,
+            state=health_state,
+            session_id=frame_meta.session_id if isinstance(frame_meta, FrameMeta) else self._stats.session_id,
+            frame_seq=frame_meta.frame_seq if isinstance(frame_meta, FrameMeta) else self._stats.last_frame_seq,
+            fps=rate_meter.fps() if rate_meter is not None else None,
+            age_s=capture_age_s,
+            alive=bool(worker_alive if worker_alive is not None else self._stats.worker_alive),
+            note=note,
+            extra_fields=extra_fields,
+        )
+        self._last_snapshot = dict(snapshot)
+        if not emit:
+            return None
+        return self.emit(
+            context,
+            health_state=health_state,
+            reason=reason,
+            worker_alive=bool(worker_alive if worker_alive is not None else self._stats.worker_alive),
+            queue_size=queue_size,
+            extra_fields=extra_fields,
+            event_type=event_type,
+            report_interval_seconds=report_interval_seconds,
+            level=level,
+            force=force,
+            rate_meter=rate_meter,
+            rate_prefix=rate_prefix,
+            snapshot=snapshot,
+        )
+
     def report_inference(
         self,
         context: Any,
@@ -119,31 +195,18 @@ class TaskHealthReporter:
             "device": model_device,
             "detections": detections_count,
         }
-        snapshot = self.build_snapshot(
-            stage="infer",
-            state=health_state,
-            session_id=self._stats.session_id,
-            frame_seq=self._stats.last_frame_seq,
-            capture_fps=None,
-            infer_fps=infer_rate_meter.fps(),
-            stream_output_fps=None,
-            stream_unique_fps=None,
-            age_s=capture_age_s,
-            alive=bool(self._stats.worker_alive),
-            note=f"model={model_name} device={model_device} detections={detections_count}",
-            extra_fields=summary_fields,
-        )
-        return self.emit(
+        return self.report_execution(
             context,
+            stage="infer",
             health_state=health_state,
+            frame_meta=frame_meta,
+            note=f"model={model_name} device={model_device} detections={detections_count}",
             reason="stale_frame" if is_stale else None,
-            worker_alive=True,
             extra_fields=summary_fields,
             report_interval_seconds=report_interval_seconds,
-            force=False,
             rate_meter=infer_rate_meter,
             rate_prefix="infer",
-            snapshot=snapshot,
+            worker_alive=bool(self._stats.worker_alive),
         )
 
     def snapshot_inference(
@@ -161,10 +224,7 @@ class TaskHealthReporter:
             state=self._stats.health_state,
             session_id=self._stats.session_id,
             frame_seq=self._stats.last_frame_seq,
-            capture_fps=None,
-            infer_fps=infer_rate_meter.fps(),
-            stream_output_fps=None,
-            stream_unique_fps=None,
+            fps=infer_rate_meter.fps(),
             age_s=frame_meta.age_seconds() if isinstance(frame_meta, FrameMeta) else self._stats.capture_age_seconds(),
             alive=bool(self._stats.worker_alive),
             note=f"model={model_name} device={model_device} detections={detections_count}",
@@ -177,6 +237,7 @@ class TaskHealthReporter:
         *,
         frame_meta: FrameMeta | None,
         outcome: Any,
+        publish_rate_meter: RateMeter | DurationMeter,
         stale_threshold_seconds: float,
         report_interval_seconds: float,
     ) -> str | None:
@@ -194,31 +255,20 @@ class TaskHealthReporter:
             "published": published,
             "status": status,
         }
-        snapshot = self.build_snapshot(
-            stage="publish",
-            state=health_state,
-            session_id=self._stats.session_id,
-            frame_seq=self._stats.last_frame_seq,
-            capture_fps=None,
-            infer_fps=None,
-            stream_output_fps=None,
-            stream_unique_fps=None,
-            age_s=capture_age_s,
-            alive=bool(self._stats.worker_alive),
-            note=f"published={published} status={status}",
-            extra_fields=summary_fields,
-        )
-        summary_line = self.emit(
+        summary_line = self.report_execution(
             context,
+            stage="publish",
             health_state=health_state,
+            frame_meta=frame_meta,
+            note=f"published={published} status={status}",
             reason="integration_api_unreachable" if not status_ok else "stale_frame" if is_stale else None,
-            worker_alive=True,
             extra_fields=summary_fields,
             report_interval_seconds=report_interval_seconds,
             event_type="edge_publish",
             level=logging.WARNING if not status_ok or is_stale else logging.INFO,
-            force=False,
-            snapshot=snapshot,
+            rate_meter=publish_rate_meter,
+            rate_prefix="publish",
+            worker_alive=bool(self._stats.worker_alive),
         )
         if summary_line is not None and not status_ok:
             monitor = getattr(context, "monitor", None)
@@ -232,6 +282,7 @@ class TaskHealthReporter:
         *,
         frame_meta: FrameMeta | None,
         outcome: Any,
+        publish_rate_meter: RateMeter | DurationMeter,
     ) -> dict[str, Any]:
         published = getattr(outcome, "published", 0)
         status = getattr(outcome, "status", None)
@@ -240,10 +291,7 @@ class TaskHealthReporter:
             state=self._stats.health_state,
             session_id=self._stats.session_id,
             frame_seq=self._stats.last_frame_seq,
-            capture_fps=None,
-            infer_fps=None,
-            stream_output_fps=None,
-            stream_unique_fps=None,
+            fps=publish_rate_meter.fps(),
             age_s=frame_meta.age_seconds() if isinstance(frame_meta, FrameMeta) else self._stats.capture_age_seconds(),
             alive=bool(self._stats.worker_alive),
             note=f"published={published} status={status}",
@@ -314,10 +362,7 @@ class TaskHealthReporter:
             state=health_state,
             session_id=self._stats.session_id,
             frame_seq=self._stats.last_frame_seq,
-            capture_fps=None,
-            infer_fps=None,
-            stream_output_fps=stream_output_fps,
-            stream_unique_fps=stream_unique_fps,
+            fps=stream_output_fps,
             age_s=capture_age_s,
             alive=ffmpeg_alive,
             note=f"phase={phase} should_stream={should_stream} ffmpeg={ffmpeg_alive}",
@@ -376,10 +421,7 @@ class TaskHealthReporter:
             state=health_state,
             session_id=self._stats.session_id,
             frame_seq=self._stats.last_frame_seq,
-            capture_fps=None,
-            infer_fps=None,
-            stream_output_fps=stream_output_fps,
-            stream_unique_fps=stream_unique_fps,
+            fps=stream_output_fps,
             age_s=capture_age_s,
             alive=ffmpeg_alive,
             note=f"phase={phase} should_stream={should_stream} ffmpeg={ffmpeg_alive}",
@@ -435,10 +477,7 @@ class TaskHealthReporter:
             state="error",
             session_id=self._stats.session_id,
             frame_seq=self._stats.last_frame_seq,
-            capture_fps=capture_rate_meter.fps() if capture_rate_meter is not None else None,
-            infer_fps=None,
-            stream_output_fps=None,
-            stream_unique_fps=None,
+            fps=capture_rate_meter.fps() if capture_rate_meter is not None else None,
             age_s=self._stats.capture_age_seconds(),
             alive=worker_alive,
             note=(

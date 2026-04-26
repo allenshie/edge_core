@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
+
+from edge.runtime.health_contract import HealthSummaryMetrics
 
 
 _SUMMARY_COLUMNS: list[tuple[str, str]] = [
@@ -11,10 +13,7 @@ _SUMMARY_COLUMNS: list[tuple[str, str]] = [
     ("state", "state"),
     ("session_id", "session_id"),
     ("frame_seq", "frame_seq"),
-    ("capture_fps", "capture_fps"),
-    ("infer_fps", "infer_fps"),
-    ("stream_output_fps", "stream_output_fps"),
-    ("stream_unique_fps", "stream_unique_fps"),
+    ("fps", "fps"),
     ("age_s", "age_s"),
     ("alive", "alive"),
     ("note", "note"),
@@ -51,12 +50,18 @@ def _format_value(value: Any) -> str:
     return str(value)
 
 
-def build_pipeline_summary(rows: Sequence[Mapping[str, Any]]) -> str:
+def _format_summary_value(key: str, value: Any) -> str:
+    if key == "session_id" and isinstance(value, str):
+        return value[-8:] if len(value) > 8 else value
+    return _format_value(value)
+
+
+def build_pipeline_summary(rows: Sequence[HealthSummaryMetrics], pipeline_fps: float | None = None) -> str:
     stage_rows = _normalize_rows(rows)
     if not stage_rows:
         return "pipeline summary\n(no health snapshots)"
 
-    aggregate_row = _build_aggregate_row(stage_rows)
+    aggregate_row = _build_aggregate_row(stage_rows, pipeline_fps=pipeline_fps)
     all_rows = [aggregate_row, *stage_rows]
 
     widths: dict[str, int] = {}
@@ -64,60 +69,70 @@ def build_pipeline_summary(rows: Sequence[Mapping[str, Any]]) -> str:
         widths[key] = len(header)
     for row in all_rows:
         for key, _ in _SUMMARY_COLUMNS:
-            widths[key] = max(widths[key], len(_format_value(row.get(key))))
+            widths[key] = max(widths[key], len(_format_summary_value(key, row.get(key))))
 
     header = " | ".join(header.ljust(widths[key]) for key, header in _SUMMARY_COLUMNS)
     lines = ["pipeline summary", header]
     for row in all_rows:
-        rendered = " | ".join(_format_value(row.get(key)).ljust(widths[key]) for key, _ in _SUMMARY_COLUMNS)
+        rendered = " | ".join(
+            _format_summary_value(key, row.get(key)).ljust(widths[key]) for key, _ in _SUMMARY_COLUMNS
+        )
         lines.append(rendered)
     return "\n".join(lines)
 
 
-def _normalize_rows(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    normalized: list[dict[str, Any]] = []
+def _normalize_rows(rows: Sequence[HealthSummaryMetrics]) -> list[HealthSummaryMetrics]:
+    normalized: list[HealthSummaryMetrics] = []
     for row in rows:
         if not row:
             continue
         copy = dict(row)
         stage = str(copy.get("stage") or copy.get("task") or "").strip().lower()
         copy["stage"] = stage or "unknown"
-        normalized.append(copy)
+        if copy.get("fps") is None:
+            copy["fps"] = _resolve_row_fps(copy)
+        if copy.get("age_s") is None and copy.get("capture_age_s") is not None:
+            copy["age_s"] = copy.get("capture_age_s")
+        normalized.append(cast(HealthSummaryMetrics, copy))
     normalized.sort(key=lambda row: _STAGE_ORDER.get(row.get("stage"), 99))
     return normalized
 
 
-def _build_aggregate_row(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def _build_aggregate_row(
+    rows: Sequence[HealthSummaryMetrics], *, pipeline_fps: float | None = None
+) -> HealthSummaryMetrics:
     state = _aggregate_state(rows)
     session_id = next((row.get("session_id") for row in rows if row.get("session_id")), None)
     frame_seq = max((int(row["frame_seq"]) for row in rows if isinstance(row.get("frame_seq"), int)), default=None)
     age_s = max(
-        (float(row["age_s"]) for row in rows if isinstance(row.get("age_s"), (int, float))),
+        (
+            float(row["age_s"])
+            for row in rows
+            if isinstance(row.get("age_s"), (int, float))
+        ),
         default=None,
     )
     alive = all(bool(row.get("alive", True)) for row in rows)
     bottleneck = _pick_bottleneck(rows)
-    capture_fps = _find_metric(rows, "capture_fps", "ingest")
-    infer_fps = _find_metric(rows, "infer_fps", "infer")
-    stream_output_fps = _find_metric(rows, "stream_output_fps", "stream")
-    stream_unique_fps = _find_metric(rows, "stream_unique_fps", "stream")
+    aggregate_pipeline_fps = pipeline_fps
+    if aggregate_pipeline_fps is None:
+        aggregate_pipeline_fps = _find_metric(rows, "fps", "pipeline")
+    if aggregate_pipeline_fps is None:
+        aggregate_pipeline_fps = _find_metric(rows, "pipeline_fps", "pipeline")
 
     return {
         "stage": "pipeline",
         "state": state,
         "session_id": session_id,
         "frame_seq": frame_seq,
-        "capture_fps": capture_fps,
-        "infer_fps": infer_fps,
-        "stream_output_fps": stream_output_fps,
-        "stream_unique_fps": stream_unique_fps,
+        "fps": aggregate_pipeline_fps,
         "age_s": age_s,
         "alive": alive,
         "note": f"bottleneck={bottleneck}",
     }
 
 
-def _aggregate_state(rows: Sequence[Mapping[str, Any]]) -> str:
+def _aggregate_state(rows: Sequence[HealthSummaryMetrics]) -> str:
     state = "ok"
     for row in rows:
         row_state = row.get("state")
@@ -126,7 +141,7 @@ def _aggregate_state(rows: Sequence[Mapping[str, Any]]) -> str:
     return state
 
 
-def _pick_bottleneck(rows: Sequence[Mapping[str, Any]]) -> str:
+def _pick_bottleneck(rows: Sequence[HealthSummaryMetrics]) -> str:
     candidates: list[tuple[float, str]] = []
     for row in rows:
         stage = str(row.get("stage") or "unknown")
@@ -139,11 +154,19 @@ def _pick_bottleneck(rows: Sequence[Mapping[str, Any]]) -> str:
     return candidates[0][1]
 
 
-def _find_metric(rows: Sequence[Mapping[str, Any]], metric_key: str, stage_name: str) -> Any:
+def _find_metric(rows: Sequence[HealthSummaryMetrics], metric_key: str, stage_name: str) -> Any:
     for row in rows:
         if str(row.get("stage")) == stage_name and row.get(metric_key) is not None:
             return row.get(metric_key)
     for row in rows:
         if row.get(metric_key) is not None:
             return row.get(metric_key)
+    return None
+
+
+def _resolve_row_fps(row: HealthSummaryMetrics) -> Any:
+    for key in ("fps", "pipeline_fps", "capture_fps", "infer_fps", "stream_output_fps", "publish_fps", "stream_unique_fps"):
+        value = row.get(key)
+        if value is not None:
+            return value
     return None

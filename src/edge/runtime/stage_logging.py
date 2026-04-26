@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
+from edge.runtime.duration_meter import DurationMeter
 from edge.schema import StageStats
 from edge.runtime.rate_meter import RateMeter
 
@@ -120,7 +121,7 @@ def emit_task_health(
     report_interval_seconds: float | None = None,
     level: int | None = None,
     force: bool = False,
-    rate_meter: RateMeter | None = None,
+    rate_meter: RateMeter | DurationMeter | None = None,
     rate_prefix: str | None = None,
 ) -> str | None:
     if report_interval_seconds is None:

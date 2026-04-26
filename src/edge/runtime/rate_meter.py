@@ -31,12 +31,17 @@ class RateMeter:
         with self._lock:
             if self._window_start_monotonic <= 0:
                 return None
-            if self._window_event_count <= 0:
-                return 0.0
+            if self._window_event_count <= 1:
+                return None
             elapsed = current - self._window_start_monotonic
             if elapsed <= 0:
                 return None
             return self._window_event_count / elapsed
+
+    @property
+    def sample_count(self) -> int:
+        with self._lock:
+            return self._window_event_count
 
     def snapshot(self, prefix: str) -> dict[str, Any]:
         fps = self.fps()
