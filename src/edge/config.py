@@ -31,6 +31,25 @@ def _normalize_channel(backend: str, value: str | None, default: str) -> str:
     return channel[1:] if channel.startswith("/") else channel
 
 
+def _parse_bgr_triplet(value: str | None, default: tuple[int, int, int]) -> tuple[int, int, int]:
+    raw = (value or "").strip()
+    if not raw:
+        return default
+
+    parts = [part.strip() for part in raw.split(",")]
+    if len(parts) != 3:
+        raise ValueError("color must be formatted as 'b,g,r'")
+
+    try:
+        b = max(0, min(255, int(parts[0])))
+        g = max(0, min(255, int(parts[1])))
+        r = max(0, min(255, int(parts[2])))
+    except ValueError as exc:
+        raise ValueError("color channels must be integers") from exc
+
+    return (b, g, r)
+
+
 @dataclass
 class CameraConfig:
     camera_id: str = field(default_factory=lambda: os.environ.get("EDGE_CAMERA_ID", "cam01"))
@@ -77,6 +96,9 @@ class VisualizationConfig:
     window_name: str = field(default_factory=lambda: os.environ.get("EDGE_VISUAL_WINDOW", "edge-preview"))
     window_width: int = field(default_factory=lambda: int(os.environ.get("EDGE_VISUAL_WIDTH", "1280")))
     window_height: int = field(default_factory=lambda: int(os.environ.get("EDGE_VISUAL_HEIGHT", "720")))
+    detection_color_bgr: tuple[int, int, int] = field(
+        default_factory=lambda: _parse_bgr_triplet(os.environ.get("EDGE_VISUAL_DETECTION_COLOR"), (0, 255, 0))
+    )
 
 
 @dataclass
@@ -97,6 +119,11 @@ class RtspConfig:
 class IntegrationConfig:
     api_base: str = field(default_factory=lambda: os.environ.get("INTEGRATION_API_BASE", "http://localhost:9000"))
     timeout_seconds: int = field(default_factory=lambda: int(os.environ.get("INTEGRATION_API_TIMEOUT", "5")))
+
+
+@dataclass
+class PublishConfig:
+    enabled: bool = field(default_factory=lambda: _to_bool(os.environ.get("EDGE_PUBLISH_ENABLED"), True))
 
 
 @dataclass
@@ -208,6 +235,7 @@ class EdgeConfig:
     visualization: VisualizationConfig = field(default_factory=VisualizationConfig)
     ingestion: IngestionConfig = field(default_factory=IngestionConfig)
     streaming: StreamingConfig = field(default_factory=StreamingConfig)
+    publish: PublishConfig = field(default_factory=PublishConfig)
     integration: IntegrationConfig = field(default_factory=IntegrationConfig)
     mqtt: MqttConfig = field(default_factory=MqttConfig)
     http_messaging: HttpMessagingConfig = field(default_factory=HttpMessagingConfig)

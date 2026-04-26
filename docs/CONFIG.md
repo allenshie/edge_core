@@ -53,6 +53,7 @@ EDGE_EVENTS_CHANNEL=/edge/events
 | `EDGE_MODE_DEFAULT` | `working` | 未被整合端更新時的初始 mode。|
 | `EDGE_PHASE_BACKEND` / `EDGE_PHASE_CHANNEL` | `mqtt` / `integration/phase` | phase 更新 route 設定。|
 | `EDGE_EVENTS_BACKEND` / `EDGE_EVENTS_CHANNEL` | `http` / `/edge/events` | edge 事件 publish route 設定。|
+| `EDGE_PUBLISH_ENABLED` | `1` | 是否啟用結果發布至外部整合端。|
 | `EDGE_STREAMING_FPS` | *(不設定)* | 串流輸出 FPS，與 ingestion 節奏分離。|
 | `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康摘要輸出間隔。|
 | `EDGE_HEALTH_STALE_THRESHOLD_SEC` | `5` | 健康摘要判定 stale / degraded 的時間門檻。|
@@ -60,6 +61,7 @@ EDGE_EVENTS_CHANNEL=/edge/events
 | `EDGE_VISUAL_MODE` | `write` | `write` 輸出檔案；`show` 使用 `cv2.imshow`。|
 | `EDGE_VISUAL_WINDOW` | `edge-preview` | `show` 模式下的視窗名稱。|
 | `EDGE_VISUAL_WIDTH` / `EDGE_VISUAL_HEIGHT` | `1280` / `720` | `show` 模式下的視窗尺寸（px）。|
+| `EDGE_VISUAL_DETECTION_COLOR` | `0,255,0` | 偵測框與 label 背景顏色，格式為 `B,G,R`。 |
 | `EDGE_INGEST_MODE` | `rtsp` | 取流模式：`rtsp`、`file` 或 `camera`。|
 | `EDGE_FILE_PATH` | *(不設定)* | `file` 模式時必填，指向影片路徑。|
 | `EDGE_FILE_LOOP` | `1` | 影片結束後是否自動從頭播放。|
