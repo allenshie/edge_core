@@ -1,7 +1,7 @@
 """Pipeline-level health summary formatting helpers."""
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, cast
 

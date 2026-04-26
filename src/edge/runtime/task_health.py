@@ -425,6 +425,14 @@ class TaskHealthReporter:
             age_s=capture_age_s,
             alive=ffmpeg_alive,
             note=f"phase={phase} should_stream={should_stream} ffmpeg={ffmpeg_alive}",
+            extra_fields={
+                "phase": phase,
+                "should_stream": should_stream,
+                "stream_active": stream_active,
+                "ffmpeg_alive": ffmpeg_alive,
+                "stream_output_fps": stream_output_fps,
+                "stream_unique_fps": stream_unique_fps,
+            },
         )
         return self.snapshot(fallback_snapshot=fallback)
 
