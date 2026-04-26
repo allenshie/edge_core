@@ -20,11 +20,67 @@ from ..types import StreamPacket, StreamingStatus
 LOGGER = logging.getLogger(__name__)
 
 
+def _draw_detection_box_and_label(
+    vis_frame: Any,
+    bbox: Sequence[int],
+    label: str,
+    *,
+    color: tuple[int, int, int] = (0, 255, 0),
+    text_color: tuple[int, int, int] = (255, 255, 255),
+    font_scale: float = 0.4,
+    thickness: int = 1,
+    text_thickness: int = 1,
+) -> None:
+    frame_h, frame_w = vis_frame.shape[:2]
+    if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+        return
+
+    try:
+        x1, y1, x2, y2 = [int(v) for v in bbox]
+    except (TypeError, ValueError):
+        return
+
+    font_face = cv2.FONT_HERSHEY_SIMPLEX
+    label_padding_x = max(4, thickness * 2)
+    label_padding_y = max(2, thickness)
+
+    text_size, baseline = cv2.getTextSize(label, font_face, font_scale, text_thickness)
+    text_w, text_h = text_size
+    label_w = text_w + label_padding_x * 2
+    label_h = text_h + baseline + label_padding_y * 2
+
+    # 優先把 label 放在 bbox 上方；若空間不足，則改放到 bbox 下方並在畫面內對齊。
+    label_x1 = max(0, min(x1, max(frame_w - label_w, 0)))
+    label_x2 = min(frame_w, label_x1 + label_w)
+    if y1 >= label_h:
+        label_y2 = y1
+        label_y1 = y1 - label_h
+    else:
+        label_y1 = min(max(y2, 0), max(frame_h - label_h, 0))
+        label_y2 = min(frame_h, label_y1 + label_h)
+
+    text_org_x = label_x1 + label_padding_x
+    text_org_y = label_y2 - label_padding_y - baseline
+
+    cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, thickness)
+    cv2.rectangle(vis_frame, (label_x1, label_y1), (label_x2, label_y2), color, -1)
+    cv2.putText(
+        vis_frame,
+        label,
+        (text_org_x, text_org_y),
+        font_face,
+        font_scale,
+        text_color,
+        text_thickness,
+    )
+
+
 class BaseStreamingEngine(ABC):
     """Common pacing, latest-frame cache and shared health helpers."""
 
     def __init__(self, context: TaskContext | None = None) -> None:
         self._context = context
+        visual_cfg = getattr(context.config, "visualization", None) if context else None
         self._stop_event = threading.Event()
         self._stream_active = False
         self._state = STATE_INACTIVE
@@ -36,6 +92,9 @@ class BaseStreamingEngine(ABC):
         self._target_period = 1.0 / self._target_fps if self._target_fps > 0 else 1.0 / 30.0
         self._last_emitted_identity: tuple[str | None, int | None] | None = None
         self._unique_write_rate = RateMeter()
+        self._detection_color: tuple[int, int, int] = (
+            getattr(visual_cfg, "detection_color_bgr", (0, 255, 0)) if visual_cfg is not None else (0, 255, 0)
+        )
 
     @abstractmethod
     def push(
@@ -279,29 +338,21 @@ class BaseStreamingEngine(ABC):
         frame_h, frame_w = vis_frame.shape[:2]
         # 依 frame 尺寸調整框線粗細與字體，避免不同解析度下可讀性落差太大。
         thickness = max(1, int(min(frame_w, frame_h) / 360))
-        text_thickness = max(1, thickness - 1)
+        text_thickness = max(1, thickness)
         font_scale = max(0.4, min(frame_w, frame_h) / 1200)
 
         for det in detections:
             bbox = det.bbox
-            if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
-                continue
-
-            try:
-                x1, y1, x2, y2 = [int(v) for v in bbox]
-            except (TypeError, ValueError):
-                continue
-
             score = det.score if det.score is not None else det.bbox_confidence_score
             score_value = float(score) if score is not None else 0.0
             label = f"{det.class_name}:{score_value:.2f}"
-            cv2.rectangle(vis_frame, (x1, y1), (x2, y2), (0, 255, 0), thickness)
-            cv2.putText(
+            _draw_detection_box_and_label(
                 vis_frame,
+                bbox,
                 label,
-                (x1, max(y1 - 5, 0)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                font_scale,
-                (0, 255, 0),
-                text_thickness,
+                color=self._detection_color,
+                text_color=(255, 255, 255),
+                font_scale=font_scale,
+                thickness=thickness,
+                text_thickness=text_thickness,
             )
