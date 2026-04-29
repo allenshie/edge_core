@@ -159,10 +159,14 @@ cargo_pose:
 
 ### 7. YAML mock 類需要的設定
 
+`BaseYamlMockModel` 本身已提供通用 YAML 轉換邏輯，可直接在 `schedule.json` 使用。
 若模型繼承 `BaseYamlMockModel`，通常需要：
 
 - 對應環境變數，例如 `EDGE_IRON_GATES_CONFIG`
 - 預設 config path，例如 `configs/iron_gates.yaml`
+- 若直接在 `schedule.json` 使用 `edge.pipeline.tasks.inference.models:BaseYamlMockModel`，請在該 task entry 明確提供 `env_var` 與 `default_config_path`
+- `edge_core` 不會替特定 domain 提供內建預設物件或預設檔名，這類設定應由 site repo 負責
+- YAML record 若有 `track_id` 會優先使用；若沒有，會退而使用 `id`；兩者都沒有才留空
 
 YAML 支援兩種格式：
 

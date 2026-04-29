@@ -7,6 +7,7 @@ pipeline 與 integration 端接收。常用欄位如下：
 - `score`：信心分數
 - `bbox`：`[x1, y1, x2, y2]` 的像素座標
 - `track_id`：可為 `None`，若模型未提供追蹤 id 則留空
+- `track_id = None` 代表不是追蹤結果；不要用序號或索引值代替真正的追蹤 id
 - `polygon`：分割輪廓（可為 `None`）
 - `keypoints`：姿態節點（可為 `None`）
 - `category`：自定義分類字串（預設 `""`）

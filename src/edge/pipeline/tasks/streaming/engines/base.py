@@ -20,6 +20,90 @@ from ..types import StreamPacket, StreamingStatus
 LOGGER = logging.getLogger(__name__)
 
 
+def _truncate_text(text: str, max_length: int) -> str:
+    value = str(text).strip() or "unknown"
+    if max_length <= 0 or len(value) <= max_length:
+        return value
+    if max_length <= 3:
+        return value[:max_length]
+    return value[: max_length - 3].rstrip() + "..."
+
+
+def _measure_text_width(text: str, font_scale: float, text_thickness: int) -> int:
+    text_size, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_thickness)
+    return text_size[0]
+
+
+def _compose_detection_label(class_name: str, suffix_parts: tuple[str, ...]) -> str:
+    parts = [class_name, *suffix_parts]
+    return " ".join(part for part in parts if part).strip()
+
+
+def _fit_detection_label(
+    class_name: str,
+    suffix_parts: tuple[str, ...],
+    *,
+    max_width_px: int,
+    font_scale: float,
+    text_thickness: int,
+) -> tuple[str, bool]:
+    candidate = _compose_detection_label(class_name, suffix_parts)
+    if _measure_text_width(candidate, font_scale, text_thickness) <= max_width_px:
+        return candidate, True
+
+    last_candidate = candidate
+    for class_limit in range(len(class_name) - 1, 0, -1):
+        truncated_class = _truncate_text(class_name, class_limit)
+        candidate = _compose_detection_label(truncated_class, suffix_parts)
+        last_candidate = candidate
+        if _measure_text_width(candidate, font_scale, text_thickness) <= max_width_px:
+            return candidate, True
+    return last_candidate, _measure_text_width(last_candidate, font_scale, text_thickness) <= max_width_px
+
+
+def _format_detection_label(
+    det: EdgeDetection,
+    *,
+    show_track_info: bool,
+    max_width_px: int | None = None,
+    font_scale: float = 0.4,
+    text_thickness: int = 1,
+) -> str:
+    score = det.score if det.score is not None else det.bbox_confidence_score
+    score_value = float(score) if score is not None else 0.0
+    class_name = _truncate_text(det.class_name, 18)
+    score_text = f"{max(0, min(100, int(round(score_value * 100))))}%"
+    track_text = f"#{det.track_id}" if det.track_id is not None else None
+
+    if show_track_info and track_text is not None:
+        suffix_variants: tuple[tuple[str, ...], ...] = ((score_text, track_text), (track_text,), (score_text,), ())
+    else:
+        suffix_variants = ((score_text,), ())
+
+    if max_width_px is None or max_width_px <= 0:
+        return _compose_detection_label(class_name, suffix_variants[0])
+
+    for suffix_parts in suffix_variants:
+        label, fits = _fit_detection_label(
+            class_name,
+            suffix_parts,
+            max_width_px=max_width_px,
+            font_scale=font_scale,
+            text_thickness=text_thickness,
+        )
+        if fits:
+            return label
+
+    # 所有候選都超寬時，回傳最短版本，讓畫面至少保留可辨識的類別名稱。
+    return _fit_detection_label(
+        class_name,
+        suffix_variants[-1],
+        max_width_px=max_width_px,
+        font_scale=font_scale,
+        text_thickness=text_thickness,
+    )[0]
+
+
 def _draw_detection_box_and_label(
     vis_frame: Any,
     bbox: Sequence[int],
@@ -92,6 +176,8 @@ class BaseStreamingEngine(ABC):
         self._target_period = 1.0 / self._target_fps if self._target_fps > 0 else 1.0 / 30.0
         self._last_emitted_identity: tuple[str | None, int | None] | None = None
         self._unique_write_rate = RateMeter()
+        show_track_info = getattr(visual_cfg, "show_track_info", False) if visual_cfg is not None else False
+        self._show_track_info = bool(show_track_info) if isinstance(show_track_info, bool) else False
         self._detection_color: tuple[int, int, int] = (
             getattr(visual_cfg, "detection_color_bgr", (0, 255, 0)) if visual_cfg is not None else (0, 255, 0)
         )
@@ -343,9 +429,13 @@ class BaseStreamingEngine(ABC):
 
         for det in detections:
             bbox = det.bbox
-            score = det.score if det.score is not None else det.bbox_confidence_score
-            score_value = float(score) if score is not None else 0.0
-            label = f"{det.class_name}:{score_value:.2f}"
+            label = _format_detection_label(
+                det,
+                show_track_info=self._show_track_info,
+                max_width_px=min(frame_w - 8, max(96, int(frame_w * 0.25))),
+                font_scale=font_scale,
+                text_thickness=text_thickness,
+            )
             _draw_detection_box_and_label(
                 vis_frame,
                 bbox,

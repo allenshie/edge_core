@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from abc import abstractmethod
 from pathlib import Path
 from typing import Any, List, Protocol
 
@@ -9,6 +8,7 @@ from edge.schema import EdgeDetection
 
 from .base import BaseEdgeModel
 from .config import load_yaml, resolve_path
+from .utils import compute_bbox_from_polygon
 
 
 class PathResolver(Protocol):
@@ -75,9 +75,38 @@ class BaseYamlMockModel(BaseEdgeModel):
         _ = (frame, metadata)
         return self._records
 
-    @abstractmethod
     def _postprocess_records(self, records: List[dict], frame: Any, metadata: Any) -> List[EdgeDetection]:
-        """Convert YAML records into edge detections."""
+        _ = (frame, metadata)
+        detections: List[EdgeDetection] = []
+        for record in records:
+            polygon = record.get("polygon")
+            if not polygon:
+                continue
+            points = [[int(p[0]), int(p[1])] for p in polygon]
+            bbox = compute_bbox_from_polygon(points)
+            if not bbox:
+                continue
+            x1, y1, x2, y2 = [int(round(v)) for v in bbox]
+            track_id = record.get("track_id")
+            if track_id is None:
+                track_id = record.get("id")
+            try:
+                track_id = int(track_id) if track_id is not None else None
+            except Exception:
+                track_id = None
+            class_name = str(record.get("class_name") or record.get("label") or "unknown")
+            detections.append(
+                EdgeDetection(
+                    track_id=track_id,
+                    class_name=class_name,
+                    bbox=[int(x1), int(y1), int(x2), int(y2)],
+                    bbox_confidence_score=1.0,
+                    score=1.0,
+                    polygon=points,
+                    polygon_confidence_score=1.0,
+                )
+            )
+        return detections
 
     def run(self, frame: Any, metadata: Any) -> List[EdgeDetection]:
         records = self._get_records(frame, metadata)

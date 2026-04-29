@@ -94,6 +94,7 @@ EDGE_EVENTS_CHANNEL=/edge/events
   - `edge.pipeline.tasks.inference.models:BaseYamlMockModel`
   - `<site_pkg>.models.iron_gate_state:IronGateStateModel`
   - `<site_pkg>.models.cargo_pose:CargoPoseModel`
+- 若 `model_class` 使用 `edge.pipeline.tasks.inference.models:BaseYamlMockModel`，`schedule.json` 需明確提供 `env_var` 與 `default_config_path`
 - `EdgeDetection` 欄位定義請見 `edge/docs/DETECTIONS.md`
 
 ### 5) edge_mode 切換

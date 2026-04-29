@@ -13,7 +13,6 @@ from smart_workflow import TaskContext, TaskError
 from edge.pipeline.tasks.inference.engine import BaseInferenceEngine, InferenceOutcome
 from edge.pipeline.tasks.inference.device import normalize_device
 from edge.pipeline.tasks.inference.models import BaseYamlMockModel
-from edge.pipeline.tasks.inference.models.utils import compute_bbox_from_polygon
 from edge.schema import EdgeDetection
 
 from .activity import (
@@ -206,7 +205,12 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
             "device": device,
         }
         if model_cls is BaseYamlMockModel:
-            model_cls = self._build_yaml_mock_model(entry)
+            env_var = str(entry.get("env_var", "")).strip()
+            default_config_path = str(entry.get("default_config_path", "")).strip()
+            if not env_var or not default_config_path:
+                raise TaskError("BaseYamlMockModel 需要在 schedule entry 明確提供 env_var 與 default_config_path")
+            kwargs["env_var"] = env_var
+            kwargs["default_config_path"] = default_config_path
         try:
             return model_cls(**kwargs)
         except TypeError as exc:
@@ -214,65 +218,6 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
                 kwargs.pop("device", None)
                 return model_cls(**kwargs)
             raise TaskError(f"載入模型失敗（{class_path}）：{exc}") from exc
-
-    def _build_yaml_mock_model(self, entry: Dict[str, Any]):
-        name = str(entry.get("name", "")).strip()
-        defaults: Dict[str, tuple[str, str]] = {
-            "sidewalk_seg": ("EDGE_SIDEWALKS_CONFIG", "configs/sidewalks.yaml"),
-        }
-        if name not in defaults:
-            raise TaskError(f"BaseYamlMockModel 目前未提供預設設定：{name}")
-        env_var, default_config_path = defaults[name]
-        class _ScheduledYamlMockModel(BaseYamlMockModel):
-            def __init__(
-                self,
-                name: str,
-                weights_path: str | None = None,
-                label: str | None = None,
-                device: str | None = None,
-            ) -> None:
-                super().__init__(
-                    name=name,
-                    weights_path=weights_path,
-                    label=label,
-                    device=device,
-                    env_var=entry.get("env_var", env_var),
-                    default_config_path=entry.get("default_config_path", default_config_path),
-                )
-
-            def _postprocess_records(self, records: List[dict], frame: Any, metadata: dict[str, Any] | None) -> List[EdgeDetection]:
-                _ = (frame, metadata)
-                detections: List[EdgeDetection] = []
-                for idx, record in enumerate(records):
-                    polygon = record.get("polygon")
-                    if not polygon:
-                        continue
-                    points = [[int(p[0]), int(p[1])] for p in polygon]
-                    bbox = compute_bbox_from_polygon(points)
-                    if not bbox:
-                        continue
-                    x1, y1, x2, y2 = [int(round(v)) for v in bbox]
-                    track_id = record.get("track_id")
-                    if track_id is None:
-                        track_id = idx
-                    try:
-                        track_id = int(track_id)
-                    except Exception:
-                        track_id = idx
-                    detections.append(
-                        EdgeDetection(
-                            track_id=track_id,
-                            class_name=record.get("class_name", "sidewalk"),
-                            bbox=[int(x1), int(y1), int(x2), int(y2)],
-                            bbox_confidence_score=1.0,
-                            score=1.0,
-                            polygon=points,
-                            polygon_confidence_score=1.0,
-                        )
-                    )
-                return detections
-
-        return _ScheduledYamlMockModel
 
     def _resolve_weights(self, entry: Dict[str, Any]) -> str | None:
         if entry.get("weights_path"):

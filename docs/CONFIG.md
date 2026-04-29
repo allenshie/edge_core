@@ -58,6 +58,7 @@ EDGE_EVENTS_CHANNEL=/edge/events
 | `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康摘要輸出間隔。|
 | `EDGE_HEALTH_STALE_THRESHOLD_SEC` | `5` | 健康摘要判定 stale / degraded 的時間門檻。|
 | `EDGE_VISUAL_ENABLED` | *(沿用 `EDGE_MODEL_VISUALIZE` 預設)* | 控制是否執行可視化輸出（write/show）。|
+| `EDGE_VISUAL_SHOW_TRACK_INFO` | `0` | 控制 label 是否附加 `track_id`。|
 | `EDGE_VISUAL_MODE` | `write` | `write` 輸出檔案；`show` 使用 `cv2.imshow`。|
 | `EDGE_VISUAL_WINDOW` | `edge-preview` | `show` 模式下的視窗名稱。|
 | `EDGE_VISUAL_WIDTH` / `EDGE_VISUAL_HEIGHT` | `1280` / `720` | `show` 模式下的視窗尺寸（px）。|

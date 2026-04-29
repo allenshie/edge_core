@@ -129,6 +129,7 @@
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
 | `EDGE_VISUAL_ENABLED` | *(沿用 `EDGE_MODEL_VISUALIZE`)* | 是否啟用視覺化。 |
+| `EDGE_VISUAL_SHOW_TRACK_INFO` | `0` | 是否在 label 顯示 `track_id`。僅在 `track_id` 不為 `None` 時附加。 |
 | `EDGE_VISUAL_MODE` | `write` | `write` 或 `show`。 |
 | `EDGE_VISUAL_WINDOW` | `edge-preview` | `show` 視窗名稱。 |
 | `EDGE_VISUAL_WIDTH` / `EDGE_VISUAL_HEIGHT` | `1280` / `720` | `show` 視窗尺寸。 |

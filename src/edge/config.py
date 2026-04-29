@@ -92,6 +92,9 @@ class VisualizationConfig:
             _to_bool(os.environ.get("EDGE_MODEL_VISUALIZE"), True),
         )
     )
+    show_track_info: bool = field(
+        default_factory=lambda: _to_bool(os.environ.get("EDGE_VISUAL_SHOW_TRACK_INFO"), False)
+    )
     mode: str = field(default_factory=lambda: os.environ.get("EDGE_VISUAL_MODE", "write").strip().lower())
     window_name: str = field(default_factory=lambda: os.environ.get("EDGE_VISUAL_WINDOW", "edge-preview"))
     window_width: int = field(default_factory=lambda: int(os.environ.get("EDGE_VISUAL_WIDTH", "1280")))

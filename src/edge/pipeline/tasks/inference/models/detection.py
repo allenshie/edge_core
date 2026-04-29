@@ -57,10 +57,13 @@ class YoloDetectionModel(BaseYoloModel):
             xyxy = [int(pt) for pt in boxes.xyxy[idx].tolist()]
             conf = float(boxes.conf[idx]) if boxes.conf is not None else 0.0
             cls_id = int(boxes.cls[idx]) if boxes.cls is not None else -1
+            track_id: int | None = None
             if self._infer_mode == "track" and boxes.id is not None and self._should_keep_track_id(cls_id):
-                track_id = int(boxes.id[idx])
-            else:
-                track_id = idx
+                try:
+                    raw_track_id = boxes.id[idx]
+                    track_id = int(raw_track_id) if raw_track_id is not None else None
+                except Exception:
+                    track_id = None
             if isinstance(names, dict):
                 class_name = names.get(cls_id, str(cls_id))
             else:
