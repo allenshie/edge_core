@@ -55,6 +55,7 @@ EDGE_EVENTS_CHANNEL=/edge/events
 | `EDGE_EVENTS_BACKEND` / `EDGE_EVENTS_CHANNEL` | `http` / `/edge/events` | edge 事件 publish route 設定。|
 | `EDGE_PUBLISH_ENABLED` | `1` | 是否啟用結果發布至外部整合端。|
 | `EDGE_STREAMING_FPS` | *(不設定)* | 串流輸出 FPS，與 ingestion 節奏分離。|
+| `EDGE_STREAMING_OUT_WIDTH` / `EDGE_STREAMING_OUT_HEIGHT` | `1280` / `720` | 串流輸出前縮放尺寸，兩者必須同時設定才會生效。|
 | `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康摘要輸出間隔。|
 | `EDGE_HEALTH_STALE_THRESHOLD_SEC` | `5` | 健康摘要判定 stale / degraded 的時間門檻。|
 | `EDGE_VISUAL_ENABLED` | *(沿用 `EDGE_MODEL_VISUALIZE` 預設)* | 控制是否執行可視化輸出（write/show）。|

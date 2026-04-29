@@ -64,11 +64,13 @@ class DefaultStreamingEngine(BaseStreamingEngine):
                 fps=self._target_fps,
             )
         )
+        output_size = f"{self._output_size[0]}x{self._output_size[1]}" if self._output_size is not None else "original"
         LOGGER.info(
-            "streaming engine initialized: enabled=%s strategy=%s target_fps=%.2f idle_timeout=%.2fs restart_backoff=%.2fs url=%s",
+            "streaming engine initialized: enabled=%s strategy=%s target_fps=%.2f output_size=%s idle_timeout=%.2fs restart_backoff=%.2fs url=%s",
             self._enabled,
             self._strategy,
             self._target_fps,
+            output_size,
             self._idle_timeout_seconds,
             self._restart_backoff_seconds,
             self._url or "<empty>",
@@ -170,4 +172,4 @@ class DefaultStreamingEngine(BaseStreamingEngine):
 
         vis_frame = frame.copy()
         self._draw_detections(vis_frame, packet.detections)
-        return vis_frame
+        return self._resize_output_frame(vis_frame)

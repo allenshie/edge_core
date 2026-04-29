@@ -50,6 +50,14 @@ def _parse_bgr_triplet(value: str | None, default: tuple[int, int, int]) -> tupl
     return (b, g, r)
 
 
+def _parse_optional_positive_int(value: str | None) -> int | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    parsed = int(raw)
+    return parsed if parsed > 0 else None
+
+
 @dataclass
 class CameraConfig:
     camera_id: str = field(default_factory=lambda: os.environ.get("EDGE_CAMERA_ID", "cam01"))
@@ -221,6 +229,12 @@ class StreamingConfig:
     url: str = field(default_factory=lambda: os.environ.get("EDGE_STREAMING_URL", "").strip())
     fps: float | None = field(
         default_factory=lambda: float(os.environ["EDGE_STREAMING_FPS"]) if os.environ.get("EDGE_STREAMING_FPS") else None
+    )
+    output_width: int | None = field(
+        default_factory=lambda: _parse_optional_positive_int(os.environ.get("EDGE_STREAMING_OUT_WIDTH"))
+    )
+    output_height: int | None = field(
+        default_factory=lambda: _parse_optional_positive_int(os.environ.get("EDGE_STREAMING_OUT_HEIGHT"))
     )
     queue_size: int = field(default_factory=lambda: int(os.environ.get("EDGE_STREAMING_QUEUE_SIZE", "30")))
     idle_timeout_seconds: float = field(

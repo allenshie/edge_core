@@ -53,11 +53,11 @@
 | `EDGE_STREAMING_URL` | *(空字串)* | 推流目標 URL（通常 RTMP）。 |
 | `EDGE_STREAMING_STRATEGY` | `cpu` | `cpu` (`libx264`) 或 `gpu` (`h264_nvenc`)。 |
 | `EDGE_STREAMING_FPS` | *(未設定)* | 推流輸出 FPS，與取流節奏獨立。 |
+| `EDGE_STREAMING_OUT_WIDTH` | `1280` | 串流輸出縮放寬；需與 `EDGE_STREAMING_OUT_HEIGHT` 同時設定才會生效。 |
+| `EDGE_STREAMING_OUT_HEIGHT` | `720` | 串流輸出縮放高；在 `_draw_detections()` 後先縮放，再送入 ffmpeg 編碼。 |
 | `EDGE_STREAMING_QUEUE_SIZE` | `30` | streaming queue 長度。 |
 | `EDGE_STREAMING_IDLE_TIMEOUT` | `3` | 無幀超時秒數；超時會停流並關 ffmpeg。 |
 | `EDGE_STREAMING_RESTART_BACKOFF` | `1` | ffmpeg 重啟最小間隔秒數。 |
-| `EDGE_STREAMING_OUT_WIDTH` | `1280` | 輸出縮放寬（在 `ShmStreamingEngine` 中用於 Pipe 傳輸前的壓縮）。 |
-| `EDGE_STREAMING_OUT_HEIGHT` | `720` | 輸出縮放高（在 `ShmStreamingEngine` 中用於 Pipe 傳輸前的壓縮）。 |
 | `EDGE_STREAMING_SHM_MB` | `30` | `ShmStreamingEngine` 專用：共享記憶體大小（MB）。4K 建議 30，1080p 建議 10。 |
 
 

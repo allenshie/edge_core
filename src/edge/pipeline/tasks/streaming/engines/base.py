@@ -164,6 +164,7 @@ class BaseStreamingEngine(ABC):
 
     def __init__(self, context: TaskContext | None = None) -> None:
         self._context = context
+        streaming_cfg = getattr(context.config, "streaming", None) if context else None
         visual_cfg = getattr(context.config, "visualization", None) if context else None
         self._stop_event = threading.Event()
         self._stream_active = False
@@ -174,6 +175,7 @@ class BaseStreamingEngine(ABC):
         self._next_output_deadline = 0.0
         self._target_fps = self._resolve_fps(context)
         self._target_period = 1.0 / self._target_fps if self._target_fps > 0 else 1.0 / 30.0
+        self._output_size = self._resolve_output_size(streaming_cfg)
         self._last_emitted_identity: tuple[str | None, int | None] | None = None
         self._unique_write_rate = RateMeter()
         show_track_info = getattr(visual_cfg, "show_track_info", False) if visual_cfg is not None else False
@@ -347,6 +349,42 @@ class BaseStreamingEngine(ABC):
     def _prepare_output_frame(self, packet: StreamPacket) -> Any | None:
         """Build the frame to be encoded for the current packet."""
         raise NotImplementedError
+
+    @staticmethod
+    def _resolve_output_size(streaming_cfg: Any | None) -> tuple[int, int] | None:
+        if streaming_cfg is None:
+            return None
+        output_width = getattr(streaming_cfg, "output_width", None)
+        output_height = getattr(streaming_cfg, "output_height", None)
+        if output_width is None and output_height is None:
+            return None
+        if output_width is None or output_height is None:
+            LOGGER.warning(
+                "streaming output resize disabled: both EDGE_STREAMING_OUT_WIDTH and EDGE_STREAMING_OUT_HEIGHT must be set (width=%s height=%s)",
+                output_width,
+                output_height,
+            )
+            return None
+        return int(output_width), int(output_height)
+
+    def _resize_output_frame(self, vis_frame: Any | None) -> Any | None:
+        if vis_frame is None or self._output_size is None:
+            return vis_frame
+
+        target_width, target_height = self._output_size
+        try:
+            frame_height, frame_width = vis_frame.shape[:2]
+        except Exception:
+            return vis_frame
+
+        if frame_width == target_width and frame_height == target_height:
+            return vis_frame
+
+        if target_width <= frame_width and target_height <= frame_height:
+            interpolation = cv2.INTER_AREA
+        else:
+            interpolation = cv2.INTER_LINEAR
+        return cv2.resize(vis_frame, (target_width, target_height), interpolation=interpolation)
 
     def _write_output_frame(self, vis_frame: Any, phase: str, frame_meta: FrameMeta | None = None) -> None:
         if self._stop_event.is_set():

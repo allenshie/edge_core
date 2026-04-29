@@ -52,7 +52,8 @@ class ShmStreamingEngine(DefaultStreamingEngine):
         self._writer_views: list[np.ndarray | None] = [None, None]
         self._shm_readers: dict[str, SharedMemory] = {}
 
-        LOGGER.info("[FAST_SHM] Optimized dual buffering initialized. target_fps=%.2f", self._target_fps)
+        output_size = f"{self._output_size[0]}x{self._output_size[1]}" if self._output_size is not None else "original"
+        LOGGER.info("[FAST_SHM] Optimized dual buffering initialized. target_fps=%.2f output_size=%s", self._target_fps, output_size)
         self._start_output_loop()
 
     def push(
@@ -106,7 +107,7 @@ class ShmStreamingEngine(DefaultStreamingEngine):
             # 輸出時一定先 copy，避免重複幀輸出時把 SHM source view 畫壞。
             vis_frame = frame_view.copy()
             self._draw_detections(vis_frame, packet.detections)
-            return vis_frame
+            return self._resize_output_frame(vis_frame)
 
         except Exception as exc:  # noqa: BLE001
             self._last_error = str(exc)
