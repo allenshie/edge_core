@@ -204,13 +204,16 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
             "label": entry.get("label"),
             "device": device,
         }
-        if model_cls is BaseYamlMockModel:
+        if isinstance(model_cls, type) and issubclass(model_cls, BaseYamlMockModel):
             env_var = str(entry.get("env_var", "")).strip()
             default_config_path = str(entry.get("default_config_path", "")).strip()
-            if not env_var or not default_config_path:
-                raise TaskError("BaseYamlMockModel 需要在 schedule entry 明確提供 env_var 與 default_config_path")
-            kwargs["env_var"] = env_var
-            kwargs["default_config_path"] = default_config_path
+            # schedule 若明確提供 default_config_path，就讓模型直接讀該檔案；
+            # env_var 留空時，BaseYamlMockModel 會自然退回到 default_config_path。
+            if default_config_path:
+                kwargs["default_config_path"] = default_config_path
+                kwargs["env_var"] = env_var
+            elif env_var:
+                kwargs["env_var"] = env_var
         try:
             return model_cls(**kwargs)
         except TypeError as exc:
