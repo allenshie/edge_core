@@ -76,7 +76,7 @@ def _format_detection_label(
     track_text = f"#{det.track_id}" if det.track_id is not None else None
 
     if show_track_info and track_text is not None:
-        suffix_variants: tuple[tuple[str, ...], ...] = ((score_text, track_text), (track_text,), (score_text,), ())
+        suffix_variants: tuple[tuple[str, ...], ...] = ((track_text, score_text), (track_text,), (score_text,), ())
     else:
         suffix_variants = ((score_text,), ())
 
