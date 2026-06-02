@@ -50,6 +50,44 @@ uv pip install -e "edge_core[vision]"
 
 詳見：`docs/ENV.md`
 
+## 串流輸出（MediaMTX）
+
+`StreamingTask` 會把可視化結果推送到串流伺服器。若要在本機或測試機啟用這個輸出流程，建議先部署 MediaMTX，再設定串流相關環境變數。
+
+本機端目前僅支援 CPU 編碼，請設定 `EDGE_STREAMING_STRATEGY=cpu`。  
+若要使用 GPU 編碼（NVENC），請改用容器化 GPU 環境。
+
+1. 啟動 MediaMTX
+```bash
+docker run --rm -it \
+  -p 8554:8554 \
+  -p 1935:1935 \
+  -p 8888:8888 \
+  bluenviron/mediamtx:latest
+```
+
+2. 在 `.env` 或 site repo 的對應環境檔設定
+```env
+EDGE_STREAMING_ENABLED=true
+EDGE_STREAMING_URL=rtmp://127.0.0.1:1935/live/cam01
+EDGE_STREAMING_STRATEGY=cpu
+# 這兩個值會在輸出前縮放影像；兩者需同時設定才會生效
+EDGE_STREAMING_OUT_WIDTH=1280
+EDGE_STREAMING_OUT_HEIGHT=720
+EDGE_STREAMING_IDLE_TIMEOUT=3
+EDGE_STREAMING_RESTART_BACKOFF=1
+```
+
+3. 播放驗證
+```bash
+ffplay -rtsp_transport tcp -fflags nobuffer -flags low_delay -framedrop -probesize 32 -analyzeduration 0 rtsp://127.0.0.1:8554/live/cam01
+```
+
+完整的串流環境變數與行為說明請參考：
+
+- [設定與環境變數](docs/ENV.md)
+- [串流測試（MediaMTX）](docs/ENV.md#串流測試mediamtx)
+
 ## 健康檢查（可選）
 
 可透過環境變數啟用健康檢查 HTTP 端點：
