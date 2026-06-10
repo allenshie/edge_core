@@ -9,6 +9,7 @@ from edge.messaging import (
     MESSAGING_CLIENT_RESOURCE,
     MessagingClientProvider,
     PHASE_UPDATES_ROUTE,
+    resolve_matching_result_route,
     resolve_events_route,
     resolve_phase_updates_route,
 )
@@ -21,10 +22,12 @@ def init_messaging_client(context, logger):
 
     events_route = resolve_events_route(config)
     phase_route = resolve_phase_updates_route(config)
+    matching_route = resolve_matching_result_route(config)
     logger.info(
-        "messaging client ready (edge_events=%s, phase_updates=%s)",
+        "messaging client ready (edge_events=%s, phase_updates=%s, matching_result=%s)",
         events_route[0] if events_route else "none",
         phase_route[0] if phase_route else "none",
+        matching_route[0] if matching_route else "none",
     )
     return messaging
 

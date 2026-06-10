@@ -182,6 +182,19 @@ class EdgeEventMessagingConfig:
 
 
 @dataclass
+class MatchingResultConfig:
+    enabled: bool = field(default_factory=lambda: _to_bool(os.environ.get("EDGE_MATCHING_RESULT_ENABLED"), False))
+    backend: str = field(
+        default_factory=lambda: _normalize_backend(os.environ.get("EDGE_MATCHING_RESULT_BACKEND"), "mqtt")
+    )
+    channel: str = field(default_factory=lambda: os.environ.get("EDGE_MATCHING_RESULT_CHANNEL", ""))
+
+    def __post_init__(self) -> None:
+        default_channel = "/integration/matching" if self.backend == "http" else "integration/matching"
+        self.channel = _normalize_channel(self.backend, self.channel, default_channel)
+
+
+@dataclass
 class FileSourceConfig:
     path: str | None = field(default_factory=lambda: os.environ.get("EDGE_FILE_PATH"))
     loop: bool = field(default_factory=lambda: _to_bool(os.environ.get("EDGE_FILE_LOOP"), True))
@@ -258,8 +271,10 @@ class EdgeConfig:
     http_messaging: HttpMessagingConfig = field(default_factory=HttpMessagingConfig)
     phase_messaging: PhaseMessagingConfig = field(default_factory=PhaseMessagingConfig)
     edge_events: EdgeEventMessagingConfig = field(default_factory=EdgeEventMessagingConfig)
+    matching_result: MatchingResultConfig = field(default_factory=MatchingResultConfig)
     inference_engine_class: str | None = field(default_factory=lambda: os.environ.get("INFERENCE_ENGINE_CLASS"))
     publish_engine_class: str | None = field(default_factory=lambda: os.environ.get("PUBLISH_ENGINE_CLASS"))
+    matching_result_engine_class: str | None = field(default_factory=lambda: os.environ.get("MATCHING_RESULT_ENGINE_CLASS"))
     streaming_engine_class: str | None = field(default_factory=lambda: os.environ.get("STREAMING_ENGINE_CLASS"))
     mode_server_enabled: bool = field(
         default_factory=lambda: _to_bool(os.environ.get("EDGE_MODE_SERVER_ENABLED"), False)

@@ -112,8 +112,17 @@
 | `EDGE_PHASE_CHANNEL` | `integration/phase` | phase 更新 route channel。若 backend=`http` 會自動正規化成 `/...`。 |
 | `EDGE_EVENTS_BACKEND` | `http` | edge 推理事件 route backend；可設 `http` / `mqtt` / `none`。 |
 | `EDGE_EVENTS_CHANNEL` | `/edge/events`（backend=`http`）或 `edge/events`（backend=`mqtt`） | edge 推理事件 route channel。 |
+| `EDGE_MATCHING_RESULT_ENABLED` | `0` | 是否接收 matching broadcast；啟用後，`StreamingTask` 會改用研究模式 label（`g:x, l:y`）。 |
+| `EDGE_MATCHING_RESULT_BACKEND` | `mqtt` | matching result route backend；可設 `mqtt` / `http` / `none`。 |
+| `EDGE_MATCHING_RESULT_CHANNEL` | `integration/matching`（backend=`mqtt`）或 `/integration/matching`（backend=`http`） | matching result route channel。 |
 | `EDGE_HTTP_LISTEN_HOST` | `0.0.0.0` | 當 route backend=`http` 且需要接收 webhook subscribe 時，本地 HTTP listen host。 |
 | `EDGE_HTTP_LISTEN_PORT` | `9000` | 當 route backend=`http` 且需要接收 webhook subscribe 時，本地 HTTP listen port。 |
+
+## Matching Result Receiver
+
+| 變數 | 預設 | 說明 |
+| --- | --- | --- |
+| `MATCHING_RESULT_ENGINE_CLASS` | *(未設定)* | 自訂 matching result receiver engine class path。 |
 
 ## 發布與整合
 

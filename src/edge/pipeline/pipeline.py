@@ -12,6 +12,7 @@ from edge.runtime.pipeline_summary import build_pipeline_summary
 from edge.runtime.shutdown_summary import append_shutdown_records, cleanup_record, normalize_cleanup_records
 from edge.pipeline.tasks.ingestion import IngestionTask
 from edge.pipeline.tasks.inference import InferenceTask
+from edge.pipeline.tasks.matching_result import MatchingResultTask
 from edge.pipeline.tasks.publish import PublishResultTask
 from edge.pipeline.tasks.streaming import StreamingTask
 
@@ -101,6 +102,7 @@ class InitPipelineTask(BaseTask):
         factories: List[Callable[[TaskContext], BaseTask]] = [
             IngestionTask,
             InferenceTask,
+            MatchingResultTask,
             StreamingTask,
             PublishResultTask,
         ]

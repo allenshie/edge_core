@@ -33,8 +33,9 @@ _STAGE_ORDER = {
     "pipeline": -1,
     "ingest": 0,
     "infer": 1,
-    "stream": 2,
-    "publish": 3,
+    "matching": 2,
+    "stream": 3,
+    "publish": 4,
 }
 
 

@@ -5,6 +5,7 @@ import logging
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from typing import Any, Sequence
 
 import cv2
@@ -13,6 +14,7 @@ from smart_workflow import TaskContext
 from edge.runtime.rate_meter import RateMeter
 from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection, FrameMeta
+from edge.pipeline.tasks.matching_result.constants import MATCHING_RESULT_LOCAL_TO_GLOBAL_RESOURCE
 
 from .policy import STATE_DEGRADED, STATE_INACTIVE, STATE_STREAMING
 from ..types import StreamPacket, StreamingStatus
@@ -65,10 +67,22 @@ def _format_detection_label(
     det: EdgeDetection,
     *,
     show_track_info: bool,
+    matching_label: str | None = None,
     max_width_px: int | None = None,
     font_scale: float = 0.4,
     text_thickness: int = 1,
 ) -> str:
+    if matching_label is not None:
+        label = _truncate_text(matching_label, 24)
+        if max_width_px is None or max_width_px <= 0:
+            return label
+        return _fit_plain_label(
+            label,
+            max_width_px=max_width_px,
+            font_scale=font_scale,
+            text_thickness=text_thickness,
+        )
+
     score = det.score if det.score is not None else det.bbox_confidence_score
     score_value = float(score) if score is not None else 0.0
     class_name = _truncate_text(det.class_name, 18)
@@ -102,6 +116,25 @@ def _format_detection_label(
         font_scale=font_scale,
         text_thickness=text_thickness,
     )[0]
+
+
+def _fit_plain_label(
+    label: str,
+    *,
+    max_width_px: int,
+    font_scale: float,
+    text_thickness: int,
+) -> str:
+    if _measure_text_width(label, font_scale, text_thickness) <= max_width_px:
+        return label
+
+    last_candidate = label
+    for label_limit in range(len(label) - 1, 0, -1):
+        candidate = _truncate_text(label, label_limit)
+        last_candidate = candidate
+        if _measure_text_width(candidate, font_scale, text_thickness) <= max_width_px:
+            return candidate
+    return last_candidate
 
 
 def _draw_detection_box_and_label(
@@ -180,6 +213,8 @@ class BaseStreamingEngine(ABC):
         self._unique_write_rate = RateMeter()
         show_track_info = getattr(visual_cfg, "show_track_info", False) if visual_cfg is not None else False
         self._show_track_info = bool(show_track_info) if isinstance(show_track_info, bool) else False
+        matching_cfg = getattr(context.config, "matching_result", None) if context else None
+        self._matching_result_enabled = bool(getattr(matching_cfg, "enabled", False)) if matching_cfg is not None else False
         self._detection_color: tuple[int, int, int] = (
             getattr(visual_cfg, "detection_color_bgr", (0, 255, 0)) if visual_cfg is not None else (0, 255, 0)
         )
@@ -458,6 +493,19 @@ class BaseStreamingEngine(ABC):
         self._last_emitted_identity = identity
         return True
 
+    def _resolve_matching_overlay_label(self, det: EdgeDetection) -> str | None:
+        if not self._matching_result_enabled:
+            return None
+        local_id = det.track_id
+        local_text = f"l:{local_id}" if local_id is not None else "l:-"
+        global_id = None
+        if self._context is not None and local_id is not None:
+            match_table = self._context.get_resource(MATCHING_RESULT_LOCAL_TO_GLOBAL_RESOURCE)
+            if isinstance(match_table, Mapping):
+                global_id = match_table.get(local_id)
+        global_text = f"g:{global_id}" if global_id is not None else "g:-"
+        return f"{global_text}, {local_text}"
+
     def _draw_detections(self, vis_frame: Any, detections: Sequence[EdgeDetection]) -> None:
         frame_h, frame_w = vis_frame.shape[:2]
         # 依 frame 尺寸調整框線粗細與字體，避免不同解析度下可讀性落差太大。
@@ -467,9 +515,11 @@ class BaseStreamingEngine(ABC):
 
         for det in detections:
             bbox = det.bbox
+            matching_label = self._resolve_matching_overlay_label(det)
             label = _format_detection_label(
                 det,
                 show_track_info=self._show_track_info,
+                matching_label=matching_label,
                 max_width_px=min(frame_w - 8, max(96, int(frame_w * 0.25))),
                 font_scale=font_scale,
                 text_thickness=text_thickness,

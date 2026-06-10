@@ -8,6 +8,7 @@ from edge.config import EdgeConfig
 MESSAGING_CLIENT_RESOURCE = "messaging_client"
 EDGE_EVENTS_ROUTE = "edge_events"
 PHASE_UPDATES_ROUTE = "phase_updates"
+MATCHING_BROADCAST_ROUTE = "matching_broadcast"
 
 
 class MessagingClientProvider:
@@ -47,6 +48,10 @@ class MessagingClientProvider:
         if phase_route is not None:
             routes[PHASE_UPDATES_ROUTE] = RouteConfig(*phase_route)
 
+        matching_route = resolve_matching_result_route(self._config)
+        if matching_route is not None:
+            routes[MATCHING_BROADCAST_ROUTE] = RouteConfig(*matching_route)
+
         return MessagingClient(MessagingConfig(mqtt=mqtt, http=http, routes=routes))
 
 
@@ -65,6 +70,14 @@ def resolve_phase_updates_route(config: EdgeConfig) -> tuple[str, str] | None:
         return None
     _validate_backend("phase", phase_cfg.backend, {"http", "mqtt", "none"})
     return phase_cfg.backend, phase_cfg.channel
+
+
+def resolve_matching_result_route(config: EdgeConfig) -> tuple[str, str] | None:
+    matching_cfg = config.matching_result
+    if not matching_cfg.enabled or matching_cfg.backend == "none":
+        return None
+    _validate_backend("matching", matching_cfg.backend, {"http", "mqtt", "none"})
+    return matching_cfg.backend, matching_cfg.channel
 
 
 

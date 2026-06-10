@@ -4,7 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone
 import time
-from typing import Any, Dict, List, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any, Dict, List
 
 
 @dataclass(frozen=True)
@@ -211,3 +212,104 @@ class EdgeEvent:
             frame_seq=frame_meta.frame_seq if frame_meta is not None else None,
             capture_ts=frame_meta.capture_ts if frame_meta is not None else None,
         )
+
+
+@dataclass
+class MatchingResultTrack:
+    local_id: int
+    global_id: Any = None
+    class_name: str = "unknown"
+
+    def to_dict(self) -> Dict[str, Any]:
+        payload = {
+            "local_id": self.local_id,
+            "global_id": self.global_id,
+        }
+        if self.class_name:
+            payload["class_name"] = self.class_name
+        return payload
+
+
+@dataclass
+class MatchingResultPayload:
+    schema_version: int = 1
+    message_type: str = "matching_result"
+    generated_at: str = ""
+    camera_matches: Dict[str, List[MatchingResultTrack]] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any] | None) -> "MatchingResultPayload":
+        raw_payload = dict(payload or {})
+        grouped: dict[str, list[MatchingResultTrack]] = {}
+        camera_matches = raw_payload.get("camera_matches") or {}
+        if isinstance(camera_matches, Mapping):
+            for camera_id, tracks in camera_matches.items():
+                camera_key = str(camera_id).strip()
+                if not camera_key:
+                    continue
+                parsed_tracks: list[MatchingResultTrack] = []
+                if isinstance(tracks, Sequence) and not isinstance(tracks, (str, bytes)):
+                    for item in tracks:
+                        if not isinstance(item, Mapping):
+                            continue
+                        local_id = _coerce_matching_local_id(item.get("local_id"))
+                        if local_id is None:
+                            continue
+                        parsed_tracks.append(
+                            MatchingResultTrack(
+                                local_id=local_id,
+                                global_id=item.get("global_id"),
+                                class_name=str(item.get("class_name") or "unknown"),
+                            )
+                        )
+                if parsed_tracks:
+                    parsed_tracks.sort(key=lambda track: track.local_id)
+                    grouped[camera_key] = parsed_tracks
+        return cls(
+            schema_version=_coerce_optional_int(raw_payload.get("schema_version"), default=1),
+            message_type=str(raw_payload.get("message_type") or "matching_result"),
+            generated_at=str(raw_payload.get("generated_at") or _format_timestamp(datetime.now(timezone.utc))),
+            camera_matches=dict(sorted(grouped.items(), key=lambda item: item[0])),
+        )
+
+    def selected_camera_tracks(self, camera_id: str) -> list[MatchingResultTrack]:
+        return list(self.camera_matches.get(camera_id, []))
+
+    def local_to_global_mapping(self, camera_id: str) -> Dict[int, Any]:
+        return {
+            track.local_id: track.global_id
+            for track in self.selected_camera_tracks(camera_id)
+        }
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "message_type": self.message_type,
+            "generated_at": self.generated_at,
+            "camera_matches": {
+                camera_id: [track.to_dict() for track in tracks]
+                for camera_id, tracks in self.camera_matches.items()
+            },
+        }
+
+
+def _coerce_matching_local_id(value: Any) -> int | None:
+    try:
+        local_id = int(value)
+    except (TypeError, ValueError):
+        return None
+    return local_id if local_id >= 0 else None
+
+
+def _coerce_optional_int(value: Any, *, default: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed >= 0 else default
+
+
+def _format_timestamp(value: datetime) -> str:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.isoformat()

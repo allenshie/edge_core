@@ -19,6 +19,9 @@ EDGE_PHASE_BACKEND=mqtt
 EDGE_PHASE_CHANNEL=integration/phase
 EDGE_EVENTS_BACKEND=http
 EDGE_EVENTS_CHANNEL=/edge/events
+EDGE_MATCHING_RESULT_ENABLED=1
+EDGE_MATCHING_RESULT_BACKEND=mqtt
+EDGE_MATCHING_RESULT_CHANNEL=integration/matching
 ```
 
 - `EDGE_PHASE_*` 控制 phase 更新來源。
@@ -53,6 +56,7 @@ EDGE_EVENTS_CHANNEL=/edge/events
 | `EDGE_MODE_DEFAULT` | `working` | 未被整合端更新時的初始 mode。|
 | `EDGE_PHASE_BACKEND` / `EDGE_PHASE_CHANNEL` | `mqtt` / `integration/phase` | phase 更新 route 設定。|
 | `EDGE_EVENTS_BACKEND` / `EDGE_EVENTS_CHANNEL` | `http` / `/edge/events` | edge 事件 publish route 設定。|
+| `EDGE_MATCHING_RESULT_ENABLED` / `EDGE_MATCHING_RESULT_BACKEND` / `EDGE_MATCHING_RESULT_CHANNEL` | `0` / `mqtt` / `integration/matching` | matching result 接收與研究模式 label 設定；啟用後 `StreamingTask` 會以 `g:x, l:y` 呈現。|
 | `EDGE_PUBLISH_ENABLED` | `1` | 是否啟用結果發布至外部整合端。|
 | `EDGE_STREAMING_FPS` | *(不設定)* | 串流輸出 FPS，與 ingestion 節奏分離。|
 | `EDGE_STREAMING_OUT_WIDTH` / `EDGE_STREAMING_OUT_HEIGHT` | `1280` / `720` | 串流輸出前縮放尺寸，兩者必須同時設定才會生效。|
