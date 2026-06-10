@@ -140,6 +140,7 @@ class PublishResultTask(FrameTaskSupportMixin, BaseTask):
                 detections,
                 models_run=models_run,
                 models_reuse=models_reuse,
+                frame_meta=frame_meta,
             )
         finally:
             elapsed_ms = (time.perf_counter() - started_at) * 1000.0

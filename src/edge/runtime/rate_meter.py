@@ -8,8 +8,9 @@ from typing import Any
 
 
 class RateMeter:
-    def __init__(self) -> None:
+    def __init__(self, min_elapsed_seconds: float = 1.0) -> None:
         self._lock = threading.Lock()
+        self._min_elapsed_seconds = max(0.0, float(min_elapsed_seconds))
         self._window_start_monotonic = 0.0
         self._window_event_count = 0
         self._last_event_ts: datetime | None = None
@@ -31,10 +32,10 @@ class RateMeter:
         with self._lock:
             if self._window_start_monotonic <= 0:
                 return None
-            if self._window_event_count <= 1:
+            if self._window_event_count <= 0:
                 return None
             elapsed = current - self._window_start_monotonic
-            if elapsed <= 0:
+            if elapsed <= 0 or elapsed < self._min_elapsed_seconds:
                 return None
             return self._window_event_count / elapsed
 

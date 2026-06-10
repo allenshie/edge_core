@@ -179,10 +179,16 @@ class EdgeEvent:
     timestamp: datetime
     detections: List[EdgeDetection]
     models: List[str] = field(default_factory=list)
+    session_id: str | None = None
+    frame_seq: int | None = None
+    capture_ts: datetime | None = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "camera_id": self.camera_id,
+            "session_id": self.session_id,
+            "frame_seq": self.frame_seq,
+            "capture_ts": self.capture_ts.isoformat() if self.capture_ts is not None else None,
             "timestamp": self.timestamp.isoformat(),
             "detections": [det.to_dict() for det in self.detections],
             "models": list(self.models),
@@ -190,11 +196,18 @@ class EdgeEvent:
 
     @classmethod
     def now(
-        cls, camera_id: str, detections: List[EdgeDetection], models: List[str] | None = None
+        cls,
+        camera_id: str,
+        detections: List[EdgeDetection],
+        models: List[str] | None = None,
+        frame_meta: FrameMeta | None = None,
     ) -> "EdgeEvent":
         return cls(
             camera_id=camera_id,
             timestamp=datetime.now(timezone.utc),
             detections=detections,
             models=models or [],
+            session_id=frame_meta.session_id if frame_meta is not None else None,
+            frame_seq=frame_meta.frame_seq if frame_meta is not None else None,
+            capture_ts=frame_meta.capture_ts if frame_meta is not None else None,
         )

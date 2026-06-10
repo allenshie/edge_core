@@ -13,7 +13,7 @@ from smart_workflow import TaskContext
 
 from edge.messaging import EDGE_EVENTS_ROUTE, MessagingClientProvider
 from edge.runtime.shutdown_summary import cleanup_record
-from edge.schema import EdgeDetection, EdgeEvent
+from edge.schema import EdgeDetection, EdgeEvent, FrameMeta
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ class BasePublishEngine:
         *,
         models_run: Sequence[str] | None = None,
         models_reuse: Sequence[str] | None = None,
+        frame_meta: FrameMeta | None = None,
     ) -> PublishOutcome:
         raise NotImplementedError
 
@@ -76,13 +77,14 @@ class DefaultPublishEngine(BasePublishEngine):
         *,
         models_run: Sequence[str] | None = None,
         models_reuse: Sequence[str] | None = None,
+        frame_meta: FrameMeta | None = None,
     ) -> PublishOutcome:
         camera_id = self._camera_config.camera_id if self._camera_config else "unknown"
         integration = self._integration_config
         if integration is None:
             raise ValueError("DefaultPublishEngine requires integration config")
         models = self._merge_models(models_run, models_reuse)
-        event = EdgeEvent.now(camera_id=camera_id, detections=list(detections), models=models)
+        event = EdgeEvent.now(camera_id=camera_id, detections=list(detections), models=models, frame_meta=frame_meta)
         payload = json.dumps(event.to_dict()).encode("utf-8")
         url = f"{integration.api_base}/edge/events"
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
@@ -110,10 +112,11 @@ class MessagingPublishEngine(BasePublishEngine):
         *,
         models_run: Sequence[str] | None = None,
         models_reuse: Sequence[str] | None = None,
+        frame_meta: FrameMeta | None = None,
     ) -> PublishOutcome:
         camera_id = self._camera_config.camera_id if self._camera_config else "unknown"
         models = self._merge_models(models_run, models_reuse)
-        event = EdgeEvent.now(camera_id=camera_id, detections=list(detections), models=models)
+        event = EdgeEvent.now(camera_id=camera_id, detections=list(detections), models=models, frame_meta=frame_meta)
         payload = event.to_dict()
         ok = self._client.publish(EDGE_EVENTS_ROUTE, payload)
         status = 200 if ok else None
