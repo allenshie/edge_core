@@ -133,15 +133,14 @@
 | `INTEGRATION_API_BASE` | `http://localhost:9000` | 整合端 API base URL。 |
 | `INTEGRATION_API_TIMEOUT` | `5` | API timeout 秒數。 |
 
-## 視覺化
+## 疊圖（OverlayConfig / StreamingTask）
+
+視覺輸出已由 `StreamingTask` 負責，這裡只保留疊圖樣式參數。
+環境變數名稱仍沿用 `EDGE_VISUAL_*`，但語意已縮為 overlay styling。
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
-| `EDGE_VISUAL_ENABLED` | *(沿用 `EDGE_MODEL_VISUALIZE`)* | 是否啟用視覺化。 |
 | `EDGE_VISUAL_SHOW_TRACK_INFO` | `0` | 是否在 label 顯示 `track_id`。僅在 `track_id` 不為 `None` 時附加。 |
-| `EDGE_VISUAL_MODE` | `write` | `write` 或 `show`。 |
-| `EDGE_VISUAL_WINDOW` | `edge-preview` | `show` 視窗名稱。 |
-| `EDGE_VISUAL_WIDTH` / `EDGE_VISUAL_HEIGHT` | `1280` / `720` | `show` 視窗尺寸。 |
 | `EDGE_VISUAL_DETECTION_COLOR` | `0,255,0` | 偵測框與 label 背景色，格式為 `B,G,R`，符合 OpenCV 色彩順序。 |
 
 ## schedule.json 新格式

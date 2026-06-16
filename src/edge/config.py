@@ -71,9 +71,6 @@ class ModelConfig:
     )
     confidence_threshold: float = field(default_factory=lambda: float(os.environ.get("EDGE_CONF_THRESHOLD", "0.5")))
     device: str | None = field(default_factory=lambda: os.environ.get("EDGE_MODEL_DEVICE"))
-    visualize: bool = field(
-        default_factory=lambda: _to_bool(os.environ.get("EDGE_MODEL_VISUALIZE"), True)
-    )
     tracker_config: str | None = field(
         default_factory=lambda: os.environ.get("EDGE_TRACKER_CONFIG", "trackers/bytetrack.yaml")
     )
@@ -93,23 +90,17 @@ class ModelConfig:
 
 
 @dataclass
-class VisualizationConfig:
-    enabled: bool = field(
-        default_factory=lambda: _to_bool(
-            os.environ.get("EDGE_VISUAL_ENABLED"),
-            _to_bool(os.environ.get("EDGE_MODEL_VISUALIZE"), True),
-        )
-    )
+class OverlayConfig:
     show_track_info: bool = field(
         default_factory=lambda: _to_bool(os.environ.get("EDGE_VISUAL_SHOW_TRACK_INFO"), False)
     )
-    mode: str = field(default_factory=lambda: os.environ.get("EDGE_VISUAL_MODE", "write").strip().lower())
-    window_name: str = field(default_factory=lambda: os.environ.get("EDGE_VISUAL_WINDOW", "edge-preview"))
-    window_width: int = field(default_factory=lambda: int(os.environ.get("EDGE_VISUAL_WIDTH", "1280")))
-    window_height: int = field(default_factory=lambda: int(os.environ.get("EDGE_VISUAL_HEIGHT", "720")))
     detection_color_bgr: tuple[int, int, int] = field(
         default_factory=lambda: _parse_bgr_triplet(os.environ.get("EDGE_VISUAL_DETECTION_COLOR"), (0, 255, 0))
     )
+
+
+# Backwards-compatible alias for external code that still imports the old name.
+VisualizationConfig = OverlayConfig
 
 
 @dataclass
@@ -262,7 +253,7 @@ class StreamingConfig:
 class EdgeConfig:
     camera: CameraConfig = field(default_factory=CameraConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
-    visualization: VisualizationConfig = field(default_factory=VisualizationConfig)
+    overlay: OverlayConfig = field(default_factory=OverlayConfig)
     ingestion: IngestionConfig = field(default_factory=IngestionConfig)
     streaming: StreamingConfig = field(default_factory=StreamingConfig)
     publish: PublishConfig = field(default_factory=PublishConfig)
@@ -301,6 +292,14 @@ class EdgeConfig:
     @property
     def rtsp(self) -> RtspConfig:
         return self.ingestion.rtsp
+
+    @property
+    def visualization(self) -> OverlayConfig:
+        return self.overlay
+
+    @visualization.setter
+    def visualization(self, value: OverlayConfig) -> None:
+        self.overlay = value
 
 
 def load_config() -> EdgeConfig:

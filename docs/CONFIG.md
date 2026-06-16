@@ -41,6 +41,7 @@ EDGE_MATCHING_RESULT_CHANNEL=integration/matching
 | `EDGE_CAMERA_ID` | 提供 camera-specific config 選擇。 |
 
 其餘模型層設定建議改放到 `configs/models.yaml`，不要全部塞在 `.env`。
+下列 `EDGE_VISUAL_*` 名稱保留為相容性，對應 `OverlayConfig` 的 streaming overlay 樣式設定。
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
@@ -48,7 +49,6 @@ EDGE_MATCHING_RESULT_CHANNEL=integration/matching
 | `EDGE_MODEL_NAME` | `yolo11n` | 推理模型名稱（用於 log）。|
 | `EDGE_MODEL_PATH` | `yolo11n.pt` | Ultralytics YOLO 權重路徑，請先下載對應 `.pt` 放到可讀位置。|
 | `EDGE_MODEL_DEVICE` | *(自動)* | 指定 `cpu`、`cuda:0` 等裝置，留空由 Ultralytics 自動判斷。|
-| `EDGE_MODEL_VISUALIZE` | `1` | 是否繪製推論結果（會與下列 EDGE_VISUAL_* 一併判斷）。|
 | `EDGE_TRACKER_CONFIG` | *(未設定；預設使用 ByteTrack)* | Ultralytics tracker 設定檔，填 `botsort.yaml`/`bytetrack.yaml` 使用官方 cfg，或改成相對/絕對路徑指向自訂 YAML。|
 | `INFERENCE_ENGINE_CLASS` | *(未設定)* | 指定自訂推理引擎類別（`package.module:Class`），需繼承 `BaseInferenceEngine`。|
 | `PUBLISH_ENGINE_CLASS` | *(未設定)* | 指定 `BasePublishEngine` 子類處理推論輸出。|
@@ -62,11 +62,7 @@ EDGE_MATCHING_RESULT_CHANNEL=integration/matching
 | `EDGE_STREAMING_OUT_WIDTH` / `EDGE_STREAMING_OUT_HEIGHT` | `1280` / `720` | 串流輸出前縮放尺寸，兩者必須同時設定才會生效。|
 | `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康摘要輸出間隔。|
 | `EDGE_HEALTH_STALE_THRESHOLD_SEC` | `5` | 健康摘要判定 stale / degraded 的時間門檻。|
-| `EDGE_VISUAL_ENABLED` | *(沿用 `EDGE_MODEL_VISUALIZE` 預設)* | 控制是否執行可視化輸出（write/show）。|
 | `EDGE_VISUAL_SHOW_TRACK_INFO` | `0` | 控制 label 是否附加 `track_id`。|
-| `EDGE_VISUAL_MODE` | `write` | `write` 輸出檔案；`show` 使用 `cv2.imshow`。|
-| `EDGE_VISUAL_WINDOW` | `edge-preview` | `show` 模式下的視窗名稱。|
-| `EDGE_VISUAL_WIDTH` / `EDGE_VISUAL_HEIGHT` | `1280` / `720` | `show` 模式下的視窗尺寸（px）。|
 | `EDGE_VISUAL_DETECTION_COLOR` | `0,255,0` | 偵測框與 label 背景顏色，格式為 `B,G,R`。 |
 | `EDGE_INGEST_MODE` | `rtsp` | 取流模式：`rtsp`、`file` 或 `camera`。|
 | `EDGE_FILE_PATH` | *(不設定)* | `file` 模式時必填，指向影片路徑。|

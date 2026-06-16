@@ -6,7 +6,6 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any, List
 
-import cv2  # type: ignore[import]
 from ultralytics import YOLO
 
 from smart_workflow import TaskContext, TaskError
@@ -16,7 +15,6 @@ from edge.config import ModelConfig
 
 LOGGER = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parents[4]
-OUTPUT_DIR = PACKAGE_ROOT.parent.parent / "output_frames"
 PROJECT_ROOT = PACKAGE_ROOT.parent
 
 
@@ -65,8 +63,6 @@ class DefaultInferenceEngine(BaseInferenceEngine):
         super().__init__(context)
         self._model = None
         self._model_config = context.config.model if context else None
-        self._visual_config = context.config.visualization if context else None
-        self._show_warning_logged = False
 
     def process(
         self,
@@ -158,37 +154,3 @@ class DefaultInferenceEngine(BaseInferenceEngine):
                 )
             )
         return detections
-
-def render_inference_frame(
-    frame,
-    detections: List[EdgeDetection],
-    base_path: str | None,
-    visual_cfg,
-) -> str | None:
-    vis_frame = frame.copy()
-    for det in detections:
-        bbox = det.bbox or [0, 0, vis_frame.shape[1] // 2, vis_frame.shape[0] // 2]
-        x1, y1, x2, y2 = bbox
-        score = det.score
-        label = f"{det.class_name}:{score:.2f}"
-        cv2.rectangle(vis_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(vis_frame, label, (x1, max(y1 - 5, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
-
-    mode = (visual_cfg.mode or "write").lower()
-    if mode == "show":
-        try:
-            resized = cv2.resize(vis_frame, (visual_cfg.window_width, visual_cfg.window_height))
-            cv2.imshow(visual_cfg.window_name, resized)
-            cv2.waitKey(1)
-        except Exception as exc:
-            LOGGER.warning("無法顯示視覺化視窗：%s", exc)
-        return None
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    if base_path:
-        output_path = Path(base_path).with_name("latest_inference.jpg")
-    else:
-        output_path = OUTPUT_DIR / "latest_inference.jpg"
-    cv2.imwrite(str(output_path), vis_frame)
-    LOGGER.info("推理可視化輸出：%s", output_path)
-    return str(output_path)

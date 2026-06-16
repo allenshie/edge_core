@@ -198,7 +198,9 @@ class BaseStreamingEngine(ABC):
     def __init__(self, context: TaskContext | None = None) -> None:
         self._context = context
         streaming_cfg = getattr(context.config, "streaming", None) if context else None
-        visual_cfg = getattr(context.config, "visualization", None) if context else None
+        overlay_cfg = getattr(context.config, "overlay", None) if context else None
+        if overlay_cfg is None and context is not None:
+            overlay_cfg = getattr(context.config, "visualization", None)
         self._stop_event = threading.Event()
         self._stream_active = False
         self._state = STATE_INACTIVE
@@ -211,12 +213,12 @@ class BaseStreamingEngine(ABC):
         self._output_size = self._resolve_output_size(streaming_cfg)
         self._last_emitted_identity: tuple[str | None, int | None] | None = None
         self._unique_write_rate = RateMeter()
-        show_track_info = getattr(visual_cfg, "show_track_info", False) if visual_cfg is not None else False
+        show_track_info = getattr(overlay_cfg, "show_track_info", False) if overlay_cfg is not None else False
         self._show_track_info = bool(show_track_info) if isinstance(show_track_info, bool) else False
         matching_cfg = getattr(context.config, "matching_result", None) if context else None
         self._matching_result_enabled = bool(getattr(matching_cfg, "enabled", False)) if matching_cfg is not None else False
         self._detection_color: tuple[int, int, int] = (
-            getattr(visual_cfg, "detection_color_bgr", (0, 255, 0)) if visual_cfg is not None else (0, 255, 0)
+            getattr(overlay_cfg, "detection_color_bgr", (0, 255, 0)) if overlay_cfg is not None else (0, 255, 0)
         )
 
     @abstractmethod
