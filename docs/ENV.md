@@ -141,7 +141,18 @@
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
 | `EDGE_VISUAL_SHOW_TRACK_INFO` | `0` | 是否在 label 顯示 `track_id`。僅在 `track_id` 不為 `None` 時附加。 |
+| `EDGE_VISUAL_SHOW_SCORE_INFO` | `0` | 是否在 state label 顯示 `score`。 |
 | `EDGE_VISUAL_DETECTION_COLOR` | `0,255,0` | 偵測框與 label 背景色，格式為 `B,G,R`，符合 OpenCV 色彩順序。 |
+
+## 錄影（StreamingTask）
+
+錄影會沿用 streaming 的最終輸出畫面，因此 `fps` / `image_size` 不另外重複設定。
+
+| 變數 | 預設 | 說明 |
+| --- | --- | --- |
+| `EDGE_STREAMING_RECORD_ENABLED` | `0` | 是否將最終 streaming 畫面另外錄成 mp4。 |
+| `EDGE_STREAMING_RECORD_OUTPUT_DIR` | `./recordings` | 錄影輸出目錄，會自動建立。 |
+| `EDGE_STREAMING_RECORD_FILENAME_TEMPLATE` | `{camera_id}_{phase}_{start_dt:%Y%m%d_%H%M%S}.mp4` | 錄影檔名樣板，可用 `camera_id`、`phase`、`start_dt` 等欄位。 |
 
 ## schedule.json 新格式
 

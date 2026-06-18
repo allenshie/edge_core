@@ -94,6 +94,9 @@ class OverlayConfig:
     show_track_info: bool = field(
         default_factory=lambda: _to_bool(os.environ.get("EDGE_VISUAL_SHOW_TRACK_INFO"), False)
     )
+    show_score_info: bool = field(
+        default_factory=lambda: _to_bool(os.environ.get("EDGE_VISUAL_SHOW_SCORE_INFO"), False)
+    )
     detection_color_bgr: tuple[int, int, int] = field(
         default_factory=lambda: _parse_bgr_triplet(os.environ.get("EDGE_VISUAL_DETECTION_COLOR"), (0, 255, 0))
     )
@@ -246,6 +249,23 @@ class StreamingConfig:
     )
     restart_backoff_seconds: float = field(
         default_factory=lambda: float(os.environ.get("EDGE_STREAMING_RESTART_BACKOFF", "1"))
+    )
+    recording: "RecordingConfig" = field(default_factory=lambda: RecordingConfig())
+
+
+@dataclass
+class RecordingConfig:
+    enabled: bool = field(default_factory=lambda: _to_bool(os.environ.get("EDGE_STREAMING_RECORD_ENABLED"), False))
+    output_dir: str = field(
+        default_factory=lambda: (os.environ.get("EDGE_STREAMING_RECORD_OUTPUT_DIR", "./recordings") or "./recordings").strip()
+        or "./recordings"
+    )
+    filename_template: str = field(
+        default_factory=lambda: os.environ.get(
+            "EDGE_STREAMING_RECORD_FILENAME_TEMPLATE",
+            "{camera_id}_{phase}_{start_dt:%Y%m%d_%H%M%S}.mp4",
+        ).strip()
+        or "{camera_id}_{phase}_{start_dt:%Y%m%d_%H%M%S}.mp4"
     )
 
 

@@ -204,6 +204,24 @@ class FfmpegProcessManager:
         except Exception:
             LOGGER.exception("ffmpeg stop: stdin close failed (pid=%s)", pid)
         try:
+            LOGGER.debug("ffmpeg stop: waiting for graceful exit after stdin close (pid=%s)", pid)
+            process.wait(timeout=2.5)
+            LOGGER.debug(
+                "ffmpeg stop: wait completed (pid=%s returncode=%s elapsed_ms=%.2f)",
+                pid,
+                process.returncode,
+                (time.monotonic() - started_at) * 1000.0,
+            )
+            if process.returncode not in (0, None):
+                self._log_stderr_tail_from_process(process, prefix="ffmpeg exited")
+            LOGGER.info("ffmpeg process terminated")
+            return
+        except subprocess.TimeoutExpired:
+            LOGGER.warning("ffmpeg stop: graceful exit timed out, terminating (pid=%s)", pid)
+        except Exception:
+            LOGGER.exception("ffmpeg stop: wait failed (pid=%s)", pid)
+
+        try:
             LOGGER.debug("ffmpeg stop: sending terminate (pid=%s)", pid)
             process.terminate()
             LOGGER.debug("ffmpeg stop: waiting for exit (pid=%s)", pid)

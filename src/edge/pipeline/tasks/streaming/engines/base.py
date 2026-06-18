@@ -16,180 +16,12 @@ from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection, FrameMeta
 from edge.pipeline.tasks.matching_result.constants import MATCHING_RESULT_LOCAL_TO_GLOBAL_RESOURCE
 
+from .overlay import _draw_detection_box_and_label, _format_detection_label
 from .policy import STATE_DEGRADED, STATE_INACTIVE, STATE_STREAMING
+from ..recording import FfmpegRecordingWriter
 from ..types import StreamPacket, StreamingStatus
 
 LOGGER = logging.getLogger(__name__)
-
-
-def _truncate_text(text: str, max_length: int) -> str:
-    value = str(text).strip() or "unknown"
-    if max_length <= 0 or len(value) <= max_length:
-        return value
-    if max_length <= 3:
-        return value[:max_length]
-    return value[: max_length - 3].rstrip() + "..."
-
-
-def _measure_text_width(text: str, font_scale: float, text_thickness: int) -> int:
-    text_size, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_thickness)
-    return text_size[0]
-
-
-def _compose_detection_label(class_name: str, suffix_parts: tuple[str, ...]) -> str:
-    parts = [class_name, *suffix_parts]
-    return " ".join(part for part in parts if part).strip()
-
-
-def _fit_detection_label(
-    class_name: str,
-    suffix_parts: tuple[str, ...],
-    *,
-    max_width_px: int,
-    font_scale: float,
-    text_thickness: int,
-) -> tuple[str, bool]:
-    candidate = _compose_detection_label(class_name, suffix_parts)
-    if _measure_text_width(candidate, font_scale, text_thickness) <= max_width_px:
-        return candidate, True
-
-    last_candidate = candidate
-    for class_limit in range(len(class_name) - 1, 0, -1):
-        truncated_class = _truncate_text(class_name, class_limit)
-        candidate = _compose_detection_label(truncated_class, suffix_parts)
-        last_candidate = candidate
-        if _measure_text_width(candidate, font_scale, text_thickness) <= max_width_px:
-            return candidate, True
-    return last_candidate, _measure_text_width(last_candidate, font_scale, text_thickness) <= max_width_px
-
-
-def _format_detection_label(
-    det: EdgeDetection,
-    *,
-    show_track_info: bool,
-    matching_label: str | None = None,
-    max_width_px: int | None = None,
-    font_scale: float = 0.4,
-    text_thickness: int = 1,
-) -> str:
-    if matching_label is not None:
-        label = _truncate_text(matching_label, 24)
-        if max_width_px is None or max_width_px <= 0:
-            return label
-        return _fit_plain_label(
-            label,
-            max_width_px=max_width_px,
-            font_scale=font_scale,
-            text_thickness=text_thickness,
-        )
-
-    score = det.score if det.score is not None else det.bbox_confidence_score
-    score_value = float(score) if score is not None else 0.0
-    class_name = _truncate_text(det.class_name, 18)
-    score_text = f"{max(0, min(100, int(round(score_value * 100))))}%"
-    track_text = f"#{det.track_id}" if det.track_id is not None else None
-
-    if show_track_info and track_text is not None:
-        suffix_variants: tuple[tuple[str, ...], ...] = ((track_text, score_text), (track_text,), (score_text,), ())
-    else:
-        suffix_variants = ((score_text,), ())
-
-    if max_width_px is None or max_width_px <= 0:
-        return _compose_detection_label(class_name, suffix_variants[0])
-
-    for suffix_parts in suffix_variants:
-        label, fits = _fit_detection_label(
-            class_name,
-            suffix_parts,
-            max_width_px=max_width_px,
-            font_scale=font_scale,
-            text_thickness=text_thickness,
-        )
-        if fits:
-            return label
-
-    # 所有候選都超寬時，回傳最短版本，讓畫面至少保留可辨識的類別名稱。
-    return _fit_detection_label(
-        class_name,
-        suffix_variants[-1],
-        max_width_px=max_width_px,
-        font_scale=font_scale,
-        text_thickness=text_thickness,
-    )[0]
-
-
-def _fit_plain_label(
-    label: str,
-    *,
-    max_width_px: int,
-    font_scale: float,
-    text_thickness: int,
-) -> str:
-    if _measure_text_width(label, font_scale, text_thickness) <= max_width_px:
-        return label
-
-    last_candidate = label
-    for label_limit in range(len(label) - 1, 0, -1):
-        candidate = _truncate_text(label, label_limit)
-        last_candidate = candidate
-        if _measure_text_width(candidate, font_scale, text_thickness) <= max_width_px:
-            return candidate
-    return last_candidate
-
-
-def _draw_detection_box_and_label(
-    vis_frame: Any,
-    bbox: Sequence[int],
-    label: str,
-    *,
-    color: tuple[int, int, int] = (0, 255, 0),
-    text_color: tuple[int, int, int] = (255, 255, 255),
-    font_scale: float = 0.4,
-    thickness: int = 1,
-    text_thickness: int = 1,
-) -> None:
-    frame_h, frame_w = vis_frame.shape[:2]
-    if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
-        return
-
-    try:
-        x1, y1, x2, y2 = [int(v) for v in bbox]
-    except (TypeError, ValueError):
-        return
-
-    font_face = cv2.FONT_HERSHEY_SIMPLEX
-    label_padding_x = max(4, thickness * 2)
-    label_padding_y = max(2, thickness)
-
-    text_size, baseline = cv2.getTextSize(label, font_face, font_scale, text_thickness)
-    text_w, text_h = text_size
-    label_w = text_w + label_padding_x * 2
-    label_h = text_h + baseline + label_padding_y * 2
-
-    # 優先把 label 放在 bbox 上方；若空間不足，則改放到 bbox 下方並在畫面內對齊。
-    label_x1 = max(0, min(x1, max(frame_w - label_w, 0)))
-    label_x2 = min(frame_w, label_x1 + label_w)
-    if y1 >= label_h:
-        label_y2 = y1
-        label_y1 = y1 - label_h
-    else:
-        label_y1 = min(max(y2, 0), max(frame_h - label_h, 0))
-        label_y2 = min(frame_h, label_y1 + label_h)
-
-    text_org_x = label_x1 + label_padding_x
-    text_org_y = label_y2 - label_padding_y - baseline
-
-    cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, thickness)
-    cv2.rectangle(vis_frame, (label_x1, label_y1), (label_x2, label_y2), color, -1)
-    cv2.putText(
-        vis_frame,
-        label,
-        (text_org_x, text_org_y),
-        font_face,
-        font_scale,
-        text_color,
-        text_thickness,
-    )
 
 
 class BaseStreamingEngine(ABC):
@@ -201,6 +33,8 @@ class BaseStreamingEngine(ABC):
         overlay_cfg = getattr(context.config, "overlay", None) if context else None
         if overlay_cfg is None and context is not None:
             overlay_cfg = getattr(context.config, "visualization", None)
+        camera_cfg = getattr(context.config, "camera", None) if context else None
+        self._camera_id = str(getattr(camera_cfg, "camera_id", "unknown") or "unknown")
         self._stop_event = threading.Event()
         self._stream_active = False
         self._state = STATE_INACTIVE
@@ -215,23 +49,21 @@ class BaseStreamingEngine(ABC):
         self._unique_write_rate = RateMeter()
         show_track_info = getattr(overlay_cfg, "show_track_info", False) if overlay_cfg is not None else False
         self._show_track_info = bool(show_track_info) if isinstance(show_track_info, bool) else False
+        show_score_info = getattr(overlay_cfg, "show_score_info", False) if overlay_cfg is not None else False
+        self._show_score_info = bool(show_score_info) if isinstance(show_score_info, bool) else False
+        recording_cfg = getattr(streaming_cfg, "recording", None) if streaming_cfg is not None else None
+        self._recording = None
+        if recording_cfg is not None and bool(getattr(recording_cfg, "enabled", False)):
+            self._recording = FfmpegRecordingWriter(
+                recording_cfg,
+                fps=self._target_fps,
+                camera_id=self._camera_id,
+            )
         matching_cfg = getattr(context.config, "matching_result", None) if context else None
         self._matching_result_enabled = bool(getattr(matching_cfg, "enabled", False)) if matching_cfg is not None else False
         self._detection_color: tuple[int, int, int] = (
             getattr(overlay_cfg, "detection_color_bgr", (0, 255, 0)) if overlay_cfg is not None else (0, 255, 0)
         )
-
-    @abstractmethod
-    def push(
-        self,
-        frame: Any,
-        detections: Sequence[EdgeDetection],
-        phase: str,
-        frame_meta: FrameMeta | None = None,
-    ) -> StreamingStatus:
-        # 子類需負責把最新 frame / detections 寫入 latest snapshot，
-        # 再交由 _output_loop() 以固定節拍輸出。
-        raise NotImplementedError
 
     def begin_shutdown(self) -> None:
         self._stop_event.set()
@@ -245,8 +77,10 @@ class BaseStreamingEngine(ABC):
         alive_after = self._output_thread is not None and self._output_thread.is_alive()
         self._output_thread = None
         duration_ms = (time.perf_counter() - started) * 1000.0
+
+        records: list[dict[str, Any]] = []
         if not alive_before:
-            return [
+            records.append(
                 cleanup_record(
                     item="streaming.pacer",
                     type="thread",
@@ -257,21 +91,33 @@ class BaseStreamingEngine(ABC):
                     duration_ms=duration_ms,
                     detail="pacer not running",
                 )
-            ]
-        state = "done" if not alive_after else "timeout"
-        detail = "pacer stopped" if not alive_after else "pacer still alive after stop"
-        return [
-            cleanup_record(
-                item="streaming.pacer",
-                type="thread",
-                state=state,
-                ok=not alive_after,
-                alive_before=alive_before,
-                alive_after=alive_after,
-                duration_ms=duration_ms,
-                detail=detail,
             )
-        ]
+        else:
+            state = "done" if not alive_after else "timeout"
+            detail = "pacer stopped" if not alive_after else "pacer still alive after stop"
+            records.append(
+                cleanup_record(
+                    item="streaming.pacer",
+                    type="thread",
+                    state=state,
+                    ok=not alive_after,
+                    alive_before=alive_before,
+                    alive_after=alive_after,
+                    duration_ms=duration_ms,
+                    detail=detail,
+                )
+            )
+
+        recorder = getattr(self, "_recording", None)
+        if recorder is not None:
+            try:
+                records.extend(recorder.close())
+            except Exception as exc:  # noqa: BLE001
+                LOGGER.exception("streaming recording close failed: %s", exc)
+            finally:
+                self._recording = None
+
+        return records
 
     def _resolve_fps(self, context: TaskContext | None) -> float:
         if context is None:
@@ -381,6 +227,7 @@ class BaseStreamingEngine(ABC):
         if vis_frame is None:
             return
         self._write_output_frame(vis_frame, packet.phase, packet.frame_meta)
+        self._write_recording_frame(vis_frame, packet.phase, packet.frame_meta)
 
     @abstractmethod
     def _prepare_output_frame(self, packet: StreamPacket) -> Any | None:
@@ -478,6 +325,16 @@ class BaseStreamingEngine(ABC):
                 self._last_error = str(restart_exc)
                 LOGGER.warning("streaming ffmpeg restart failed: %s", restart_exc)
 
+    def _write_recording_frame(self, vis_frame: Any, phase: str, frame_meta: FrameMeta | None = None) -> None:
+        recorder = self._recording
+        if recorder is None:
+            return
+        try:
+            recorder.write(vis_frame, phase=phase, frame_meta=frame_meta)
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.exception("streaming recording write failed: %s", exc)
+            self._recording = None
+
     @property
     def write_rate_meter(self) -> RateMeter:
         return self._write_rate
@@ -496,13 +353,14 @@ class BaseStreamingEngine(ABC):
         return True
 
     def _resolve_matching_overlay_label(self, det: EdgeDetection) -> str | None:
-        if not self._matching_result_enabled:
+        if not getattr(self, "_matching_result_enabled", False):
             return None
         local_id = det.track_id
         local_text = f"l:{local_id}" if local_id is not None else "l:-"
         global_id = None
-        if self._context is not None and local_id is not None:
-            match_table = self._context.get_resource(MATCHING_RESULT_LOCAL_TO_GLOBAL_RESOURCE)
+        context = getattr(self, "_context", None)
+        if context is not None and local_id is not None:
+            match_table = context.get_resource(MATCHING_RESULT_LOCAL_TO_GLOBAL_RESOURCE)
             if isinstance(match_table, Mapping):
                 global_id = match_table.get(local_id)
         global_text = f"g:{global_id}" if global_id is not None else "g:-"

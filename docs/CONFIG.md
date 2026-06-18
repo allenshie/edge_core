@@ -60,9 +60,13 @@ EDGE_MATCHING_RESULT_CHANNEL=integration/matching
 | `EDGE_PUBLISH_ENABLED` | `1` | 是否啟用結果發布至外部整合端。|
 | `EDGE_STREAMING_FPS` | *(不設定)* | 串流輸出 FPS，與 ingestion 節奏分離。|
 | `EDGE_STREAMING_OUT_WIDTH` / `EDGE_STREAMING_OUT_HEIGHT` | `1280` / `720` | 串流輸出前縮放尺寸，兩者必須同時設定才會生效。|
+| `EDGE_STREAMING_RECORD_ENABLED` | `0` | 是否將最終 streaming 畫面另外錄成 mp4。|
+| `EDGE_STREAMING_RECORD_OUTPUT_DIR` | `./recordings` | 錄影輸出目錄，會自動建立。|
+| `EDGE_STREAMING_RECORD_FILENAME_TEMPLATE` | `{camera_id}_{phase}_{start_dt:%Y%m%d_%H%M%S}.mp4` | 錄影檔名樣板，可用 `camera_id`、`phase`、`start_dt` 等欄位。|
 | `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康摘要輸出間隔。|
 | `EDGE_HEALTH_STALE_THRESHOLD_SEC` | `5` | 健康摘要判定 stale / degraded 的時間門檻。|
 | `EDGE_VISUAL_SHOW_TRACK_INFO` | `0` | 控制 label 是否附加 `track_id`。|
+| `EDGE_VISUAL_SHOW_SCORE_INFO` | `0` | 控制 state label 是否附加 `score`。|
 | `EDGE_VISUAL_DETECTION_COLOR` | `0,255,0` | 偵測框與 label 背景顏色，格式為 `B,G,R`。 |
 | `EDGE_INGEST_MODE` | `rtsp` | 取流模式：`rtsp`、`file` 或 `camera`。|
 | `EDGE_FILE_PATH` | *(不設定)* | `file` 模式時必填，指向影片路徑。|
