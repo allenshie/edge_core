@@ -102,21 +102,16 @@ EDGE_MATCHING_RESULT_RESOURCE_NAME=matching_result_snapshot
 - 若 `model_class` 使用 `edge.pipeline.tasks.inference.models:BaseYamlMockModel`，`schedule.json` 需明確提供 `env_var` 與 `default_config_path`
 - `EdgeDetection` 欄位定義請見 `edge/docs/DETECTIONS.md`
 
-### 5) edge_mode 切換
+### 5) phase / matching 切換
 
-edge-core 啟動後會提供 `/mode` API，供 integration 端切換模式：
+edge-core 啟動後不再提供獨立的 `/mode` API。
+phase 會由 integration 端透過 `EDGE_PHASE_*` 設定的 inbound route 更新。
 
-```bash
-curl -X POST http://<edge-host>:9100/mode \
-     -H "Content-Type: application/json" \
-     -d '{"mode": "working_stage_2"}'
-```
-
-engine 內可透過 `context.get_resource("edge_mode")` 取得目前 mode。
+engine 內可透過 `context.get_resource("edge_mode")` 取得目前 mode；若啟用 matching debug，`matching_result_snapshot` 會寫入對應的 `TaskContext` resource，`StreamingTask` 會以 `g:x, l:y` 的 label 呈現。
 
 ### 6) 測試建議
 
-1) 先用 `EDGE_MODE_DEFAULT` 確認排程是否能切換  
-2) 再用 `curl /mode` 模擬 integration 端切換  
-3) 檢查 log 是否有 phase 變更與任務執行  
+1) 先用 `EDGE_MODE_DEFAULT` 確認排程是否能切換
+2) 再用對應的 app backend route 模擬 phase 更新
+3) 若啟用 matching debug，確認 `matching_result_snapshot` 會被更新並反映到 streaming label
 4) 若使用 `ScheduledInferenceEngine`，同步確認 `schedule.json` 與 `configs/models.yaml` 可被正確讀取

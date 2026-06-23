@@ -92,7 +92,6 @@
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
-| `EDGE_MQTT_ENABLED` | `0` | MQTT 協議設定旗標；目前保留作為配置項，不再影響 phase / matching route backend。 |
 | `EDGE_MQTT_HOST` | `localhost` | broker host。 |
 | `EDGE_MQTT_PORT` | `1883` | broker port。 |
 | `EDGE_MQTT_QOS` | `1` | MQTT QoS。 |
@@ -117,6 +116,8 @@
 | `EDGE_MATCHING_RESULT_RESOURCE_NAME` | `matching_result_snapshot` | matching snapshot 寫入 `TaskContext` 的 resource key。 |
 | `EDGE_HTTP_LISTEN_HOST` | `0.0.0.0` | 當 route backend=`http` 且需要接收 webhook subscribe 時，本地 HTTP listen host。 |
 | `EDGE_HTTP_LISTEN_PORT` | `9000` | 當 route backend=`http` 且需要接收 webhook subscribe 時，本地 HTTP listen port。 |
+
+> `EDGE_APP_INBOUND_BACKEND` 只決定 app inbound route 共用的 backend；`EDGE_PHASE_ENABLED` 與 `EDGE_MATCHING_RESULT_ENABLED` 各自控制是否註冊訂閱。當所有 inbound route 都關閉時，`start_messaging_subscriber` 會直接跳過，不會額外啟動訂閱工作。
 
 ## 發布與整合
 

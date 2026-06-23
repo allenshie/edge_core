@@ -98,3 +98,4 @@ EDGE_MATCHING_RESULT_RESOURCE_NAME=matching_result_snapshot
 - `edge/trackers/` 內已附 `bytetrack.yaml`/`botsort.yaml` 範本；若填寫相對路徑，會以 `edge` 專案根目錄解析。
 - `EDGE_MQTT_*` 僅負責 broker 連線參數；`phase` / `matching` 的 backend 與 channel 請改由 `EDGE_APP_INBOUND_BACKEND`、`EDGE_PHASE_*`、`EDGE_MATCHING_RESULT_*` 設定。
 - EdgeDetection 欄位定義與擴充方式請見 `edge/docs/DETECTIONS.md`。
+- `EDGE_PHASE_ENABLED` 與 `EDGE_MATCHING_RESULT_ENABLED` 是獨立開關；當兩者都關閉時，`start_messaging_subscriber` 會直接跳過，不會建立任何 inbound 訂閱。
