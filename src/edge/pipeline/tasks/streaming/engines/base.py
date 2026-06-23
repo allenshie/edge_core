@@ -18,7 +18,7 @@ from edge.schema import EdgeDetection, FrameMeta
 from .overlay import _draw_detection_box_and_label, _format_detection_label
 from .policy import STATE_DEGRADED, STATE_INACTIVE, STATE_STREAMING
 from ..recording import FfmpegRecordingWriter
-from ..types import StreamPacket, StreamingStatus
+from ..types import StreamPacket
 
 LOGGER = logging.getLogger(__name__)
 
