@@ -1,31 +1,39 @@
-graph TD
-    Root[edge_core]
-    Launcher[main.py]
-    EdgePkg[src edge]
-    EdgeMain[edge.main]
-    Config[edge.config]
-    Schema[edge.schema]
-    Messaging[edge.messaging]
-    Runtime[edge.runtime]
-    Pipeline[edge.pipeline]
-    API[edge.api]
-    Tasks[edge.pipeline.tasks]
-    Ingest[ingestion]
-    Infer[inference]
-    Stream[streaming]
-    Publish[publish]
+flowchart LR
+    subgraph siteRepo["Site Repo"]
+        siteEntry["site entrypoint"]
+        siteConfig["schedules / configs / weights"]
+        siteModels["custom models"]
+    end
 
-    Root --> Launcher
-    Root --> EdgePkg
-    Launcher --> EdgeMain
-    EdgePkg --> Config
-    EdgePkg --> Schema
-    EdgePkg --> Messaging
-    EdgePkg --> Runtime
-    EdgePkg --> Pipeline
-    EdgePkg --> API
-    Pipeline --> Tasks
-    Tasks --> Ingest
-    Tasks --> Infer
-    Tasks --> Stream
-    Tasks --> Publish
+    subgraph edgeCore["edge_core"]
+        launcher["edge_core/main.py"]
+        edgeMain["edge.main"]
+        config["edge.config"]
+        messaging["edge.messaging"]
+        runtime["edge.runtime"]
+        pipeline["edge.pipeline"]
+    end
+
+    subgraph appBackend["App Backend"]
+        routeApi["phase / matching / events routes"]
+    end
+
+    subgraph externalSystems["External Systems"]
+        camera["RTSP / file / camera"]
+        streamSink["stream sink"]
+        monitor["monitoring endpoint"]
+    end
+
+    siteEntry --> launcher
+    siteConfig --> config
+    siteModels --> pipeline
+    launcher --> edgeMain
+    edgeMain --> config
+    edgeMain --> messaging
+    edgeMain --> runtime
+    edgeMain --> pipeline
+    camera --> pipeline
+    pipeline --> streamSink
+    runtime -.-> routeApi
+    messaging -.-> routeApi
+    runtime -.-> monitor

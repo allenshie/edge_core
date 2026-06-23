@@ -1,26 +1,39 @@
 flowchart LR
-    Source[RTSP / MP4 / Camera]
-    Ingest[IngestionTask]
-    FrameMeta[decoded_frame and frame_meta]
-    Infer[InferenceTask]
-    Detect[EdgeDetection list]
-    Stream[StreamingTask]
-    Publish[PublishResultTask]
-    Output[stream and events]
-    Subscriber[Messaging subscriber]
-    Phase[phase resource<br/>edge_mode]
-    Matching[matching_result_snapshot resource]
+    subgraph inputSources["Input Sources"]
+        source["RTSP / File / Camera"]
+    end
 
-    Source --> Ingest
-    Ingest --> FrameMeta
-    FrameMeta --> Infer
-    Infer --> Detect
-    Detect --> Stream
-    Detect --> Publish
-    Subscriber --> Phase
-    Subscriber --> Matching
-    Phase --> Infer
-    Phase --> Stream
-    Matching --> Stream
-    Stream --> Output
-    Publish --> Output
+    subgraph runtimeStore["TaskContext Resources"]
+        edgeMode["edge_mode"]
+        matchingSnapshot["matching_result_snapshot"]
+        frameMeta["frame_meta"]
+    end
+
+    subgraph pipeline["Pipeline"]
+        ingestion["IngestionTask"]
+        inference["InferenceTask"]
+        streaming["StreamingTask"]
+        publish["PublishResultTask"]
+    end
+
+    subgraph appBackend["App Backend"]
+        inbound["phase / matching updates"]
+    end
+
+    subgraph outputs["Outputs"]
+        streamOut["visual stream"]
+        eventOut["events"]
+    end
+
+    source --> ingestion
+    ingestion --> frameMeta
+    frameMeta --> inference
+    inference --> streaming
+    inference --> publish
+    inbound -.-> edgeMode
+    inbound -.-> matchingSnapshot
+    edgeMode --> inference
+    edgeMode --> streaming
+    matchingSnapshot --> streaming
+    streaming --> streamOut
+    publish --> eventOut

@@ -27,6 +27,18 @@
 
 總結來說，DeepStream 偏向高效能、標準化的 GPU 視覺 runtime；`edge_core` 則偏向可維護、可配置、可逐步替換的場域流程骨架。
 
+## 圖表導覽
+
+如果你第一次接觸 `edge_core`，建議依照這個順序看圖：
+
+1. [專案邊界與角色](docs/diagrams/README.md#1-project-boundary-and-roles)
+2. [Runtime 啟動與關閉](docs/diagrams/README.md#2-runtime-bootstrap-and-shutdown)
+3. [核心 pipeline 與 context 流](docs/diagrams/README.md#3-core-pipeline-and-context-flow)
+4. [設定與擴充點](docs/diagrams/README.md#4-configuration-and-extension-points)
+5. [模組依賴圖](docs/diagrams/README.md#5-module-dependency-map)
+
+`docs/diagrams/README.md` 同時維護每張圖的 Markdown 呈現、SVG 預覽與對應的 `.mmd` 原始檔。
+
 ## Pipeline
 
 ```text
@@ -37,8 +49,8 @@ RTSP / MP4
   -> PublishResultTask
 ```
 
-- `InferenceTask` 只做推理與輸出結果。
-- 可視化/串流打出由 `StreamingTask` 處理。
+- `InferenceTask` 只做推理與輸出結果，並會讀取 `edge_mode`。
+- `StreamingTask` 與其底層 engine 負責可視化與串流輸出，debug 模式下也會讀取 `matching_result_snapshot` 來呈現 `g:x, l:y`。
 - `PublishResultTask` 負責推送推理事件。
 
 ## 快速啟動（獨立）
@@ -132,7 +144,7 @@ ffplay -rtsp_transport tcp -fflags nobuffer -flags low_delay -framedrop -probesi
 - [設定與環境變數](docs/ENV.md)
 - [ScheduledInferenceEngine 使用說明](docs/SCHEDULED_INFERENCE.md)
 - [設定示例（多相機）](docs/CONFIG.md)
-- [自訂 Inference/Publish 與 Mode 控制](docs/EXTENDING.md)
+- [自訂 Inference/Publish 與 Phase / Matching 控制](docs/EXTENDING.md)
 - [Orin 部署指南（ARM）](docs/DEPLOY_ORIN.md)
 - [主專案 / site repo 整合指南](docs/EDGE_SUBMODULE_GUIDE.md)
 - [部署與操作（多實例、Docker）](docs/OPERATIONS.md)

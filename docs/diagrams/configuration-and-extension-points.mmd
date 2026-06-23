@@ -1,0 +1,42 @@
+flowchart LR
+    subgraph siteRepo["Site Repo"]
+        schedules["schedule.json"]
+        modelConfigs["configs/models.yaml"]
+        customModels["custom model classes"]
+        customInference["custom inference engine"]
+        customPublish["custom publish engine"]
+        customStreaming["custom streaming engine"]
+    end
+
+    subgraph configuration["Configuration"]
+        sharedBackend["shared inbound backend"]
+        routeConfig["phase / matching / events routes"]
+        engineOverrides["engine class overrides"]
+    end
+
+    subgraph edgeCore["edge_core runtime"]
+        messagingProvider["MessagingClientProvider"]
+        subscriber["start_messaging_subscriber"]
+        inferenceTask["InferenceTask"]
+        streamingTask["StreamingTask"]
+        publishTask["PublishResultTask"]
+        taskContext["TaskContext"]
+    end
+
+    schedules --> customInference
+    modelConfigs --> customModels
+    customModels --> inferenceTask
+    customInference --> inferenceTask
+    customPublish --> publishTask
+    customStreaming --> streamingTask
+
+    sharedBackend --> messagingProvider
+    routeConfig --> subscriber
+    engineOverrides --> inferenceTask
+    engineOverrides --> streamingTask
+    engineOverrides --> publishTask
+    messagingProvider --> taskContext
+    subscriber --> taskContext
+    taskContext --> inferenceTask
+    taskContext --> streamingTask
+    taskContext --> publishTask

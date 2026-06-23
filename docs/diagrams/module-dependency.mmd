@@ -1,9 +1,15 @@
 graph LR
+    Compat[edge_core/main.py]
     Main[edge.main]
     Config[edge.config]
     Messaging[edge.messaging]
     Runtime[edge.runtime]
-    Pipeline[edge.pipeline]
+    MessagingRuntime[messaging_runtime]
+    HealthRuntime[health_runtime]
+    PipelineSummary[pipeline_summary]
+    ShutdownSummary[shutdown_summary]
+    TaskHealth[task_health]
+    Pipeline[pipeline]
     Tasks[edge.pipeline.tasks]
     Ingest[ingestion]
     Infer[inference]
@@ -13,18 +19,25 @@ graph LR
     Engines[streaming engines]
     Schema[edge.schema]
 
+    Compat --> Main
     Main --> Config
     Main --> Messaging
     Main --> Runtime
     Main --> Pipeline
+    Runtime --> MessagingRuntime
+    Runtime --> HealthRuntime
+    Runtime --> PipelineSummary
+    Runtime --> ShutdownSummary
+    Runtime --> TaskHealth
+    Runtime --> Messaging
+    Runtime --> Schema
     Pipeline --> Tasks
     Tasks --> Ingest
     Tasks --> Infer
     Tasks --> Stream
     Tasks --> Publish
-    Runtime --> Messaging
-    Runtime --> Schema
     Infer --> Models
+    Infer --> Schema
     Stream --> Engines
     Stream --> Messaging
     Stream --> Schema
