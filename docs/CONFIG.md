@@ -15,16 +15,20 @@ python main.py
 Messaging route 建議最少設定：
 
 ```env
-EDGE_PHASE_BACKEND=mqtt
+EDGE_APP_INBOUND_BACKEND=mqtt
+EDGE_PHASE_ENABLED=1
 EDGE_PHASE_CHANNEL=integration/phase
+EDGE_PHASE_RESOURCE_NAME=edge_mode
 EDGE_EVENTS_BACKEND=http
 EDGE_EVENTS_CHANNEL=/edge/events
 EDGE_MATCHING_RESULT_ENABLED=1
-EDGE_MATCHING_RESULT_BACKEND=mqtt
 EDGE_MATCHING_RESULT_CHANNEL=integration/matching
+EDGE_MATCHING_RESULT_RESOURCE_NAME=matching_result_snapshot
 ```
 
-- `EDGE_PHASE_*` 控制 phase 更新來源。
+- `EDGE_APP_INBOUND_BACKEND` 是 `phase` / `matching result` 共用的 inbound backend。
+- `EDGE_PHASE_*` 控制 phase 更新來源與 `TaskContext` resource 名稱。
+- `EDGE_MATCHING_RESULT_*` 控制 matching 結果訂閱與對應 resource 名稱。
 - `EDGE_EVENTS_*` 控制 publish 目的地。
 - 若 `EDGE_EVENTS_BACKEND=http`，channel 建議寫 `/edge/events`。
 - 若 `EDGE_EVENTS_BACKEND=mqtt`，channel 建議寫 `edge/events`。
@@ -52,11 +56,11 @@ EDGE_MATCHING_RESULT_CHANNEL=integration/matching
 | `EDGE_TRACKER_CONFIG` | *(未設定；預設使用 ByteTrack)* | Ultralytics tracker 設定檔，填 `botsort.yaml`/`bytetrack.yaml` 使用官方 cfg，或改成相對/絕對路徑指向自訂 YAML。|
 | `INFERENCE_ENGINE_CLASS` | *(未設定)* | 指定自訂推理引擎類別（`package.module:Class`），需繼承 `BaseInferenceEngine`。|
 | `PUBLISH_ENGINE_CLASS` | *(未設定)* | 指定 `BasePublishEngine` 子類處理推論輸出。|
-| `EDGE_MODE_SERVER_HOST` / `EDGE_MODE_SERVER_PORT` | `0.0.0.0` / `9100` | mode 更新 API 的監聽位置。|
 | `EDGE_MODE_DEFAULT` | `working` | 未被整合端更新時的初始 mode。|
-| `EDGE_PHASE_BACKEND` / `EDGE_PHASE_CHANNEL` | `mqtt` / `integration/phase` | phase 更新 route 設定。|
+| `EDGE_APP_INBOUND_BACKEND` | `mqtt` | `phase` / `matching` 共享的 inbound backend。|
+| `EDGE_PHASE_ENABLED` / `EDGE_PHASE_CHANNEL` / `EDGE_PHASE_RESOURCE_NAME` | `1` / `integration/phase` / `edge_mode` | phase 更新 route 與 resource 設定。|
 | `EDGE_EVENTS_BACKEND` / `EDGE_EVENTS_CHANNEL` | `http` / `/edge/events` | edge 事件 publish route 設定。|
-| `EDGE_MATCHING_RESULT_ENABLED` / `EDGE_MATCHING_RESULT_BACKEND` / `EDGE_MATCHING_RESULT_CHANNEL` | `0` / `mqtt` / `integration/matching` | matching result 接收與研究模式 label 設定；啟用後 `StreamingTask` 會以 `g:x, l:y` 呈現。|
+| `EDGE_MATCHING_RESULT_ENABLED` / `EDGE_MATCHING_RESULT_CHANNEL` / `EDGE_MATCHING_RESULT_RESOURCE_NAME` | `0` / `integration/matching` / `matching_result_snapshot` | matching result 訂閱與研究模式 label 設定；啟用後 `StreamingTask` 會以 `g:x, l:y` 呈現。|
 | `EDGE_PUBLISH_ENABLED` | `1` | 是否啟用結果發布至外部整合端。|
 | `EDGE_STREAMING_FPS` | *(不設定)* | 串流輸出 FPS，與 ingestion 節奏分離。|
 | `EDGE_STREAMING_OUT_WIDTH` / `EDGE_STREAMING_OUT_HEIGHT` | `1280` / `720` | 串流輸出前縮放尺寸，兩者必須同時設定才會生效。|
@@ -92,5 +96,5 @@ EDGE_MATCHING_RESULT_CHANNEL=integration/matching
 
 - `PipelineScheduler` 不再依 `EDGE_FILE_FPS`、`EDGE_CAMERA_FPS` 或 `EDGE_RTSP_FPS` 控制節奏；若設為 0，loop 以處理速度為準，否則使用 `EDGE_POLL_INTERVAL` 作為等待節拍。
 - `edge/trackers/` 內已附 `bytetrack.yaml`/`botsort.yaml` 範本；若填寫相對路徑，會以 `edge` 專案根目錄解析。
-- `EDGE_MQTT_*` 僅負責 broker 連線參數；phase / event 的 backend 與 channel 請改由 `EDGE_PHASE_*`、`EDGE_EVENTS_*` 設定。
+- `EDGE_MQTT_*` 僅負責 broker 連線參數；`phase` / `matching` 的 backend 與 channel 請改由 `EDGE_APP_INBOUND_BACKEND`、`EDGE_PHASE_*`、`EDGE_MATCHING_RESULT_*` 設定。
 - EdgeDetection 欄位定義與擴充方式請見 `edge/docs/DETECTIONS.md`。

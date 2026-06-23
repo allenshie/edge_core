@@ -9,7 +9,6 @@ from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 
 from edge.pipeline.tasks._runtime import FrameTaskSupportMixin
 from edge.runtime.task_health import TaskHealthReporter
-from edge.api.mode_server import MODE_RESOURCE
 from edge.schema import EdgeDetection, FrameMeta
 from edge.schema import StageStats
 
@@ -136,8 +135,14 @@ class StreamingTask(FrameTaskSupportMixin, BaseTask):
         return self._build_task_result({"streaming": status.to_dict()}, frame_meta)
 
     def _resolve_phase(self, context: TaskContext) -> str:
-        phase = context.get_resource(MODE_RESOURCE)
+        phase_resource_name = self._resolve_phase_resource_name(context)
+        phase = context.get_resource(phase_resource_name)
         return resolve_phase(phase)
+
+    def _resolve_phase_resource_name(self, context: TaskContext) -> str:
+        phase_cfg = getattr(context.config, "phase_messaging", None)
+        resource_name = getattr(phase_cfg, "resource_name", None)
+        return str(resource_name or "edge_mode")
 
     def _load_engine(self, context: TaskContext | None) -> BaseStreamingEngine:
         engine_path = getattr(context.config, "streaming_engine_class", None) if context else None

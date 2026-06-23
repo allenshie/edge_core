@@ -292,6 +292,37 @@ class MatchingResultPayload:
             },
         }
 
+    def to_local_snapshot(
+        self,
+        camera_id: str,
+        *,
+        result_version: int = 0,
+        enabled: bool = True,
+        subscribed: bool = True,
+        reason: str | None = None,
+    ) -> Dict[str, Any]:
+        selected_tracks = [track.to_dict() for track in self.camera_matches.get(camera_id, [])]
+        local_to_global = self.local_to_global_mapping(camera_id)
+        return {
+            "enabled": enabled,
+            "subscribed": subscribed,
+            "camera_id": camera_id,
+            "schema_version": self.schema_version,
+            "message_type": self.message_type,
+            "generated_at": self.generated_at,
+            "result_version": result_version,
+            "camera_matches": {camera_id: selected_tracks} if selected_tracks else {},
+            "local_to_global": local_to_global,
+            "matches": len(local_to_global),
+            "payload": {
+                "schema_version": self.schema_version,
+                "message_type": self.message_type,
+                "generated_at": self.generated_at,
+                "camera_matches": {camera_id: selected_tracks} if selected_tracks else {},
+            },
+            "reason": reason,
+        }
+
 
 def _coerce_matching_local_id(value: Any) -> int | None:
     try:

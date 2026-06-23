@@ -1,0 +1,31 @@
+graph TD
+    Root[edge_core]
+    Launcher[main.py]
+    EdgePkg[src edge]
+    EdgeMain[edge.main]
+    Config[edge.config]
+    Schema[edge.schema]
+    Messaging[edge.messaging]
+    Runtime[edge.runtime]
+    Pipeline[edge.pipeline]
+    API[edge.api]
+    Tasks[edge.pipeline.tasks]
+    Ingest[ingestion]
+    Infer[inference]
+    Stream[streaming]
+    Publish[publish]
+
+    Root --> Launcher
+    Root --> EdgePkg
+    Launcher --> EdgeMain
+    EdgePkg --> Config
+    EdgePkg --> Schema
+    EdgePkg --> Messaging
+    EdgePkg --> Runtime
+    EdgePkg --> Pipeline
+    EdgePkg --> API
+    Pipeline --> Tasks
+    Tasks --> Ingest
+    Tasks --> Infer
+    Tasks --> Stream
+    Tasks --> Publish

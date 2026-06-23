@@ -14,7 +14,6 @@ from smart_workflow import TaskContext
 from edge.runtime.rate_meter import RateMeter
 from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection, FrameMeta
-from edge.pipeline.tasks.matching_result.constants import MATCHING_RESULT_LOCAL_TO_GLOBAL_RESOURCE
 
 from .overlay import _draw_detection_box_and_label, _format_detection_label
 from .policy import STATE_DEGRADED, STATE_INACTIVE, STATE_STREAMING
@@ -61,6 +60,12 @@ class BaseStreamingEngine(ABC):
             )
         matching_cfg = getattr(context.config, "matching_result", None) if context else None
         self._matching_result_enabled = bool(getattr(matching_cfg, "enabled", False)) if matching_cfg is not None else False
+        matching_result_resource_name = (
+            getattr(matching_cfg, "resource_name", "matching_result_snapshot")
+            if matching_cfg is not None
+            else "matching_result_snapshot"
+        )
+        self._matching_result_resource_name = str(matching_result_resource_name)
         self._detection_color: tuple[int, int, int] = (
             getattr(overlay_cfg, "detection_color_bgr", (0, 255, 0)) if overlay_cfg is not None else (0, 255, 0)
         )
@@ -360,7 +365,8 @@ class BaseStreamingEngine(ABC):
         global_id = None
         context = getattr(self, "_context", None)
         if context is not None and local_id is not None:
-            match_table = context.get_resource(MATCHING_RESULT_LOCAL_TO_GLOBAL_RESOURCE)
+            snapshot = context.get_resource(self._matching_result_resource_name)
+            match_table = snapshot.get("local_to_global") if isinstance(snapshot, Mapping) else None
             if isinstance(match_table, Mapping):
                 global_id = match_table.get(local_id)
         global_text = f"g:{global_id}" if global_id is not None else "g:-"

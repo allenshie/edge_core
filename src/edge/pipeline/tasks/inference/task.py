@@ -12,7 +12,6 @@ from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 from edge.pipeline.tasks._runtime import FrameTaskSupportMixin
 from edge.runtime.rate_meter import RateMeter
 from edge.runtime.task_health import TaskHealthReporter
-from edge.api.mode_server import MODE_RESOURCE
 from edge.schema import FrameMeta, StageStats
 
 from .engine import BaseInferenceEngine, DefaultInferenceEngine
@@ -114,7 +113,8 @@ class InferenceTask(FrameTaskSupportMixin, BaseTask):
         return self._build_task_result({"detections": detections}, frame_meta)
 
     def _resolve_phase(self, context: TaskContext) -> str:
-        phase = context.get_resource(MODE_RESOURCE)
+        phase_resource_name = self._resolve_phase_resource_name(context)
+        phase = context.get_resource(phase_resource_name)
         if not phase:
             phase = (
                 os.environ.get("EDGE_MODE_DEFAULT")
@@ -123,6 +123,11 @@ class InferenceTask(FrameTaskSupportMixin, BaseTask):
                 or "working_stage_1"
             )
         return str(phase)
+
+    def _resolve_phase_resource_name(self, context: TaskContext) -> str:
+        phase_cfg = getattr(context.config, "phase_messaging", None)
+        resource_name = getattr(phase_cfg, "resource_name", None)
+        return str(resource_name or "edge_mode")
 
     def snapshot_health(self, context: TaskContext | None = None) -> dict:
         model_cfg = getattr(self._engine, "_model_config", None)

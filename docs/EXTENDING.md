@@ -1,4 +1,4 @@
-## 自訂 Inference / Publish 與 Mode 控制
+## 自訂 Inference / Publish 與 Phase 控制
 
 ### 自訂 Inference Engine
 
@@ -11,13 +11,9 @@
 - 撰寫繼承 `BasePublishEngine` 的類別，實作 `publish(context, detections)`
 - 在 `.env` 內設定 `PUBLISH_ENGINE_CLASS=package.module:Class`
 
-### Mode 控制
+### Phase 控制
 
-- edge-core 啟動後會提供 `POST /mode` 介面
-- 自訂引擎可透過 `context.get_resource("edge_mode")` 取得目前模式
-
-```bash
-curl -X POST http://<EDGE_MODE_SERVER_HOST>:<EDGE_MODE_SERVER_PORT>/mode \
-     -H "Content-Type: application/json" \
-     -d '{"mode": "working"}'
-```
+- edge-core 不再提供獨立的 `POST /mode` server
+- phase 更新改由 `EDGE_PHASE_*` 定義的 inbound route 接收
+- 自訂引擎可透過 `context.get_resource("edge_mode")` 或對應的 `EDGE_PHASE_RESOURCE_NAME` 取得目前 phase
+- 若需要切換 phase，請透過 app 端對應的 messaging route 發送更新訊息

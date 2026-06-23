@@ -23,8 +23,10 @@ cp .env.example .env.cam02
 每份 `.env.camXX` 建議至少包含自己的 messaging route：
 
 ```env
-EDGE_PHASE_BACKEND=mqtt
+EDGE_APP_INBOUND_BACKEND=mqtt
+EDGE_PHASE_ENABLED=1
 EDGE_PHASE_CHANNEL=integration/phase
+EDGE_PHASE_RESOURCE_NAME=edge_mode
 EDGE_EVENTS_BACKEND=http
 EDGE_EVENTS_CHANNEL=/edge/events
 ```
@@ -42,7 +44,7 @@ docker compose up --build              # 只啟動 cam01
 docker compose --profile cam02 up -d   # 同時啟動 cam02 profile
 ```
 
-> 映像會在 `/svc/edge` 內執行 `python main.py`。請確認 `.env` 內的 `MONITOR_ENDPOINT`、`INTEGRATION_API_BASE`、`EDGE_RTSP_URL`/`EDGE_FILE_PATH`、`EDGE_PHASE_*`、`EDGE_EVENTS_*` 指向容器可讀/可連線的來源。
+> 映像會在 `/svc/edge` 內執行 `python main.py`。請確認 `.env` 內的 `MONITOR_ENDPOINT`、`INTEGRATION_API_BASE`、`EDGE_RTSP_URL`/`EDGE_FILE_PATH`、`EDGE_APP_INBOUND_BACKEND`、`EDGE_PHASE_*`、`EDGE_EVENTS_*` 指向容器可讀/可連線的來源。
 
 > 共用網路：`docker-compose.yml` 預設使用外部 network `smartware_net`。未建立時請先 `docker network create smartware_net`。
 

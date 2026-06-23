@@ -61,15 +61,12 @@
 | `EDGE_STREAMING_SHM_MB` | `30` | `ShmStreamingEngine` 專用：共享記憶體大小（MB）。4K 建議 30，1080p 建議 10。 |
 
 
-## Mode 與流程控制
+## Phase 與流程控制
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
 | `EDGE_MODE_DEFAULT` | `working_stage_1` | 初始 phase。 |
-| `EDGE_MODE_STRATEGY` | `external` | `external` 由整合端更新 mode。 |
-| `EDGE_MODE_SERVER_ENABLED` | `0` | 是否啟用 mode HTTP server。 |
-| `EDGE_MODE_SERVER_HOST` | `0.0.0.0` | mode server host。 |
-| `EDGE_MODE_SERVER_PORT` | `9100` | mode server port。 |
+| `EDGE_MODE_STRATEGY` | `external` | `external` 由整合端更新 mode，搭配 `EDGE_PHASE_*` route 使用。 |
 | `EDGE_POLL_INTERVAL` | `5` | workflow loop 間隔，也是 pipeline scheduler 的等待節拍；設為 `0` 時不額外 sleep，loop 以處理速度為準。 |
 | `EDGE_RETRY_BACKOFF` | `5` | 任務失敗重試間隔。 |
 
@@ -95,7 +92,7 @@
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
-| `EDGE_MQTT_ENABLED` | `0` | 是否啟用 MQTT 協議設定；若 `EDGE_PHASE_BACKEND` 未設定，會影響 phase route 的預設 backend。 |
+| `EDGE_MQTT_ENABLED` | `0` | MQTT 協議設定旗標；目前保留作為配置項，不再影響 phase / matching route backend。 |
 | `EDGE_MQTT_HOST` | `localhost` | broker host。 |
 | `EDGE_MQTT_PORT` | `1883` | broker port。 |
 | `EDGE_MQTT_QOS` | `1` | MQTT QoS。 |
@@ -103,26 +100,23 @@
 | `EDGE_MQTT_AUTH_ENABLED` | `0` | 是否啟用 MQTT 帳密驗證。 |
 | `EDGE_MQTT_USERNAME` | *(未設定)* | MQTT 使用者名稱（`EDGE_MQTT_AUTH_ENABLED=1` 時必填）。 |
 | `EDGE_MQTT_PASSWORD` | *(未設定)* | MQTT 密碼（建議透過 Secret 或 env 注入）。 |
+| `EDGE_MQTT_ENABLED` | `0` | 是否啟用 MQTT 協議設定；目前只影響 broker 連線/認證參數是否生效，不再用來決定 phase / matching route backend。 |
 
 ## Messaging Routes
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
-| `EDGE_PHASE_BACKEND` | `mqtt`（若 `EDGE_MQTT_ENABLED=1`）或 `none` | phase 更新路由 backend；可設 `mqtt` / `http` / `none`。 |
-| `EDGE_PHASE_CHANNEL` | `integration/phase` | phase 更新 route channel。若 backend=`http` 會自動正規化成 `/...`。 |
+| `EDGE_APP_INBOUND_BACKEND` | `mqtt` | 供 app 端訂閱的共用 backend；`phase` 與 `matching result` 都會共用這個設定。 |
+| `EDGE_PHASE_ENABLED` | `1` | 是否訂閱 phase 更新。關閉時 `ScheduledInferenceEngine` 會維持本地預設 mode。 |
+| `EDGE_PHASE_CHANNEL` | `integration/phase` | phase 更新 route channel；會依 `EDGE_APP_INBOUND_BACKEND` 正規化。 |
+| `EDGE_PHASE_RESOURCE_NAME` | `edge_mode` | phase/mode 寫入 `TaskContext` 的 resource key。 |
 | `EDGE_EVENTS_BACKEND` | `http` | edge 推理事件 route backend；可設 `http` / `mqtt` / `none`。 |
 | `EDGE_EVENTS_CHANNEL` | `/edge/events`（backend=`http`）或 `edge/events`（backend=`mqtt`） | edge 推理事件 route channel。 |
-| `EDGE_MATCHING_RESULT_ENABLED` | `0` | 是否接收 matching broadcast；啟用後，`StreamingTask` 會改用研究模式 label（`g:x, l:y`）。 |
-| `EDGE_MATCHING_RESULT_BACKEND` | `mqtt` | matching result route backend；可設 `mqtt` / `http` / `none`。 |
-| `EDGE_MATCHING_RESULT_CHANNEL` | `integration/matching`（backend=`mqtt`）或 `/integration/matching`（backend=`http`） | matching result route channel。 |
+| `EDGE_MATCHING_RESULT_ENABLED` | `0` | 是否訂閱 matching broadcast；啟用後 `StreamingTask` 會改用研究模式 label（`g:x, l:y`）。 |
+| `EDGE_MATCHING_RESULT_CHANNEL` | `integration/matching` | matching result route channel；會依 `EDGE_APP_INBOUND_BACKEND` 正規化。 |
+| `EDGE_MATCHING_RESULT_RESOURCE_NAME` | `matching_result_snapshot` | matching snapshot 寫入 `TaskContext` 的 resource key。 |
 | `EDGE_HTTP_LISTEN_HOST` | `0.0.0.0` | 當 route backend=`http` 且需要接收 webhook subscribe 時，本地 HTTP listen host。 |
 | `EDGE_HTTP_LISTEN_PORT` | `9000` | 當 route backend=`http` 且需要接收 webhook subscribe 時，本地 HTTP listen port。 |
-
-## Matching Result Receiver
-
-| 變數 | 預設 | 說明 |
-| --- | --- | --- |
-| `MATCHING_RESULT_ENGINE_CLASS` | *(未設定)* | 自訂 matching result receiver engine class path。 |
 
 ## 發布與整合
 

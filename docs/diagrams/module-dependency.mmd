@@ -1,0 +1,31 @@
+graph LR
+    Main[edge.main]
+    Config[edge.config]
+    Messaging[edge.messaging]
+    Runtime[edge.runtime]
+    Pipeline[edge.pipeline]
+    Tasks[edge.pipeline.tasks]
+    Ingest[ingestion]
+    Infer[inference]
+    Stream[streaming]
+    Publish[publish]
+    Models[model helpers]
+    Engines[streaming engines]
+    Schema[edge.schema]
+
+    Main --> Config
+    Main --> Messaging
+    Main --> Runtime
+    Main --> Pipeline
+    Pipeline --> Tasks
+    Tasks --> Ingest
+    Tasks --> Infer
+    Tasks --> Stream
+    Tasks --> Publish
+    Runtime --> Messaging
+    Runtime --> Schema
+    Infer --> Models
+    Stream --> Engines
+    Stream --> Messaging
+    Stream --> Schema
+    Publish --> Messaging

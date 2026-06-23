@@ -1,14 +1,25 @@
 """Messaging client provider for edge runtime."""
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from smart_messaging_core import HttpConfig, MessagingClient, MessagingConfig, MqttConfig, RouteConfig
 
 from edge.config import EdgeConfig
 
 MESSAGING_CLIENT_RESOURCE = "messaging_client"
+APP_INBOUND_BACKEND = "app_inbound_backend"
 EDGE_EVENTS_ROUTE = "edge_events"
 PHASE_UPDATES_ROUTE = "phase_updates"
 MATCHING_BROADCAST_ROUTE = "matching_broadcast"
+
+
+@dataclass(frozen=True)
+class InboundRouteSpec:
+    route_key: str
+    enabled: bool
+    channel: str
+    resource_name: str
 
 
 class MessagingClientProvider:
@@ -40,19 +51,48 @@ class MessagingClientProvider:
 
         routes: dict[str, RouteConfig] = {}
 
+        inbound_backend = resolve_app_inbound_backend(self._config)
+        for spec in resolve_inbound_route_specs(self._config):
+            if not spec.enabled:
+                continue
+            routes[spec.route_key] = RouteConfig(inbound_backend, spec.channel)
+
         events_route = resolve_events_route(self._config)
         if events_route is not None:
             routes[EDGE_EVENTS_ROUTE] = RouteConfig(*events_route)
 
-        phase_route = resolve_phase_updates_route(self._config)
-        if phase_route is not None:
-            routes[PHASE_UPDATES_ROUTE] = RouteConfig(*phase_route)
-
-        matching_route = resolve_matching_result_route(self._config)
-        if matching_route is not None:
-            routes[MATCHING_BROADCAST_ROUTE] = RouteConfig(*matching_route)
-
         return MessagingClient(MessagingConfig(mqtt=mqtt, http=http, routes=routes))
+
+
+def resolve_app_inbound_backend(config: EdgeConfig) -> str:
+    backend = config.app_inbound.backend
+    if backend not in {"http", "mqtt"}:
+        raise ValueError(f"unsupported app inbound backend: {backend}; allowed=http,mqtt")
+    return backend
+
+
+def resolve_phase_inbound_route(config: EdgeConfig) -> InboundRouteSpec:
+    phase_cfg = config.phase_messaging
+    return InboundRouteSpec(
+        route_key=PHASE_UPDATES_ROUTE,
+        enabled=bool(phase_cfg.enabled),
+        channel=phase_cfg.channel,
+        resource_name=phase_cfg.resource_name,
+    )
+
+
+def resolve_matching_result_inbound_route(config: EdgeConfig) -> InboundRouteSpec:
+    matching_cfg = config.matching_result
+    return InboundRouteSpec(
+        route_key=MATCHING_BROADCAST_ROUTE,
+        enabled=bool(matching_cfg.enabled),
+        channel=matching_cfg.channel,
+        resource_name=matching_cfg.resource_name,
+    )
+
+
+def resolve_inbound_route_specs(config: EdgeConfig) -> tuple[InboundRouteSpec, InboundRouteSpec]:
+    return resolve_phase_inbound_route(config), resolve_matching_result_inbound_route(config)
 
 
 def resolve_events_route(config: EdgeConfig) -> tuple[str, str] | None:
@@ -61,24 +101,6 @@ def resolve_events_route(config: EdgeConfig) -> tuple[str, str] | None:
         return None
     _validate_backend("events", events_cfg.backend, {"http", "mqtt", "none"})
     return events_cfg.backend, events_cfg.channel
-
-
-
-def resolve_phase_updates_route(config: EdgeConfig) -> tuple[str, str] | None:
-    phase_cfg = config.phase_messaging
-    if phase_cfg.backend == "none":
-        return None
-    _validate_backend("phase", phase_cfg.backend, {"http", "mqtt", "none"})
-    return phase_cfg.backend, phase_cfg.channel
-
-
-def resolve_matching_result_route(config: EdgeConfig) -> tuple[str, str] | None:
-    matching_cfg = config.matching_result
-    if not matching_cfg.enabled or matching_cfg.backend == "none":
-        return None
-    _validate_backend("matching", matching_cfg.backend, {"http", "mqtt", "none"})
-    return matching_cfg.backend, matching_cfg.channel
-
 
 
 def _validate_backend(kind: str, backend: str, allowed: set[str]) -> None:

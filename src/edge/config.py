@@ -31,6 +31,11 @@ def _normalize_channel(backend: str, value: str | None, default: str) -> str:
     return channel[1:] if channel.startswith("/") else channel
 
 
+def _normalize_resource_name(value: str | None, default: str) -> str:
+    resource_name = (value or default).strip()
+    return resource_name or default
+
+
 def _parse_bgr_triplet(value: str | None, default: tuple[int, int, int]) -> tuple[int, int, int]:
     raw = (value or "").strip()
     if not raw:
@@ -132,6 +137,15 @@ class PublishConfig:
 
 
 @dataclass
+class AppInboundMessagingConfig:
+    backend: str = field(default_factory=lambda: _normalize_backend(os.environ.get("EDGE_APP_INBOUND_BACKEND"), "mqtt"))
+
+    def __post_init__(self) -> None:
+        if self.backend not in {"http", "mqtt"}:
+            raise ValueError(f"unsupported app inbound backend: {self.backend}; allowed=http,mqtt")
+
+
+@dataclass
 class MqttConfig:
     enabled: bool = field(default_factory=lambda: _to_bool(os.environ.get("EDGE_MQTT_ENABLED"), False))
     host: str = field(default_factory=lambda: os.environ.get("EDGE_MQTT_HOST", "localhost"))
@@ -151,16 +165,9 @@ class HttpMessagingConfig:
 
 @dataclass
 class PhaseMessagingConfig:
-    backend: str = field(
-        default_factory=lambda: _normalize_backend(os.environ.get("EDGE_PHASE_BACKEND"), "none")
-    )
-    channel: str = field(default_factory=lambda: os.environ.get("EDGE_PHASE_CHANNEL", ""))
-
-    def __post_init__(self) -> None:
-        if self.backend == "none" and _to_bool(os.environ.get("EDGE_MQTT_ENABLED"), False):
-            self.backend = "mqtt"
-        default_channel = "/integration/phase" if self.backend == "http" else "integration/phase"
-        self.channel = _normalize_channel(self.backend, self.channel, default_channel)
+    enabled: bool = field(default_factory=lambda: _to_bool(os.environ.get("EDGE_PHASE_ENABLED"), True))
+    channel: str = field(default_factory=lambda: os.environ.get("EDGE_PHASE_CHANNEL", "integration/phase"))
+    resource_name: str = field(default_factory=lambda: os.environ.get("EDGE_PHASE_RESOURCE_NAME", "edge_mode"))
 
 
 @dataclass
@@ -178,14 +185,10 @@ class EdgeEventMessagingConfig:
 @dataclass
 class MatchingResultConfig:
     enabled: bool = field(default_factory=lambda: _to_bool(os.environ.get("EDGE_MATCHING_RESULT_ENABLED"), False))
-    backend: str = field(
-        default_factory=lambda: _normalize_backend(os.environ.get("EDGE_MATCHING_RESULT_BACKEND"), "mqtt")
+    channel: str = field(default_factory=lambda: os.environ.get("EDGE_MATCHING_RESULT_CHANNEL", "integration/matching"))
+    resource_name: str = field(
+        default_factory=lambda: os.environ.get("EDGE_MATCHING_RESULT_RESOURCE_NAME", "matching_result_snapshot")
     )
-    channel: str = field(default_factory=lambda: os.environ.get("EDGE_MATCHING_RESULT_CHANNEL", ""))
-
-    def __post_init__(self) -> None:
-        default_channel = "/integration/matching" if self.backend == "http" else "integration/matching"
-        self.channel = _normalize_channel(self.backend, self.channel, default_channel)
 
 
 @dataclass
@@ -278,6 +281,7 @@ class EdgeConfig:
     streaming: StreamingConfig = field(default_factory=StreamingConfig)
     publish: PublishConfig = field(default_factory=PublishConfig)
     integration: IntegrationConfig = field(default_factory=IntegrationConfig)
+    app_inbound: AppInboundMessagingConfig = field(default_factory=AppInboundMessagingConfig)
     mqtt: MqttConfig = field(default_factory=MqttConfig)
     http_messaging: HttpMessagingConfig = field(default_factory=HttpMessagingConfig)
     phase_messaging: PhaseMessagingConfig = field(default_factory=PhaseMessagingConfig)
@@ -285,13 +289,7 @@ class EdgeConfig:
     matching_result: MatchingResultConfig = field(default_factory=MatchingResultConfig)
     inference_engine_class: str | None = field(default_factory=lambda: os.environ.get("INFERENCE_ENGINE_CLASS"))
     publish_engine_class: str | None = field(default_factory=lambda: os.environ.get("PUBLISH_ENGINE_CLASS"))
-    matching_result_engine_class: str | None = field(default_factory=lambda: os.environ.get("MATCHING_RESULT_ENGINE_CLASS"))
     streaming_engine_class: str | None = field(default_factory=lambda: os.environ.get("STREAMING_ENGINE_CLASS"))
-    mode_server_enabled: bool = field(
-        default_factory=lambda: _to_bool(os.environ.get("EDGE_MODE_SERVER_ENABLED"), False)
-    )
-    mode_server_host: str = field(default_factory=lambda: os.environ.get("EDGE_MODE_SERVER_HOST", "0.0.0.0"))
-    mode_server_port: int = field(default_factory=lambda: int(os.environ.get("EDGE_MODE_SERVER_PORT", "9100")))
     poll_interval: float = field(default_factory=lambda: float(os.environ.get("EDGE_POLL_INTERVAL", "5")))
     retry_backoff: float = field(default_factory=lambda: float(os.environ.get("EDGE_RETRY_BACKOFF", "5")))
     health_report_interval_seconds: float = field(
@@ -308,6 +306,24 @@ class EdgeConfig:
     def __post_init__(self) -> None:
         if not self.monitor_service_name:
             self.monitor_service_name = f"edge-{self.camera.camera_id}"
+        self.phase_messaging.channel = _normalize_channel(
+            self.app_inbound.backend,
+            self.phase_messaging.channel,
+            "integration/phase",
+        )
+        self.phase_messaging.resource_name = _normalize_resource_name(
+            self.phase_messaging.resource_name,
+            "edge_mode",
+        )
+        self.matching_result.channel = _normalize_channel(
+            self.app_inbound.backend,
+            self.matching_result.channel,
+            "integration/matching",
+        )
+        self.matching_result.resource_name = _normalize_resource_name(
+            self.matching_result.resource_name,
+            "matching_result_snapshot",
+        )
 
     @property
     def rtsp(self) -> RtspConfig:

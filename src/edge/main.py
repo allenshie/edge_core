@@ -11,7 +11,6 @@ from smart_workflow import (
     WorkflowRunner,
 )
 
-from edge.api.mode_server import MODE_RESOURCE, start_mode_server, stop_mode_server
 from edge.config import EdgeConfig, load_config
 from edge.pipeline import build_edge_workflow
 from edge.runtime.health_runtime import start_health_server, stop_health_server
@@ -46,7 +45,7 @@ def build_context(config: EdgeConfig) -> TaskContext:
         monitor=monitor,
     )
     default_mode = os.environ.get("EDGE_MODE_DEFAULT")
-    context.set_resource(MODE_RESOURCE, default_mode)
+    context.set_resource(config.phase_messaging.resource_name, default_mode)
     return context
 
 
@@ -56,9 +55,6 @@ def run_daemon(config: EdgeConfig) -> None:
 
     init_messaging_client(context, logger)
 
-    mode_server = None
-    if config.mode_server_enabled:
-        mode_server = start_mode_server(config.mode_server_host, config.mode_server_port, context)
     start_messaging_subscriber(context)
 
     workflow = build_edge_workflow()
@@ -91,7 +87,6 @@ def run_daemon(config: EdgeConfig) -> None:
             if callable(close_fn):
                 shutdown_records.extend(normalize_cleanup_records(close_fn(context), fallback_type="task"))
 
-        shutdown_records.extend(append_shutdown_records(context, stop_mode_server(mode_server)))
         shutdown_records.extend(append_shutdown_records(context, close_messaging_client(context)))
         shutdown_records.extend(append_shutdown_records(context, stop_health_server(health_server)))
 

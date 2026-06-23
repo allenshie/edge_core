@@ -7,7 +7,6 @@ from typing import Any
 __all__ = [
     "IngestionTask",
     "InferenceTask",
-    "MatchingResultTask",
     "PublishResultTask",
     "StreamingTask",
 ]
@@ -15,7 +14,6 @@ __all__ = [
 _EXPORTS = {
     "IngestionTask": ".ingestion",
     "InferenceTask": ".inference",
-    "MatchingResultTask": ".matching_result",
     "PublishResultTask": ".publish",
     "StreamingTask": ".streaming",
 }

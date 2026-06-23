@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant User
+    participant Launcher as main.py
+    participant EnvLoader as app.config
+    participant AppRuntime as app.runtime
+    participant EdgeMain as edge.main
+    participant Workflow as WorkflowRunner
+
+    User->>Launcher: start service
+    Launcher->>EnvLoader: load_app_environment
+    EnvLoader-->>Launcher: resolved paths
+    Launcher->>AppRuntime: run
+    AppRuntime->>AppRuntime: inject sys.path
+    AppRuntime->>AppRuntime: apply environment defaults
+    AppRuntime->>EdgeMain: call main
+    EdgeMain->>Workflow: build context and workflow
+    Workflow->>Workflow: execute startup and loop

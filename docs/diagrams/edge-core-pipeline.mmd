@@ -1,0 +1,26 @@
+flowchart LR
+    Source[RTSP / MP4 / Camera]
+    Ingest[IngestionTask]
+    FrameMeta[decoded_frame and frame_meta]
+    Infer[InferenceTask]
+    Detect[EdgeDetection list]
+    Stream[StreamingTask]
+    Publish[PublishResultTask]
+    Output[stream and events]
+    Subscriber[Messaging subscriber]
+    Phase[phase resource<br/>edge_mode]
+    Matching[matching_result_snapshot resource]
+
+    Source --> Ingest
+    Ingest --> FrameMeta
+    FrameMeta --> Infer
+    Infer --> Detect
+    Detect --> Stream
+    Detect --> Publish
+    Subscriber --> Phase
+    Subscriber --> Matching
+    Phase --> Infer
+    Phase --> Stream
+    Matching --> Stream
+    Stream --> Output
+    Publish --> Output
