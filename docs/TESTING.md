@@ -59,9 +59,9 @@ pytest tests/pipeline
 - **依賴鎖定**：於發佈前執行 `uv pip compile`（或 pip-tools）生成鎖檔，並在 CI 驗證可安裝。
 - **CI/CD**：建立 GitHub Actions (或其他 CI) workflow，於 PR 時執行 `ruff`, `mypy`, `pytest`，必要時再加 Docker build。
 
-## FAQ
+## 常見排查
 
-- **為何沒有附 sample 影片/伺服器？** 由於可能涉及實際倉儲資料，專案不提供媒體或 RTSP server。請使用自行產生的測試資料，或參考公開授權的影片檔案。
-- **如何同時測試多相機？** 為每台相機定義一組 `.env.camXX` 或獨立 site config，使用對應啟動腳本依序載入即可。
+- 需要 sample 影片或 RTSP server 時，請使用自行產生的測試資料或公開授權的媒體，不要假設 repo 內會附測資。
+- 多相機測試請先參考 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) 的多實例檢查清單，再依 [OPERATIONS.md](OPERATIONS.md) 啟動各自的 `.env.camXX`。
 
-如需更多架構說明，可參考 `README.md`、`SCHEDULED_INFERENCE.md` 與 `ENV.md`。
+如需更多測試準備與常見問題，請先看 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)，再回到 `README.md`、`SCHEDULED_INFERENCE.md` 與 `ENV.md`。

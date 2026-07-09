@@ -9,16 +9,21 @@
 
 ### 同時啟動多個 Edge 實例
 
-專案自己的啟動腳本可遍歷多份 `.env.camXX` 或其他實例設定檔，依序啟動多個 edge 節點：
+`edge_core/scripts/run_all.sh` 會掃描 `edge_core/env/` 底下符合樣式的 `.env` 檔，逐一在背景啟動多個 edge 節點。
+
+常用方式：
 
 ```bash
-cp .env.example .env.cam01
-cp .env.example .env.cam02
+cd edge_core
+cp .env.example env/.env.cam01
+cp .env.example env/.env.cam02
 # 調整各檔案內容...
 
 ./scripts/run_all.sh
-./scripts/run_all.sh '.env.ca?'  # (可選) 使用自訂樣式
+./scripts/run_all.sh '.env.cam0?'  # (可選) 使用自訂樣式
 ```
+
+預設模式會載入 `env/.env.*`。如果你只想啟動部分實例，可以傳入 glob pattern，例如 `.env.cam0?`。
 
 每份 `.env.camXX` 建議至少包含自己的 messaging route：
 
@@ -38,6 +43,8 @@ EDGE_MATCHING_RESULT_ENABLED=1
 EDGE_MATCHING_RESULT_CHANNEL=integration/matching
 EDGE_MATCHING_RESULT_RESOURCE_NAME=matching_result_snapshot
 ```
+
+如果你是在上層 `smart_intersection_safety_edge` 專案中啟動單一或少量實例，則可以改用根目錄的 [scripts/run_edge.sh](../../scripts/run_edge.sh) 直接指定 `.env` 或 `camXX` 名稱。
 
 ### Docker Compose 部署
 

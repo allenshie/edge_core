@@ -62,6 +62,14 @@ uv pip install -e ".[vision]"
 python main.py
 ```
 
+如果你要啟動多個實例，請改看：
+
+- 上層專案的 [scripts/run_edge.sh](../scripts/run_edge.sh)
+- 本模組的 [scripts/run_all.sh](scripts/run_all.sh)
+- 文件索引：[docs/README.md](docs/README.md)
+- 操作說明：[部署與操作（多實例、Docker）](docs/OPERATIONS.md)
+- 常見故障排查：[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+
 ## 從 site repo / 上層專案啟動（建議）
 
 ```bash
@@ -141,6 +149,8 @@ ffplay -rtsp_transport tcp -fflags nobuffer -flags low_delay -framedrop -probesi
 
 ## 參考文件
 
+- [文件索引](docs/README.md)
+- [env 目錄使用方式](env/README.md)
 - [設定與環境變數](docs/ENV.md)
 - [ScheduledInferenceEngine 使用說明](docs/SCHEDULED_INFERENCE.md)
 - [設定示例（多相機）](docs/CONFIG.md)
@@ -148,5 +158,6 @@ ffplay -rtsp_transport tcp -fflags nobuffer -flags low_delay -framedrop -probesi
 - [Orin 部署指南（ARM）](docs/DEPLOY_ORIN.md)
 - [主專案 / site repo 整合指南](docs/EDGE_SUBMODULE_GUIDE.md)
 - [部署與操作（多實例、Docker）](docs/OPERATIONS.md)
+- [常見故障排查](docs/TROUBLESHOOTING.md)
 - [測試與品質](docs/TESTING.md)
 - [Diagrams hub](docs/diagrams/README.md)
