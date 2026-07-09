@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0f172a">
+  <title>edge_core - Repository Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b1120;
+      --bg-elevated: rgba(15, 23, 42, 0.88);
+      --panel: rgba(15, 23, 42, 0.84);
+      --panel-soft: rgba(15, 23, 42, 0.72);
+      --line: rgba(148, 163, 184, 0.18);
+      --line-strong: rgba(148, 163, 184, 0.28);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --soft: #cbd5e1;
+      --site: #5eead4;
+      --core: #7dd3fc;
+      --backend: #fbbf24;
+      --external: #86efac;
+      --shadow: 0 28px 70px rgba(2, 6, 23, 0.42);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      background: var(--bg);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 15% 8%, rgba(96, 165, 250, 0.12), transparent 0 25%),
+        radial-gradient(circle at 85% 0%, rgba(94, 234, 212, 0.10), transparent 0 22%),
+        radial-gradient(circle at 70% 86%, rgba(251, 191, 36, 0.08), transparent 0 24%),
+        linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+        linear-gradient(180deg, #08101f 0%, #0b1220 44%, #0f172a 100%);
+      background-size: auto, auto, auto, 30px 30px, 30px 30px, auto;
+      background-attachment: fixed;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(2, 6, 23, 0.06), rgba(2, 6, 23, 0.48)),
+        radial-gradient(circle at top, transparent 30%, rgba(2, 6, 23, 0.22) 100%);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page-shell {
+      position: relative;
+      z-index: 0;
+      width: min(1440px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    .masthead,
+    .section {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.78));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .masthead {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(250px, 300px);
+      gap: 20px;
+      padding: 24px;
+      align-items: start;
+    }
+
+    .eyebrow {
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.3rem, 4vw, 4rem);
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+      font-weight: 900;
+    }
+
+    .lede {
+      margin: 14px 0 0;
+      max-width: 74ch;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.7;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.05);
+      color: var(--soft);
+      font-size: 0.78rem;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .chip--strong {
+      border-color: rgba(125, 211, 252, 0.34);
+      background: rgba(125, 211, 252, 0.10);
+      color: #e0f2fe;
+    }
+
+    .mono,
+    .inline-code {
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      letter-spacing: -0.01em;
+    }
+
+    .inline-code {
+      display: inline-block;
+      padding: 0.1rem 0.35rem;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 0.45rem;
+      background: rgba(15, 23, 42, 0.86);
+      color: #f8fafc;
+      font-size: 0.93em;
+      white-space: nowrap;
+    }
+
+    .source-links {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-self: stretch;
+    }
+
+    .source-link {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 92px;
+      padding: 14px 16px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 18px;
+      background: rgba(2, 6, 23, 0.24);
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    .source-link:hover {
+      transform: translateY(-1px);
+      border-color: rgba(148, 163, 184, 0.26);
+      background: rgba(2, 6, 23, 0.34);
+    }
+
+    .source-link__meta {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .source-link__title {
+      font-size: 0.98rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .source-link__hint {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.35;
+    }
+
+    .section {
+      margin-top: 18px;
+      padding: 20px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-kicker {
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .section-title {
+      margin-top: 6px;
+      font-size: clamp(1.15rem, 1.4vw, 1.35rem);
+      line-height: 1.25;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .section-note {
+      max-width: 72ch;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.05);
+      color: var(--muted);
+      font-size: 0.75rem;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--site);
+      box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.12);
+    }
+
+    .legend-dot--dash {
+      background: transparent;
+      border: 1.5px dashed var(--backend);
+      box-shadow: none;
+    }
+
+    .map-grid {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) minmax(370px, 1.55fr) minmax(250px, 0.95fr);
+      grid-template-areas:
+        "site core backend"
+        "site core external";
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .boundary {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 100%;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.78));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    }
+
+    .boundary::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: linear-gradient(180deg, var(--accent), rgba(255, 255, 255, 0));
+      opacity: 0.95;
+    }
+
+    .boundary--site {
+      grid-area: site;
+      --accent: var(--site);
+    }
+
+    .boundary--core {
+      grid-area: core;
+      --accent: var(--core);
+    }
+
+    .boundary--backend {
+      grid-area: backend;
+      --accent: var(--backend);
+    }
+
+    .boundary--external {
+      grid-area: external;
+      --accent: var(--external);
+    }
+
+    .boundary__head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .boundary__kicker {
+      display: block;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .boundary h2 {
+      margin: 6px 0 0;
+      font-size: 1.35rem;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      font-weight: 800;
+    }
+
+    .boundary__tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 999px;
+      background: rgba(2, 6, 23, 0.22);
+      color: var(--accent);
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .boundary__lede {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+      line-height: 1.6;
+    }
+
+    .node-list,
+    .module-grid,
+    .wire-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .node,
+    .module,
+    .wire {
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 15px;
+      background: rgba(2, 6, 23, 0.20);
+    }
+
+    .node {
+      padding: 12px 12px 11px;
+    }
+
+    .node__label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: baseline;
+      font-size: 0.87rem;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+
+    .node__label .mono {
+      color: #f8fafc;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .node__hint {
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .node__meta {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .module {
+      padding: 11px 12px;
+    }
+
+    .module__name {
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .module__desc {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .wire {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+
+    .wire--dash {
+      border-style: dashed;
+      background: rgba(2, 6, 23, 0.15);
+    }
+
+    .wire__src,
+    .wire__dst {
+      color: #f8fafc;
+      font-weight: 600;
+    }
+
+    .wire__arrow {
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .map-foot {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    .map-foot strong {
+      color: var(--text);
+    }
+
+    @media (max-width: 1120px) {
+      .masthead {
+        grid-template-columns: 1fr;
+      }
+
+      .source-links {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .source-link {
+        flex: 1 1 220px;
+      }
+
+      .map-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-areas:
+          "site core"
+          "backend external";
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page-shell {
+        width: min(100vw - 18px, 1440px);
+        padding: 10px 0 24px;
+      }
+
+      .masthead,
+      .section {
+        padding: 16px;
+        border-radius: 20px;
+      }
+
+      .map-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "site"
+          "core"
+          "backend"
+          "external";
+      }
+
+      .section-head,
+      .map-foot {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .legend {
+        justify-content: flex-start;
+      }
+
+      .module-grid {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: clamp(2rem, 11vw, 3rem);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="masthead">
+      <section>
+        <div class="eyebrow">edge_core diagrams</div>
+        <h1>Repository Overview</h1>
+        <p class="lede">
+          這一頁只保留 <code class="inline-code">repository-overview.mmd</code> 的邊界語義：
+          Site Repo 提供場域輸入，<code class="inline-code">edge_core</code> 承接共用 runtime，
+          App Backend 與 External Systems 則是右側的兩個外部觸點。
+        </p>
+        <div class="chip-row" aria-label="Diagram summary">
+          <span class="chip chip--strong">boundary map</span>
+          <span class="chip">source: repository-overview.mmd</span>
+          <span class="chip">solid + dotted edges</span>
+        </div>
+      </section>
+
+      <nav class="source-links" aria-label="Diagram sources">
+        <a class="source-link" href="../repository-overview.mmd">
+          <span class="source-link__meta">Source MMD</span>
+          <span class="source-link__title">Preserved graph semantics</span>
+          <span class="source-link__hint">No Mermaid edit required.</span>
+        </a>
+        <a class="source-link" href="../README.md">
+          <span class="source-link__meta">Diagram hub</span>
+          <span class="source-link__title">Minimal index entry</span>
+          <span class="source-link__hint">Points back to this page.</span>
+        </a>
+      </nav>
+    </header>
+
+    <section class="section" aria-labelledby="boundary-map-title">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Boundary map</div>
+          <div class="section-title" id="boundary-map-title">四個邊界，保留原始 Mermaid 的依賴方向</div>
+          <p class="section-note">
+            左欄是 site repo 的輸入，中間是 <code class="inline-code">edge_core</code> 的共用主幹，右欄拆成 App Backend 與 External Systems。
+            實線表示直接資料流，虛線表示 runtime / subscription 類的 side channel。
+          </p>
+        </div>
+        <div class="legend" aria-label="Edge semantics legend">
+          <span class="legend-item"><span class="legend-dot" aria-hidden="true"></span> direct flow</span>
+          <span class="legend-item"><span class="legend-dot legend-dot--dash" aria-hidden="true"></span> dotted control path</span>
+        </div>
+      </div>
+
+      <div class="map-grid" aria-label="Repository boundary map">
+        <article class="boundary boundary--site">
+          <div class="boundary__head">
+            <div>
+              <span class="boundary__kicker">Boundary 01</span>
+              <h2>Site Repo</h2>
+            </div>
+            <span class="boundary__tag">inputs</span>
+          </div>
+          <p class="boundary__lede">
+            場域專屬的入口、排程與模型。這一側只供應 <code class="inline-code">edge_core</code> 需要的資料，不承擔共用 runtime。
+          </p>
+          <div class="node-list">
+            <div class="node">
+              <div class="node__label">
+                <span class="mono">site entrypoint</span>
+                <span class="node__hint">→ <span class="mono">edge_core/main.py</span></span>
+              </div>
+              <div class="node__meta">專案入口會先進入 launcher，再交給共用 runtime。</div>
+            </div>
+            <div class="node">
+              <div class="node__label">
+                <span class="mono">schedules / configs / weights</span>
+                <span class="node__hint">→ <span class="mono">edge.config</span></span>
+              </div>
+              <div class="node__meta">site 控制的設定來源，直接影響 runtime 行為。</div>
+            </div>
+            <div class="node">
+              <div class="node__label">
+                <span class="mono">custom models</span>
+                <span class="node__hint">→ <span class="mono">edge.pipeline</span></span>
+              </div>
+              <div class="node__meta">自訂模型掛到 pipeline，而不是寫進共用框架。</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="boundary boundary--core">
+          <div class="boundary__head">
+            <div>
+              <span class="boundary__kicker">Boundary 02</span>
+              <h2>edge_core</h2>
+            </div>
+            <span class="boundary__tag">core runtime</span>
+          </div>
+          <p class="boundary__lede">
+            共用主幹從 <code class="inline-code">edge_core/main.py</code> 進入 <code class="inline-code">edge.main</code>，
+            再把 config、messaging、runtime 與 pipeline 串成可執行路徑。
+          </p>
+          <div class="module-grid" aria-label="edge_core modules">
+            <div class="module">
+              <div class="module__name"><span class="mono">edge_core/main.py</span></div>
+              <div class="module__desc">launcher entrypoint</div>
+            </div>
+            <div class="module">
+              <div class="module__name"><span class="mono">edge.main</span></div>
+              <div class="module__desc">orchestration hub</div>
+            </div>
+            <div class="module">
+              <div class="module__name"><span class="mono">edge.config</span></div>
+              <div class="module__desc">env / config reader</div>
+            </div>
+            <div class="module">
+              <div class="module__name"><span class="mono">edge.messaging</span></div>
+              <div class="module__desc">backend connection</div>
+            </div>
+            <div class="module">
+              <div class="module__name"><span class="mono">edge.runtime</span></div>
+              <div class="module__desc">wiring + shutdown</div>
+            </div>
+            <div class="module">
+              <div class="module__name"><span class="mono">edge.pipeline</span></div>
+              <div class="module__desc">frame flow</div>
+            </div>
+          </div>
+          <div class="wire-list" aria-label="edge_core directed edges">
+            <div class="wire">
+              <span class="wire__src">edge_core/main.py</span>
+              <span class="wire__arrow">→</span>
+              <span class="wire__dst">edge.main</span>
+            </div>
+            <div class="wire">
+              <span class="wire__src">edge.main</span>
+              <span class="wire__arrow">→</span>
+              <span class="wire__dst">config · messaging · runtime · pipeline</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="boundary boundary--backend">
+          <div class="boundary__head">
+            <div>
+              <span class="boundary__kicker">Boundary 03</span>
+              <h2>App Backend</h2>
+            </div>
+            <span class="boundary__tag">dotted inbound</span>
+          </div>
+          <p class="boundary__lede">
+            <code class="inline-code">phase / matching / events routes</code> 是 runtime 的側向入口，負責同步狀態與事件回流。
+          </p>
+          <div class="node-list">
+            <div class="node">
+              <div class="node__label">
+                <span class="mono">phase / matching / events routes</span>
+                <span class="node__hint">routeApi</span>
+              </div>
+              <div class="node__meta">
+                <span class="mono">runtime -.-> routeApi</span> 與
+                <span class="mono">messaging -.-> routeApi</span> 都保留為 dotted side channel。
+              </div>
+            </div>
+          </div>
+          <div class="wire-list" aria-label="backend dotted edges">
+            <div class="wire wire--dash">
+              <span class="wire__src">runtime</span>
+              <span class="wire__arrow">-.-></span>
+              <span class="wire__dst">routeApi</span>
+            </div>
+            <div class="wire wire--dash">
+              <span class="wire__src">messaging</span>
+              <span class="wire__arrow">-.-></span>
+              <span class="wire__dst">routeApi</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="boundary boundary--external">
+          <div class="boundary__head">
+            <div>
+              <span class="boundary__kicker">Boundary 04</span>
+              <h2>External Systems</h2>
+            </div>
+            <span class="boundary__tag">outputs</span>
+          </div>
+          <p class="boundary__lede">
+            外部邊界同時包含輸入、輸出與監控。<code class="inline-code">camera</code> 進入 pipeline，
+            <code class="inline-code">stream sink</code> 接收視覺輸出，<code class="inline-code">monitoring endpoint</code> 接收 runtime 狀態。
+          </p>
+          <div class="node-list">
+            <div class="node">
+              <div class="node__label">
+                <span class="mono">RTSP / file / camera</span>
+                <span class="node__hint">→ <span class="mono">edge.pipeline</span></span>
+              </div>
+              <div class="node__meta">影像來源進入 pipeline，成為 frame 的上游輸入。</div>
+            </div>
+            <div class="node">
+              <div class="node__label">
+                <span class="mono">stream sink</span>
+                <span class="node__hint">← <span class="mono">edge.pipeline</span></span>
+              </div>
+              <div class="node__meta">pipeline 將視覺結果輸出到串流端。</div>
+            </div>
+            <div class="node">
+              <div class="node__label">
+                <span class="mono">monitoring endpoint</span>
+                <span class="node__hint">← <span class="mono">edge.runtime</span></span>
+              </div>
+              <div class="node__meta">runtime 的健康與狀態回報會往這裡送。</div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="map-foot">
+        <p>
+          <strong>Reading order.</strong>
+          Site Repo feeds <code class="inline-code">edge_core/main.py</code>, <code class="inline-code">edge.main</code> fans out to the shared runtime modules,
+          and the right-hand boundaries preserve the dotted backend and monitoring edges.
+        </p>
+        <p class="mono">No JavaScript. Single-file HTML. Semantics preserved from repository-overview.mmd.</p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

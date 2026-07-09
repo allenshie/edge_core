@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#92400e">
+  <title>edge_core - Configuration and Extension Points</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body class="page page--config">
+  <div class="page-shell">
+    <header class="masthead">
+      <section>
+        <div class="eyebrow">edge_core diagrams</div>
+        <h1>Configuration and Extension Points</h1>
+        <p class="lede">
+          這張圖把「哪個設定改到哪個行為」畫清楚。左邊是 site repo 的可替換內容，中間是控制面設定，
+          右邊是 edge_core runtime 內真正被 wire 起來的元件。
+        </p>
+        <div class="chip-row">
+          <span class="chip chip--strong">control plane</span>
+          <span class="chip">source: configuration-and-extension-points.mmd</span>
+          <span class="chip">override map</span>
+        </div>
+      </section>
+      <nav class="meta-links" aria-label="Diagram sources">
+        <a class="nav-link" href="../configuration-and-extension-points.mmd">
+          <span>Source MMD</span>
+          <span class="nav-link__hint">diagram</span>
+        </a>
+        <a class="nav-link" href="../assets/edge-core-configuration-extensions.svg">
+          <span>SVG reference</span>
+          <span class="nav-link__hint">legacy</span>
+        </a>
+        <a class="nav-link" href="../README.md">
+          <span>Diagrams hub</span>
+          <span class="nav-link__hint">index</span>
+        </a>
+      </nav>
+    </header>
+
+    <section class="shell">
+      <div class="section-head">
+        <div class="section-kicker">4. Configuration map</div>
+        <div class="section-title">設定是控制面，不是 pipeline 本身</div>
+        <p class="section-text">
+          這一頁把 schedule、models、route wiring 與 engine override 分層表示。
+          重點是讓人看懂：有些設定只是選資料，有些設定會真的替換 runtime 的實作。
+        </p>
+      </div>
+
+      <div class="layout-grid layout-grid--wide">
+        <article class="panel panel--soft">
+          <div class="node-label">site repo</div>
+          <div class="node-title">場域專屬資源與實作</div>
+          <p class="node-copy">
+            這一欄是 site repo 真正要維護的東西。它們不是 runtime 的共用骨架，而是各場域自己的變體。
+          </p>
+          <div class="mini-list">
+            <div class="mini">
+              <div class="mini__title"><span>schedule.json</span><span class="token token--accent">phase selection</span></div>
+              <div class="mini__meta">決定哪個 phase 走哪種行為，常被 <code class="inline-code">ScheduledInferenceEngine</code> 使用。</div>
+            </div>
+            <div class="mini">
+              <div class="mini__title"><span>configs/models.yaml</span><span class="token token--accent-2">model config</span></div>
+              <div class="mini__meta">對應 site 的模型設定與參數，供 custom model classes 讀取。</div>
+            </div>
+            <div class="mini">
+              <div class="mini__title"><span>custom model / engine classes</span><span class="token token--warm">replaceable</span></div>
+              <div class="mini__meta">custom inference、publish 與 streaming engine 都屬於這一側的擴充。</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel panel--accent">
+          <div class="node-label">configuration</div>
+          <div class="node-title">把 backend 與 engine 接線起來</div>
+          <p class="node-copy">
+            中間這層是控制面。它的工作不是直接跑 pipeline，而是決定 runtime 要怎麼接 backend、
+            要不要替換 engine、以及 subscriber 要掛哪些 inbound routes。
+          </p>
+
+          <div class="compact-grid">
+            <div class="node-card">
+              <div class="node-label">shared inbound backend</div>
+              <div class="node-copy">共用的 backend 連線底座，交給 <code class="inline-code">MessagingClientProvider</code>。</div>
+            </div>
+            <div class="node-card">
+              <div class="node-label">route config</div>
+              <div class="node-copy">phase / matching / events routes 由這裡決定要不要訂閱。</div>
+            </div>
+            <div class="node-card">
+              <div class="node-label">engine overrides</div>
+              <div class="node-copy">指定哪個 task 要換成 custom inference / publish / streaming engine。</div>
+            </div>
+            <div class="node-card">
+              <div class="node-label">runtime effect</div>
+              <div class="node-copy">設定不是資料本身，而是驅動 runtime 行為的指令集合。</div>
+            </div>
+          </div>
+
+          <hr class="mini-rule">
+          <div class="arrow-row">
+            <span class="arrow-line"></span>
+            <span>control plane chooses wiring</span>
+            <span class="arrow-line"></span>
+          </div>
+        </article>
+
+        <article class="panel panel--accent-2">
+          <div class="node-label">edge_core runtime</div>
+          <div class="node-title">真的被 wire 起來的元件</div>
+          <p class="node-copy">
+            右欄顯示控制面最後落地到哪些 runtime component。這裡的重點是看出「設定對應到哪個 hook」。
+          </p>
+
+          <div class="mini-list">
+            <div class="mini">
+              <div class="mini__title"><span>MessagingClientProvider</span><span class="token token--accent">backend</span></div>
+              <div class="mini__meta">承接 shared inbound backend，讓 subscriber 與 runtime 有共同的訊息來源。</div>
+            </div>
+            <div class="mini">
+              <div class="mini__title"><span>start_messaging_subscriber</span><span class="token token--warm">routes</span></div>
+              <div class="mini__meta">讀 route config，決定要掛哪些 phase / matching / events updates。</div>
+            </div>
+            <div class="mini">
+              <div class="mini__title"><span>InferenceTask / StreamingTask / PublishResultTask</span><span class="token token--success">overridable</span></div>
+              <div class="mini__meta">engine overrides 會在這些 task 上生效，替換掉預設行為。</div>
+            </div>
+            <div class="mini">
+              <div class="mini__title"><span>TaskContext</span><span class="token token--accent-2">shared state</span></div>
+              <div class="mini__meta">subscriber 與 runtime 會把狀態寫進來，讓 stage 之間共享。</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="shell">
+      <div class="section-head">
+        <div class="section-kicker">Quick read</div>
+        <div class="section-title">這張圖的重點</div>
+      </div>
+      <div class="note-grid">
+        <div class="note-card">
+          <h3>schedule.json 決定 phase</h3>
+          <p>它更像開關與策略表，不是 pipeline 的實際運算。</p>
+        </div>
+        <div class="note-card">
+          <h3>route config 決定 inbound wiring</h3>
+          <p>phase / matching / events 的訂閱都要先由控制面開好，runtime 才能接到資料。</p>
+        </div>
+        <div class="note-card">
+          <h3>engine overrides 真的會換實作</h3>
+          <p>這是最重要的 extension point，因為它會直接改變 inference / publish / streaming 的行為。</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

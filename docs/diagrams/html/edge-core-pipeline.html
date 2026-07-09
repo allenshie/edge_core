@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#166534">
+    <title>edge_core - Core Pipeline and TaskContext Flow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="shared.css">
+  </head>
+  <body class="page page--pipeline">
+  <div class="page-shell">
+    <header class="masthead">
+      <section>
+        <div class="eyebrow">edge_core diagrams</div>
+        <h1>Core Pipeline and TaskContext Flow</h1>
+        <p class="lede">
+          這張圖把 frame 的主路徑畫清楚：從取流進來，到推理、串流、事件發布。
+          同時把 <code class="inline-code">TaskContext</code> 的共享資源獨立成一條 rail，讓 <code class="inline-code">edge_mode</code> 與
+          <code class="inline-code">matching_result_snapshot</code> 的來源與用途一眼就能看懂。
+        </p>
+        <div class="chip-row">
+          <span class="chip chip--strong">flow view</span>
+          <span class="chip">source: edge-core-pipeline.mmd</span>
+          <span class="chip">TaskContext rail</span>
+        </div>
+      </section>
+      <nav class="meta-links" aria-label="Diagram sources">
+        <a class="nav-link" href="../edge-core-pipeline.mmd">
+          <span>Source MMD</span>
+          <span class="nav-link__hint">diagram</span>
+        </a>
+        <a class="nav-link" href="../assets/edge-core-pipeline-context.svg">
+          <span>SVG reference</span>
+          <span class="nav-link__hint">legacy</span>
+        </a>
+        <a class="nav-link" href="../README.md">
+          <span>Diagrams hub</span>
+          <span class="nav-link__hint">index</span>
+        </a>
+      </nav>
+    </header>
+
+    <section class="shell">
+      <div class="section-head">
+        <div class="section-kicker">3. Pipeline flow</div>
+        <div class="section-title">先看共享狀態，再看 stage 順序</div>
+        <p class="section-text">
+          這個版本把 flowchart 拆成兩層。上層是 shared resources，講清楚誰會寫進 TaskContext；
+          下層才是 pipeline 三大區塊，讓 data flow 與 control flow 不會互相干擾。
+        </p>
+      </div>
+
+      <div class="callout">
+        <strong>TaskContext rail.</strong>
+        <span class="mono">frame_meta</span> 由 ingestion 寫入後往下游傳遞；
+        <span class="mono">edge_mode</span> 與 <span class="mono">matching_result_snapshot</span> 來自 backend updates，
+        會被 inference 與 streaming 讀取。
+      </div>
+
+      <div class="layout-grid layout-grid--3" style="margin-top: 18px;">
+        <article class="panel panel--soft">
+          <div class="node-label">Input sources</div>
+          <div class="node-title">RTSP / File / Camera</div>
+          <p class="node-copy">
+            進入 pipeline 的原始影像來源。這層只負責把 frame 帶進來，不碰推理邏輯。
+          </p>
+          <div class="node-list">
+            <div><code class="inline-code">RTSP</code> live stream</div>
+            <div><code class="inline-code">File</code> batch / replay</div>
+            <div><code class="inline-code">Camera</code> live capture</div>
+          </div>
+          <hr class="mini-rule">
+          <div class="arrow-row">
+            <span class="arrow-line"></span>
+            <span>feeds IngestionTask</span>
+            <span class="arrow-line"></span>
+          </div>
+        </article>
+
+        <article class="panel panel--accent">
+          <div class="node-label">Pipeline stages</div>
+          <div class="node-title">從 ingestion 到 publish 的主鏈</div>
+          <p class="node-copy">
+            這個欄位用垂直堆疊的方式表現 stage 順序，讓每一步寫入與讀取的資源關係更直觀。
+          </p>
+
+          <div class="timeline" style="gap: 12px;">
+            <div class="node-card node-card--accent">
+              <div class="node-label">IngestionTask</div>
+              <div class="node-title">decode / ingest</div>
+              <div class="node-copy">把影像解碼成可傳遞的 frame，並寫入 <code class="inline-code">frame_meta</code>。</div>
+            </div>
+            <div class="arrow-row arrow-row--vertical">
+              <span class="arrow-line arrow-line--vertical"></span>
+              <span>frame_meta</span>
+              <span class="arrow-line arrow-line--vertical"></span>
+            </div>
+            <div class="node-card">
+              <div class="node-label">InferenceTask</div>
+              <div class="node-title">infer detections</div>
+              <div class="node-copy">讀取 <code class="inline-code">frame_meta</code> 與 <code class="inline-code">edge_mode</code>，產生推理輸出。</div>
+            </div>
+            <div class="arrow-row arrow-row--vertical">
+              <span class="arrow-line arrow-line--vertical"></span>
+              <span>stream + publish</span>
+              <span class="arrow-line arrow-line--vertical"></span>
+            </div>
+            <div class="node-card">
+              <div class="node-label">StreamingTask</div>
+              <div class="node-title">render / stream out</div>
+              <div class="node-copy">在 debug 模式下也會讀 <code class="inline-code">matching_result_snapshot</code>，把畫面和狀態對起來。</div>
+            </div>
+            <div class="node-card">
+              <div class="node-label">PublishResultTask</div>
+              <div class="node-title">emit events</div>
+              <div class="node-copy">把推理結果送成事件，交回 App Backend 的 events route。</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel panel--accent-2">
+          <div class="node-label">Outputs / control</div>
+          <div class="node-title">視覺輸出與事件發布</div>
+          <p class="node-copy">
+            右欄把 pipeline 的出口集中起來，方便看出視覺流和事件流是兩條不同的輸出邊。
+          </p>
+
+          <div class="node-card">
+            <div class="node-label">TaskContext resources</div>
+            <div class="node-list">
+              <div><span class="token token--accent">edge_mode</span></div>
+              <div><span class="token token--accent-2">matching_result_snapshot</span></div>
+              <div><span class="token token--warm">frame_meta</span></div>
+            </div>
+          </div>
+
+          <div class="mini-rule"></div>
+
+          <div class="mini-list">
+            <div class="mini">
+              <div class="mini__title">
+                <span>visual stream</span>
+                <span class="token token--success">StreamingTask</span>
+              </div>
+              <p class="mini__meta">可視化畫面會沿著串流端輸出，debug 狀態會包含 snapshot 提示。</p>
+            </div>
+            <div class="mini">
+              <div class="mini__title">
+                <span>events</span>
+                <span class="token token--accent">PublishResultTask</span>
+              </div>
+              <p class="mini__meta">推理事件會走 backend 的 event route，不跟 stream 走同一條出口。</p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="shell">
+      <div class="section-head">
+        <div class="section-kicker">Quick read</div>
+        <div class="section-title">這張圖的重點</div>
+      </div>
+      <div class="note-grid">
+        <div class="note-card">
+          <h3>frame_meta 是主幹</h3>
+          <p>它從 ingestion 往下游流，讓 inference 與後續輸出都能看到同一份 frame context。</p>
+        </div>
+        <div class="note-card">
+          <h3>edge_mode 是控制訊號</h3>
+          <p>它不是 frame 本身，而是 runtime 的模式開關，會影響 inference 與 streaming 的行為。</p>
+        </div>
+        <div class="note-card">
+          <h3>stream 與 publish 分流</h3>
+          <p>視覺輸出與事件發布各自有出口，這也是 pipeline 設計上最重要的分界。</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

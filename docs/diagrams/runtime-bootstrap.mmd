@@ -12,10 +12,14 @@ sequenceDiagram
     EdgeCoreLauncher->>EdgeMain: call main()
     EdgeMain->>MessagingClient: build client
     EdgeMain->>StartSubscriber: scan enabled inbound routes
-    EdgeMain->>HealthServer: start health server
+    opt EDGE_HEALTH_SERVER_ENABLED=1
+        EdgeMain->>HealthServer: start health server
+    end
     EdgeMain->>WorkflowRunner: build runner
     WorkflowRunner->>EdgePipeline: run startup task
     WorkflowRunner->>EdgePipeline: execute scheduler loop
     WorkflowRunner-->>EdgeMain: stop
     EdgeMain->>MessagingClient: close
-    EdgeMain->>HealthServer: stop
+    opt EDGE_HEALTH_SERVER_ENABLED=1
+        EdgeMain->>HealthServer: stop
+    end

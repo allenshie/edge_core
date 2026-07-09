@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#334155">
+  <title>edge_core - Runtime Bootstrap and Shutdown</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body class="page page--runtime">
+  <div class="page-shell">
+    <header class="masthead">
+      <section>
+        <div class="eyebrow">edge_core diagrams</div>
+        <h1>Runtime Bootstrap and Shutdown</h1>
+        <p class="lede">
+          這張圖不是在畫「有哪些元件」，而是在畫「啟動時誰先做什麼、關閉時誰先收什麼」。
+          它把 launcher、<code class="inline-code">edge.main</code>、subscriber、health server 與 workflow runner 串成一條可讀的時間線。
+        </p>
+        <div class="chip-row">
+          <span class="chip chip--strong">sequence view</span>
+          <span class="chip">source: runtime-bootstrap.mmd</span>
+          <span class="chip">boot / run / stop</span>
+        </div>
+      </section>
+      <nav class="meta-links" aria-label="Diagram sources">
+        <a class="nav-link" href="../runtime-bootstrap.mmd">
+          <span>Source MMD</span>
+          <span class="nav-link__hint">diagram</span>
+        </a>
+        <a class="nav-link" href="../assets/edge-core-runtime-flow.svg">
+          <span>SVG reference</span>
+          <span class="nav-link__hint">legacy</span>
+        </a>
+        <a class="nav-link" href="../README.md">
+          <span>Diagrams hub</span>
+          <span class="nav-link__hint">index</span>
+        </a>
+      </nav>
+    </header>
+
+    <section class="shell">
+      <div class="section-head">
+        <div class="section-kicker">2. Runtime sequence</div>
+        <div class="section-title">啟動鏈路要先把依賴接好，再跑 workflow</div>
+        <p class="section-text">
+          左邊先把「這個 runtime 要記住什麼」講清楚，右邊用四段時間線把啟動、訂閱、執行與關閉分開。
+          這樣比較容易看出 health server 是可選分支，而不是每次都一定存在。
+        </p>
+      </div>
+
+      <div class="layout-grid layout-grid--2">
+        <article class="panel panel--accent">
+          <div class="section-label">boot contract</div>
+          <h3>讀這張圖的方式</h3>
+          <ul>
+            <li><strong>Launcher</strong> 只是進入點，真正的 runtime 在 <code class="inline-code">edge.main</code>。</li>
+            <li><strong>Messaging client</strong> 與 <strong>subscriber</strong> 先建立，才能接 backend 的 inbound routes。</li>
+            <li><strong>Health server</strong> 不是每次都啟動；它是否存在，會影響 runner 的型別選擇。</li>
+            <li><strong>Workflow runner</strong> 負責 startup task 與 scheduler loop，最後把收尾流程走完。</li>
+          </ul>
+          <hr class="mini-rule">
+          <div class="note">
+            這張頁面故意比 Mermaid 寬鬆一點，因為啟動鏈路的重點是順序與責任，不是符號本身。
+          </div>
+        </article>
+
+        <div class="timeline">
+          <section class="timeline-phase">
+            <div class="timeline-phase__title">
+              <h3>Boot</h3>
+              <span class="mono">launch entry</span>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-step__io">
+                <div class="node-label">User → Launcher</div>
+                <div class="node-title">start service</div>
+                <div class="node-copy">外部執行環境把服務拉起來，進入 edge_core 的啟動入口。</div>
+              </div>
+              <div class="timeline-step__body">
+                <div class="step__meta">
+                  <span class="token token--accent">main.py</span>
+                  <span class="token">call main()</span>
+                </div>
+                <p>launcher 只是包裝層，真正的啟動流程從 <code class="inline-code">edge.main</code> 開始。</p>
+              </div>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-step__io">
+                <div class="node-label">Launcher → edge.main</div>
+                <div class="node-title">enter runtime</div>
+                <div class="node-copy">把控制權移交給共通 runtime，後面才開始建立 messaging 與 workflow。</div>
+              </div>
+              <div class="timeline-step__body">
+                <div class="step__meta">
+                  <span class="token token--accent-2">edge.main</span>
+                  <span class="token">bootstrap</span>
+                </div>
+                <p>這一步把 site-specific 入口和共通 runtime 的責任切開。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="timeline-phase">
+            <div class="timeline-phase__title">
+              <h3>Wire services</h3>
+              <span class="mono">runtime wiring</span>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-step__io">
+                <div class="node-label">edge.main → MessagingClient</div>
+                <div class="node-title">build client</div>
+                <div class="node-copy">先建立 messaging client，後面 subscriber 與 route wiring 才有地方掛。</div>
+              </div>
+              <div class="timeline-step__body">
+                <div class="step__meta">
+                  <span class="token token--accent">messaging</span>
+                  <span class="token">client ready</span>
+                </div>
+                <p>這是 runtime 的外部連線底座，不先做這一步，後面的 inbound routes 沒辦法生效。</p>
+              </div>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-step__io">
+                <div class="node-label">edge.main → StartSubscriber</div>
+                <div class="node-title">scan enabled inbound routes</div>
+                <div class="node-copy">只訂閱真的有開的 route，避免把不需要的 backend 邏輯掛進來。</div>
+              </div>
+              <div class="timeline-step__body">
+                <div class="step__meta">
+                  <span class="token token--warm">start_messaging_subscriber</span>
+                  <span class="token">route scan</span>
+                </div>
+                <p>這一段把 App Backend 的 updates 接到 runtime 狀態，包含 phase 與 matching 相關路由。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="timeline-phase">
+            <div class="timeline-phase__title">
+              <h3>Run</h3>
+              <span class="mono">execute workflow</span>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-step__io">
+                <div class="node-label">edge.main → HealthServer</div>
+                <div class="node-title">start health server</div>
+                <div class="node-copy">如果健康檢查開啟，就先把 HTTP probes 起來；沒有開就回傳空值。</div>
+              </div>
+              <div class="timeline-step__body">
+                <div class="step__meta">
+                  <span class="token token--green">optional</span>
+                  <span class="token">healthz / readyz</span>
+                </div>
+                <p>這是可選分支，不是 runtime 必需。頁面上把它獨立出來，避免誤解成固定步驟。</p>
+              </div>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-step__io">
+                <div class="node-label">edge.main → WorkflowRunner</div>
+                <div class="node-title">build runner</div>
+                <div class="node-copy">根據 health server 是否存在，選擇對應的 runner 類型。</div>
+              </div>
+              <div class="timeline-step__body">
+                <div class="step__meta">
+                  <span class="token token--accent">runner</span>
+                  <span class="token">startup + loop</span>
+                </div>
+                <p>runner 會先跑 startup task，再進入 scheduler loop，這是 runtime 真正在做事的地方。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="timeline-phase">
+            <div class="timeline-phase__title">
+              <h3>Stop</h3>
+              <span class="mono">shutdown path</span>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-step__io">
+                <div class="node-label">WorkflowRunner → edge.main</div>
+                <div class="node-title">stop runner</div>
+                <div class="node-copy">scheduler loop 結束後，runner 把控制權交回 runtime 進行收尾。</div>
+              </div>
+              <div class="timeline-step__body">
+                <div class="step__meta">
+                  <span class="token token--danger">shutdown</span>
+                  <span class="token">stop signal</span>
+                </div>
+                <p>這一段對應的是優雅退出，不是強制中斷。</p>
+              </div>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-step__io">
+                <div class="node-label">edge.main → Client / HealthServer</div>
+                <div class="node-title">close outbound resources</div>
+                <div class="node-copy">最後關掉 messaging client 與 health server，避免留下殘留連線。</div>
+              </div>
+              <div class="timeline-step__body">
+                <div class="step__meta">
+                  <span class="token token--accent-2">cleanup</span>
+                  <span class="token">close / stop</span>
+                </div>
+                <p>收尾順序跟啟動順序相反，這樣比較容易維持資源整潔。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="shell">
+      <div class="section-head">
+        <div class="section-kicker">Quick read</div>
+        <div class="section-title">這張圖的重點</div>
+      </div>
+      <div class="note-grid">
+        <div class="note-card">
+          <h3>順序先於元件</h3>
+          <p>啟動圖主要是在講「先後順序」與「可選分支」，不是在列清單。</p>
+        </div>
+        <div class="note-card">
+          <h3>Subscriber 先掛，runner 才開始跑</h3>
+          <p>這樣 backend 的 route 更新能在 pipeline 開始之前就進到 runtime state。</p>
+        </div>
+        <div class="note-card">
+          <h3>健康檢查是可選路徑</h3>
+          <p>HTML 版把它獨立成一段，避免誤讀成每次都一定要啟動的服務。</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

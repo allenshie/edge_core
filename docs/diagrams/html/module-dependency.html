@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#5e6c7d">
+  <title>edge_core - Module Dependency Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body class="page page--dependency">
+  <div class="page-shell">
+    <header class="masthead">
+      <section>
+        <div class="eyebrow">edge_core diagrams</div>
+        <h1>Module Dependency Map</h1>
+        <p class="lede">
+          這張圖用分層方式整理模組依賴，避免把 runtime、pipeline、tasks 與 helpers 混成一團。
+          它的用途是讓維護者快速定位責任邊界，而不是做一張追求每條邊都畫滿的網狀圖。
+        </p>
+        <div class="chip-row">
+          <span class="chip chip--strong">dependency tiers</span>
+          <span class="chip">source: module-dependency.mmd</span>
+          <span class="chip">layered map</span>
+        </div>
+      </section>
+      <nav class="meta-links" aria-label="Diagram sources">
+        <a class="nav-link" href="../module-dependency.mmd">
+          <span>Source MMD</span>
+          <span class="nav-link__hint">diagram</span>
+        </a>
+        <a class="nav-link" href="../assets/edge-core-module-dependencies.svg">
+          <span>SVG reference</span>
+          <span class="nav-link__hint">legacy</span>
+        </a>
+        <a class="nav-link" href="../README.md">
+          <span>Diagrams hub</span>
+          <span class="nav-link__hint">index</span>
+        </a>
+      </nav>
+    </header>
+
+    <section class="shell">
+      <div class="section-head">
+        <div class="section-kicker">5. Dependency layers</div>
+        <div class="section-title">從 entrypoint 一路追到 helpers</div>
+        <p class="section-text">
+          這份 HTML 把原本的 graph LR 拆成四層。每層都保留最重要的依賴方向，讓你不用在一張密圖裡找半天。
+        </p>
+      </div>
+
+      <div class="dependency-stack">
+        <section class="dependency-tier">
+          <div class="dependency-tier__head">
+            <h3>Entry + core runtime</h3>
+            <span class="token token--accent">bootstrap path</span>
+          </div>
+          <div class="dependency-row">
+            <article class="dependency-node">
+              <div class="node-label">Compat</div>
+              <div class="node-title">edge_core/main.py</div>
+              <div class="node-copy">傳統 entrypoint，負責把 service 帶進 <code class="inline-code">edge.main</code>。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Main</div>
+              <div class="node-title">edge.main</div>
+              <div class="node-copy">核心 bootstrap，會接 <code class="inline-code">config</code>、<code class="inline-code">messaging</code>、<code class="inline-code">runtime</code> 與 <code class="inline-code">pipeline</code>。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Config</div>
+              <div class="node-title">edge.config</div>
+              <div class="node-copy">負責 env 與 schedule 相關的配置讀取，提供 runtime 的行為參數。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Messaging</div>
+              <div class="node-title">edge.messaging</div>
+              <div class="node-copy">提供 client、subscriber 與 backend route 的共用接線能力。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Runtime</div>
+              <div class="node-title">edge.runtime</div>
+              <div class="node-copy">協調啟動、shutdown 與 runtime service wiring。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Pipeline</div>
+              <div class="node-title">edge.pipeline</div>
+              <div class="node-copy">把 input、tasks、engines 與 output 串成工作流。</div>
+            </article>
+          </div>
+        </section>
+
+        <section class="dependency-tier">
+          <div class="dependency-tier__head">
+            <h3>Runtime helpers</h3>
+            <span class="token token--accent-2">supporting modules</span>
+          </div>
+          <div class="dependency-row">
+            <article class="dependency-node">
+              <div class="node-label">MessagingRuntime</div>
+              <div class="node-title">messaging_runtime</div>
+              <div class="node-copy">把 inbound routes 轉成可執行的 runtime callbacks。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">HealthRuntime</div>
+              <div class="node-title">health_runtime</div>
+              <div class="node-copy">處理 health server 的啟動 / 停止與 probes wiring。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">PipelineSummary</div>
+              <div class="node-title">pipeline_summary</div>
+              <div class="node-copy">整理 pipeline 狀態與摘要，讓 runtime 可以報告進度。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">ShutdownSummary</div>
+              <div class="node-title">shutdown_summary</div>
+              <div class="node-copy">把 shutdown 階段的收尾資訊包成可讀摘要。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">TaskHealth</div>
+              <div class="node-title">task_health</div>
+              <div class="node-copy">記錄 task 級別的健康狀況與可觀測訊號。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Schema</div>
+              <div class="node-title">edge.schema</div>
+              <div class="node-copy">runtime 與 pipeline 共用的資料結構定義。</div>
+            </article>
+          </div>
+        </section>
+
+        <section class="dependency-tier">
+          <div class="dependency-tier__head">
+            <h3>Pipeline + tasks</h3>
+            <span class="token token--warm">task tree</span>
+          </div>
+          <div class="dependency-row">
+            <article class="dependency-node">
+              <div class="node-label">Pipeline package</div>
+              <div class="node-title">edge.pipeline.tasks</div>
+              <div class="node-copy">把 ingestion / inference / streaming / publish 分成可替換的 task 群組。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Ingestion</div>
+              <div class="node-title">ingestion</div>
+              <div class="node-copy">處理取流、解碼與 frame metadata 的落地。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Inference</div>
+              <div class="node-title">inference</div>
+              <div class="node-copy">讀 model helpers 與 schema，輸出推理結果供 streaming / publish 使用。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Streaming</div>
+              <div class="node-title">streaming</div>
+              <div class="node-copy">負責可視化與串流輸出，並回頭讀 messaging / schema / engines。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Publish</div>
+              <div class="node-title">publish</div>
+              <div class="node-copy">把推理結果送回 backend events route。</div>
+            </article>
+          </div>
+        </section>
+
+        <section class="dependency-tier">
+          <div class="dependency-tier__head">
+            <h3>Supporting helpers</h3>
+            <span class="token token--green">implementation details</span>
+          </div>
+          <div class="dependency-row">
+            <article class="dependency-node">
+              <div class="node-label">Model helpers</div>
+              <div class="node-title">model helpers</div>
+              <div class="node-copy">Inference 層會靠它們組模型、做預處理與後處理。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Engines</div>
+              <div class="node-title">streaming engines</div>
+              <div class="node-copy">Streaming 會透過這些 engine 把視覺化結果推出去。</div>
+            </article>
+            <article class="dependency-node">
+              <div class="node-label">Schema reuse</div>
+              <div class="node-title">shared schema</div>
+              <div class="node-copy">schema 會跨 runtime、tasks 與 engines 重複使用，維持資料一致性。</div>
+            </article>
+            <article class="dependency-node dependency-node--wide">
+              <div class="node-label">Cross-links</div>
+              <div class="node-copy">
+                <div class="dependency-links">
+                  <div class="arrow-row"><span class="arrow-line"></span><span>inference → model helpers / schema</span><span class="arrow-line"></span></div>
+                  <div class="arrow-row"><span class="arrow-line"></span><span>streaming → engines / messaging / schema</span><span class="arrow-line"></span></div>
+                  <div class="arrow-row"><span class="arrow-line"></span><span>publish → messaging</span><span class="arrow-line"></span></div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="shell">
+      <div class="section-head">
+        <div class="section-kicker">Quick read</div>
+        <div class="section-title">這張圖的重點</div>
+      </div>
+      <div class="note-grid">
+        <div class="note-card">
+          <h3>edge.main 是主分岔點</h3>
+          <p>它把 config、messaging、runtime 與 pipeline 接起來，是整個圖最重要的 hub。</p>
+        </div>
+        <div class="note-card">
+          <h3>runtime helpers 是支撐層</h3>
+          <p>這些模組不直接處理 frame，但它們讓啟動、health 與摘要回報都能正常工作。</p>
+        </div>
+        <div class="note-card">
+          <h3>pipeline 與 helpers 分層很清楚</h3>
+          <p>tasks 負責流程，helpers 負責實作細節。這是維護 edge_core 時最需要看的切面。</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
