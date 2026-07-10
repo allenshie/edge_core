@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_DIR="$PROJECT_ROOT/env"
-PATTERN="${1:-.env.*}"
+PATTERN="${1:-.env.cam??}"
 
 pids=()
 

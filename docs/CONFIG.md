@@ -4,11 +4,11 @@
 若目前專案採用 `ScheduledInferenceEngine`，請優先參考 [`SCHEDULED_INFERENCE.md`](SCHEDULED_INFERENCE.md)；
 本文件保留多實例啟動示例與操作注意事項。
 
-### 多相機 .env 範例
+### 多相機 runtime 範例
 
 ```bash
-cp .env.example .env.cam02
-set -a; source .env.cam02; set +a
+cp env/.env.cam02.example env/.env.cam02
+set -a; source env/.env.cam02; set +a
 python main.py
 ```
 

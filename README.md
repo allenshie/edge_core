@@ -70,6 +70,10 @@ python main.py
 - 操作說明：[部署與操作（多實例、Docker）](docs/OPERATIONS.md)
 - 常見故障排查：[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
+多實例的範本檔現在統一放在 `env/*.example`，請先複製成 runtime `env/.env.camXX` 再啟動。
+
+如果你要走 Docker 或 compose，請優先看 [docs/OPERATIONS.md](docs/OPERATIONS.md)；如果是 repo 層級的正式 image build，請看上層專案的 [deploy/docker/README.md](../deploy/docker/README.md)。
+
 ## 從 site repo / 上層專案啟動（建議）
 
 ```bash

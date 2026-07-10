@@ -27,7 +27,7 @@
 如果你是透過上層專案的啟動腳本操作，先確認以下兩點：
 
 - `scripts/run_edge.sh` 會把每個名稱對應到 `env/.env.<name>`。
-- `edge_core/scripts/run_all.sh` 會掃描 `edge_core/env/.env.*`。
+- `edge_core/scripts/run_all.sh` 會掃描 `edge_core/env/.env.cam??` runtime 檔，`*.example` 只作模板。
 
 當多個 instance 同時跑時，通常需要額外檢查：
 

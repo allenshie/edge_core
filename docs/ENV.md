@@ -2,6 +2,14 @@
 
 本文件整理 edge_core 可用的環境變數、預設值與輸入格式。
 
+`edge_core/env/` 另外提供三份模板檔：
+
+- `env/.env.example`
+- `env/.env.cam01.example`
+- `env/.env.cam02.example`
+
+這些檔案只作為模板與 CI 臨時複製來源；實際部署時請改用 runtime `env/.env.camXX`，不要直接把 example 當成長期輸入檔。
+
 ## 基本資訊與監控
 
 | 變數 | 預設 | 說明 |

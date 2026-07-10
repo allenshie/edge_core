@@ -1,16 +1,17 @@
 # 測試與品質保證指南
 
-此文件說明 edge 模組在不同階段應執行的測試與品質檢查。專案不附帶影片/伺服器模擬資源，請依照 `.env` 設定提供 RTSP 或 MP4 來源進行驗證。
+此文件說明 edge 模組在不同階段應執行的測試與品質檢查。專案不附帶影片/伺服器模擬資源，請依照 runtime env 設定提供 RTSP 或 MP4 來源進行驗證。
 
 ## 測試準備
 
-1. 複製 `.env.example` 為新的 `.env` 檔，或在 site repo 內建立專案自己的 `.env`。
-2. 依測試場景選擇取流模式：
+1. 複製 `env/.env.cam01.example` 為新的 `env/.env.cam01`，或在 site repo 內建立專案自己的 runtime `.env`。
+2. 若要同時測多台相機，再額外複製 `env/.env.cam02.example` 為 `env/.env.cam02`。
+3. 依測試場景選擇取流模式：
    - `EDGE_INGEST_MODE=file`：設定 `EDGE_FILE_PATH=/path/to/your/video.mp4`，必要時調整 `EDGE_FILE_FPS`、`EDGE_FILE_LOOP`。
    - `EDGE_INGEST_MODE=rtsp`：設定 `EDGE_RTSP_URL` 指向可用的 RTSP source，並確認測試環境可連線。
    - `EDGE_INGEST_MODE=camera`：設定 `EDGE_CAMERA_DEVICE=0`（或其他 device index），可選擇調整 `EDGE_CAMERA_FPS`、`EDGE_CAMERA_WIDTH`、`EDGE_CAMERA_HEIGHT`。
-3. 以 `uv pip install -e ".[vision]"` 或專案實際安裝方式安裝執行依賴；若要跑測試/靜態分析，可額外建立 dev 依賴安裝 `pytest`、`ruff`、`mypy` 等工具。
-4. 若測 messaging，請優先使用新變數：
+4. 以 `uv pip install -e ".[vision]"` 或專案實際安裝方式安裝執行依賴；若要跑測試/靜態分析，可額外建立 dev 依賴安裝 `pytest`、`ruff`、`mypy` 等工具。
+5. 若測 messaging，請優先使用新變數：
    - `EDGE_APP_INBOUND_BACKEND`
    - `EDGE_PHASE_ENABLED` / `EDGE_PHASE_CHANNEL` / `EDGE_PHASE_RESOURCE_NAME`
    - `EDGE_MATCHING_RESULT_ENABLED` / `EDGE_MATCHING_RESULT_CHANNEL` / `EDGE_MATCHING_RESULT_RESOURCE_NAME`
@@ -24,21 +25,21 @@
 - `CameraIngestionEngine`：模擬本機 camera 開啟失敗與 drop frame 行為。
 - `InferenceTask` 與 `PublishResultTask`：使用 mock 模型與 mock integration client，確認輸入/輸出與 TaskContext 資源更新正確。
 
-執行方式（待對應測試檔案建立後）：
+執行方式：
 
 ```bash
-pytest tests/tasks
+pytest tests -q
 ```
 
-### 工作流整合測試
-- 以假 `TaskContext`、假 `MonitoringClient` 驗證 `InitPipelineTask` 能依 `.env` 模式建立 pipeline。
-- `PipelineScheduler` 在不同 FPS 設定下會計算合理的 `sleep`，並定期送 heartbeat。
-- 透過 stub inference/publish 任務，檢查 payload 是否送達整合端 mock。
+### Mock 整合測試
+- 以假 `TaskContext`、假 `MonitoringClient`、假 `MessagingClient` 驗證 bootstrap / subscriber wiring 可在沒有 GPU、沒有權重、沒有 RTSP source 的情況下完成。
+- 驗證 `EdgeConfig` 讀入 `env/.env.camXX.example` 後，`build_context()`、`init_messaging_client()` 與 `start_messaging_subscriber()` 的最小協作流程可正常運作。
+- 透過 stub inference / publish 任務，檢查 payload 與 resource 更新是否進入預期 state。
 
 範例指令：
 
 ```bash
-pytest tests/pipeline
+pytest tests/integration
 ```
 
 ### E2E smoke test
@@ -51,6 +52,23 @@ pytest tests/pipeline
   - `EDGE_MATCHING_RESULT_ENABLED=1`
   - `EDGE_EVENTS_BACKEND=http`
   以確認 route-based messaging 配置正確。
+
+## CI 範圍
+
+CI 只保留可無 GPU / 無真實場域資源就能執行的檢查：
+
+- `ruff`
+- `pytest tests/`
+- `pytest edge_core/tests/`
+- `docker compose config`
+
+CI 不包含：
+
+- 完整推理流
+- 真實權重檔
+- 真實 RTSP / camera source
+- GPU 推理或編碼
+- Docker image push / GitOps 更新
 
 ## 品質檢查
 

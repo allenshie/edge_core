@@ -2,8 +2,8 @@ version: "3.9"
 
 x-edge-service: &edge-service
   build:
-    context: ..
-    dockerfile: edge/Dockerfile
+    context: .
+    dockerfile: Dockerfile
   restart: unless-stopped
   deploy:
     resources:

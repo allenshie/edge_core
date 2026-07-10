@@ -9,21 +9,22 @@
 
 ### 同時啟動多個 Edge 實例
 
-`edge_core/scripts/run_all.sh` 會掃描 `edge_core/env/` 底下符合樣式的 `.env` 檔，逐一在背景啟動多個 edge 節點。
+`edge_core/scripts/run_all.sh` 會掃描 `edge_core/env/` 底下符合 `env/.env.cam??` 的 runtime 檔，逐一在背景啟動多個 edge 節點。  
+`env/*.example` 只作為模板，不會被預設啟動。
 
 常用方式：
 
 ```bash
 cd edge_core
-cp .env.example env/.env.cam01
-cp .env.example env/.env.cam02
+cp env/.env.cam01.example env/.env.cam01
+cp env/.env.cam02.example env/.env.cam02
 # 調整各檔案內容...
 
 ./scripts/run_all.sh
 ./scripts/run_all.sh '.env.cam0?'  # (可選) 使用自訂樣式
 ```
 
-預設模式會載入 `env/.env.*`。如果你只想啟動部分實例，可以傳入 glob pattern，例如 `.env.cam0?`。
+預設模式會載入 `env/.env.cam??`。如果你只想啟動部分實例，可以傳入 glob pattern，例如 `.env.cam0?`。
 
 每份 `.env.camXX` 建議至少包含自己的 messaging route：
 
@@ -46,20 +47,23 @@ EDGE_MATCHING_RESULT_RESOURCE_NAME=matching_result_snapshot
 
 如果你是在上層 `smart_intersection_safety_edge` 專案中啟動單一或少量實例，則可以改用根目錄的 [scripts/run_edge.sh](../../scripts/run_edge.sh) 直接指定 `.env` 或 `camXX` 名稱。
 
-### Docker Compose 部署
+### Docker / Compose 部署
+
+如果你要建立 repo 層級的正式容器映像，請先看根目錄的 [deploy/docker/README.md](../../deploy/docker/README.md)。  
+本節保留 [edge_core/docker-compose.yml](../docker-compose.yml) 的多實例 compose 用法，這份 compose 會直接以 `edge_core/Dockerfile` 建置 image，不再依賴舊版 `requirements.txt`。
 
 ```bash
-cp .env.example .env.cam01
-cp .env.example .env.cam02
+cp env/.env.cam01.example env/.env.cam01
+cp env/.env.cam02.example env/.env.cam02
 # 調整 .env.camXX（MONITOR_ENDPOINT/INTEGRATION_API_BASE/RTSP URL、EDGE_PHASE_*、EDGE_EVENTS_* 等）
 
-set -a; source .env.cam01; set +a
+set -a; source env/.env.cam01; set +a
 
 docker compose up --build              # 只啟動 cam01
 docker compose --profile cam02 up -d   # 同時啟動 cam02 profile
 ```
 
-> 映像會在 `/svc/edge` 內執行 `python main.py`。請確認 `.env` 內的 `MONITOR_ENDPOINT`、`INTEGRATION_API_BASE`、`EDGE_RTSP_URL`/`EDGE_FILE_PATH`、`EDGE_APP_INBOUND_BACKEND`、`EDGE_PHASE_*`、`EDGE_MATCHING_RESULT_*`、`EDGE_EVENTS_*` 指向容器可讀/可連線的來源。
+> 映像會在 `/svc/edge` 內執行 `python main.py`。請確認 runtime `.env` 內的 `MONITOR_ENDPOINT`、`INTEGRATION_API_BASE`、`EDGE_RTSP_URL`/`EDGE_FILE_PATH`、`EDGE_APP_INBOUND_BACKEND`、`EDGE_PHASE_*`、`EDGE_MATCHING_RESULT_*`、`EDGE_EVENTS_*` 指向容器可讀/可連線的來源。
 
 > 共用網路：`docker-compose.yml` 預設使用外部 network `smartware_net`。未建立時請先 `docker network create smartware_net`。
 

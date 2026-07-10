@@ -1,27 +1,41 @@
 # Edge env 使用方式
 
-`edge_core` 子模組的批次啟動腳本會從本目錄 `env/.env.camXX` 載入每台攝影機設定。
-如果你是在上層 `smart_intersection_safety_edge` 專案操作，則可改用根目錄的 `scripts/run_edge.sh`，它會讀取上層 `env/.env.camXX`。
+`edge_core/env/` 同時負責模板與 runtime env。
 
-```bash
-cd edge_core
-./scripts/run_all.sh
-```
+- `env/.env.example`：共用 baseline template
+- `env/.env.cam01.example` / `env/.env.cam02.example`：相機專用 bootstrap 範本
+- `env/.env.cam01` / `env/.env.cam02`：runtime 檔，只應存在於本機或部署環境
 
-- `cam01` 會讀 `edge_core/env/.env.cam01`
-- `cam02` 會讀 `edge_core/env/.env.cam02`
+`edge_core/scripts/run_all.sh` 預設只會掃描 `env/.env.cam??`，所以 `*.example` 不會被誤當成 runtime。
 
 ## 新增一台相機
 
 ```bash
-cp env/.env.cam01 env/.env.cam05
+cp env/.env.cam01.example env/.env.cam05
 ```
 
-再修改：
+然後再修改：
+
 - `EDGE_CAMERA_ID`
-- `EDGE_FILE_PATH` 或 `EDGE_RTSP_URL`
-- `EDGE_STREAMING_URL`
 - `EDGE_MONITOR_SERVICE_NAME`
+- `EDGE_RTSP_URL` 或 `EDGE_FILE_PATH`
+- `EDGE_STREAMING_URL`
+
+## 以單一實例啟動
+
+```bash
+set -a
+source env/.env.cam01
+set +a
+python main.py
+```
+
+## 批次啟動多實例
+
+```bash
+./scripts/run_all.sh
+./scripts/run_all.sh '.env.cam0?'  # 可選：自訂 pattern
+```
 
 ## 串流建議最小設定
 

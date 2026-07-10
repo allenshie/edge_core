@@ -21,7 +21,7 @@
 - [ENV.md](ENV.md)：環境變數與預設值
 - [CONFIG.md](CONFIG.md)：設定結構與示例
 - [DETECTIONS.md](DETECTIONS.md)：資料模型與 detections 格式
-- [env/README.md](../env/README.md)：env 目錄與多實例設定檔使用方式
+- [env/README.md](../env/README.md)：env 目錄與多實例設定檔使用方式（example / runtime 分工）
 
 ### How-to
 
