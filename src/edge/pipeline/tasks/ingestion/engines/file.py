@@ -5,7 +5,6 @@ import time
 from pathlib import Path
 
 import cv2  # type: ignore[import]
-
 from smart_workflow import TaskContext, TaskError
 
 from edge.config import FileSourceConfig

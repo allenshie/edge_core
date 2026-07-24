@@ -9,8 +9,8 @@ from typing import Sequence, Type
 from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 
 from edge.pipeline.tasks._runtime import FrameTaskSupportMixin
-from edge.runtime.rate_meter import RateMeter
 from edge.runtime.duration_meter import DurationMeter
+from edge.runtime.rate_meter import RateMeter
 from edge.runtime.task_health import TaskHealthReporter
 from edge.schema import FrameMeta, StageStats
 

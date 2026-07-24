@@ -11,18 +11,18 @@ from edge.runtime.rate_meter import RateMeter
 from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection, FrameMeta
 
+from ..ffmpeg import EncoderSpec, FfmpegProcessManager
+from ..types import StreamingStatus, StreamPacket
 from .base import BaseStreamingEngine
 from .policy import (
+    STATE_INACTIVE,
     activate_stream,
     build_status,
     deactivate_stream,
-    STATE_INACTIVE,
     load_streaming_schedule,
     log_health,
     should_stream_for_phase,
 )
-from ..ffmpeg import EncoderSpec, FfmpegProcessManager
-from ..types import StreamPacket, StreamingStatus
 
 LOGGER = logging.getLogger(__name__)
 

@@ -1,10 +1,10 @@
 """資料交換模型。"""
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict, field
-from datetime import datetime, timezone
 import time
 from collections.abc import Mapping, Sequence
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 

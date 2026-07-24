@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 
 import cv2  # type: ignore[import]
-
 from smart_workflow import TaskContext, TaskError
 
 from edge.config import CameraSourceConfig

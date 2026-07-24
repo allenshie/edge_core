@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from edge.pipeline.tasks.inference.device import normalize_device
 from pathlib import Path
+
+from edge.pipeline.tasks.inference.device import normalize_device
 
 LOGGER = logging.getLogger(__name__)
 

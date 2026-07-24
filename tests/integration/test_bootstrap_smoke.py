@@ -6,8 +6,11 @@ from pathlib import Path
 from edge.config import EdgeConfig
 from edge.main import build_context
 from edge.messaging import MESSAGING_CLIENT_RESOURCE, PHASE_UPDATES_ROUTE
-from edge.runtime.messaging_runtime import MessagingClientProvider, init_messaging_client, start_messaging_subscriber
-
+from edge.runtime.messaging_runtime import (
+    MessagingClientProvider,
+    init_messaging_client,
+    start_messaging_subscriber,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 CAM01_TEMPLATE = ROOT / "edge_core" / "env" / ".env.cam01.example"

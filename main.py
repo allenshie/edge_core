@@ -10,6 +10,5 @@ if str(SRC_ROOT) not in sys.path:
 
 from edge.main import main  # noqa: E402
 
-
 if __name__ == "__main__":
     main()

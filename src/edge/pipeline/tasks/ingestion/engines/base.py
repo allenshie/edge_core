@@ -8,11 +8,11 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 import cv2  # type: ignore[import]
-
 from smart_workflow import TaskContext, TaskError
+
+from edge.pipeline.tasks.ingestion.health import IngestionHealthTracker
 from edge.runtime.rate_meter import RateMeter
 from edge.runtime.shutdown_summary import cleanup_record
-from edge.pipeline.tasks.ingestion.health import IngestionHealthTracker
 
 LOGGER = logging.getLogger(__name__)
 

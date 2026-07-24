@@ -10,8 +10,7 @@ from smart_workflow import TaskContext, TaskResult
 
 from edge.runtime.duration_meter import DurationMeter
 from edge.runtime.rate_meter import RateMeter
-from edge.schema import FrameMeta
-from edge.schema import StageStats
+from edge.schema import FrameMeta, StageStats
 
 
 @dataclass(frozen=True)

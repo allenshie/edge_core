@@ -1,4 +1,9 @@
-from .engine import BasePublishEngine, DefaultPublishEngine, MessagingPublishEngine, PublishOutcome
+from .engine import (
+    BasePublishEngine,
+    DefaultPublishEngine,
+    MessagingPublishEngine,
+    PublishOutcome,
+)
 from .task import PublishResultTask
 
 __all__ = [

@@ -9,8 +9,7 @@ from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 
 from edge.pipeline.tasks._runtime import FrameTaskSupportMixin
 from edge.runtime.task_health import TaskHealthReporter
-from edge.schema import EdgeDetection, FrameMeta
-from edge.schema import StageStats
+from edge.schema import EdgeDetection, FrameMeta, StageStats
 
 from .engines import BaseStreamingEngine, DefaultStreamingEngine
 from .engines.policy import resolve_phase

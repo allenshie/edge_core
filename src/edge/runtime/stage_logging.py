@@ -8,8 +8,8 @@ from datetime import datetime
 from typing import Any
 
 from edge.runtime.duration_meter import DurationMeter
-from edge.schema import StageStats
 from edge.runtime.rate_meter import RateMeter
+from edge.schema import StageStats
 
 
 def _format_value(value: Any) -> str:

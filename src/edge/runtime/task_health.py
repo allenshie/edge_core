@@ -1,15 +1,14 @@
 """Reusable task health presentation helper."""
 from __future__ import annotations
 
-from collections.abc import Mapping
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from edge.runtime.duration_meter import DurationMeter
 from edge.runtime.rate_meter import RateMeter
 from edge.runtime.stage_logging import emit_task_health
-from edge.schema import FrameMeta
-from edge.schema import StageStats
+from edge.schema import FrameMeta, StageStats
 
 
 class TaskHealthReporter:

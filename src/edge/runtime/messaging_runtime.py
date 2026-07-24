@@ -3,16 +3,16 @@ from __future__ import annotations
 
 import os
 
-from edge.runtime.shutdown_summary import cleanup_record
 from edge.messaging import (
-    MESSAGING_CLIENT_RESOURCE,
-    MessagingClientProvider,
-    resolve_events_route,
-    resolve_app_inbound_backend,
-    resolve_inbound_route_specs,
     MATCHING_BROADCAST_ROUTE,
+    MESSAGING_CLIENT_RESOURCE,
     PHASE_UPDATES_ROUTE,
+    MessagingClientProvider,
+    resolve_app_inbound_backend,
+    resolve_events_route,
+    resolve_inbound_route_specs,
 )
+from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import MatchingResultPayload
 
 

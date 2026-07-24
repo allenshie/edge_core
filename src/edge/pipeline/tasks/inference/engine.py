@@ -2,16 +2,16 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, List
 
+from smart_workflow import TaskContext, TaskError
 from ultralytics import YOLO
 
-from smart_workflow import TaskContext, TaskError
+from edge.config import ModelConfig
 from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection
-from edge.config import ModelConfig
 
 LOGGER = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parents[4]

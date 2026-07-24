@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Sequence
 
 from smart_workflow import TaskContext, TaskError
 
-from edge.pipeline.tasks.inference.engine import BaseInferenceEngine, InferenceOutcome
 from edge.pipeline.tasks.inference.device import normalize_device
+from edge.pipeline.tasks.inference.engine import BaseInferenceEngine, InferenceOutcome
 from edge.pipeline.tasks.inference.models import BaseYamlMockModel
 from edge.schema import EdgeDetection
 
@@ -23,7 +23,12 @@ from .activity import (
     update_forklift_activity,
 )
 from .cache import get_cached_results, store_cached_results
-from .loader import extract_phase_entries, get_schedule_path, load_schedule_json, resolve_resource_root
+from .loader import (
+    extract_phase_entries,
+    get_schedule_path,
+    load_schedule_json,
+    resolve_resource_root,
+)
 from .models import ScheduledModelTask
 from .policy import should_execute
 

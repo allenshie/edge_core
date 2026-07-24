@@ -4,18 +4,28 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from datetime import datetime, timezone
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from typing import Any, Type
 
 from smart_workflow import BaseTask, TaskContext, TaskError, TaskResult
 
 from edge.pipeline.tasks._runtime import FrameTaskSupportMixin
-from .engines import BaseIngestionEngine, CameraIngestionEngine, FileIngestionEngine, RtspIngestionEngine
 from edge.runtime.task_health import TaskHealthReporter
-from edge.schema import FrameMeta
-from edge.schema import StageStats
-from .health import IngestionHealthEvaluation, IngestionHealthPolicy, IngestionRecoveryDecision, IngestionRecoveryPolicy
+from edge.schema import FrameMeta, StageStats
+
+from .engines import (
+    BaseIngestionEngine,
+    CameraIngestionEngine,
+    FileIngestionEngine,
+    RtspIngestionEngine,
+)
+from .health import (
+    IngestionHealthEvaluation,
+    IngestionHealthPolicy,
+    IngestionRecoveryDecision,
+    IngestionRecoveryPolicy,
+)
 
 LOGGER = logging.getLogger(__name__)
 

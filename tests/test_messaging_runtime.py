@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from edge.config import EdgeConfig
-from edge.messaging import MATCHING_BROADCAST_ROUTE, MESSAGING_CLIENT_RESOURCE, PHASE_UPDATES_ROUTE
+from edge.messaging import (
+    MATCHING_BROADCAST_ROUTE,
+    MESSAGING_CLIENT_RESOURCE,
+    PHASE_UPDATES_ROUTE,
+)
 from edge.runtime.messaging_runtime import start_messaging_subscriber
 
 

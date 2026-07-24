@@ -3,7 +3,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from smart_messaging_core import HttpConfig, MessagingClient, MessagingConfig, MqttConfig, RouteConfig
+from smart_messaging_core import (
+    HttpConfig,
+    MessagingClient,
+    MessagingConfig,
+    MqttConfig,
+    RouteConfig,
+)
 
 from edge.config import EdgeConfig
 

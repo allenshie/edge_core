@@ -7,7 +7,6 @@ from typing import Any, cast
 
 from edge.runtime.health_contract import HealthSummaryMetrics
 
-
 _SUMMARY_COLUMNS: list[tuple[str, str]] = [
     ("stage", "stage"),
     ("state", "state"),

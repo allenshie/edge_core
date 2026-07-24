@@ -14,7 +14,11 @@ from smart_workflow import (
 from edge.config import EdgeConfig, load_config
 from edge.pipeline import build_edge_workflow
 from edge.runtime.health_runtime import start_health_server, stop_health_server
-from edge.runtime.messaging_runtime import close_messaging_client, init_messaging_client, start_messaging_subscriber
+from edge.runtime.messaging_runtime import (
+    close_messaging_client,
+    init_messaging_client,
+    start_messaging_subscriber,
+)
 from edge.runtime.shutdown_summary import (
     append_shutdown_records,
     emit_shutdown_summary,

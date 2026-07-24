@@ -1,6 +1,11 @@
 """Ingestion task exports."""
 
-from .engines import BaseIngestionEngine, CameraIngestionEngine, FileIngestionEngine, RtspIngestionEngine
+from .engines import (
+    BaseIngestionEngine,
+    CameraIngestionEngine,
+    FileIngestionEngine,
+    RtspIngestionEngine,
+)
 from .task import IngestionTask
 
 __all__ = [

@@ -1,9 +1,9 @@
 """Shared-memory streaming engine specialization."""
 from __future__ import annotations
 
+import gc
 import logging
 import os
-import gc
 import time
 from multiprocessing.shared_memory import SharedMemory
 from typing import Any, Sequence
@@ -14,8 +14,8 @@ from smart_workflow import TaskContext
 from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection, FrameMeta
 
+from ..types import StreamingStatus, StreamPacket
 from .default import DefaultStreamingEngine
-from ..types import StreamPacket, StreamingStatus
 
 LOGGER = logging.getLogger(__name__)
 

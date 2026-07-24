@@ -6,14 +6,18 @@ from typing import Any, Callable, Iterable, List, cast
 
 from smart_workflow import BaseTask, TaskContext, TaskResult
 
-from edge.runtime.health_contract import HealthSnapshotProvider, HealthSummaryMetrics
-from edge.runtime.rate_meter import RateMeter
-from edge.runtime.pipeline_summary import build_pipeline_summary
-from edge.runtime.shutdown_summary import append_shutdown_records, cleanup_record, normalize_cleanup_records
-from edge.pipeline.tasks.ingestion import IngestionTask
 from edge.pipeline.tasks.inference import InferenceTask
+from edge.pipeline.tasks.ingestion import IngestionTask
 from edge.pipeline.tasks.publish import PublishResultTask
 from edge.pipeline.tasks.streaming import StreamingTask
+from edge.runtime.health_contract import HealthSnapshotProvider, HealthSummaryMetrics
+from edge.runtime.pipeline_summary import build_pipeline_summary
+from edge.runtime.rate_meter import RateMeter
+from edge.runtime.shutdown_summary import (
+    append_shutdown_records,
+    cleanup_record,
+    normalize_cleanup_records,
+)
 
 
 class EdgePipeline:
