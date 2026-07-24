@@ -212,6 +212,8 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
         if isinstance(model_cls, type) and issubclass(model_cls, BaseYamlMockModel):
             env_var = str(entry.get("env_var", "")).strip()
             default_config_path = str(entry.get("default_config_path", "")).strip()
+            if not env_var and not default_config_path:
+                raise TaskError("BaseYamlMockModel 需要 env_var 與 default_config_path 至少一個")
             # schedule 若明確提供 default_config_path，就讓模型直接讀該檔案；
             # env_var 留空時，BaseYamlMockModel 會自然退回到 default_config_path。
             if default_config_path:
