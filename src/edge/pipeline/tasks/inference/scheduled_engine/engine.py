@@ -209,15 +209,15 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
             "label": entry.get("label"),
             "device": device,
         }
-        if model_cls is BaseYamlMockModel:
+        if isinstance(model_cls, type) and issubclass(model_cls, BaseYamlMockModel):
             env_var = str(entry.get("env_var", "")).strip()
             default_config_path = str(entry.get("default_config_path", "")).strip()
-            if not env_var or not default_config_path:
+            if model_cls is BaseYamlMockModel and (not env_var or not default_config_path):
                 raise TaskError("BaseYamlMockModel 需要 env_var 與 default_config_path")
-            # 直接使用 BaseYamlMockModel 時，schedule 必須明確提供 config 來源。
-            # site-specific 子類別如 IronGateStateModel 會在自己的 __init__ 中固定這些預設值。
-            kwargs["default_config_path"] = default_config_path
-            kwargs["env_var"] = env_var
+            if env_var:
+                kwargs["env_var"] = env_var
+            if default_config_path:
+                kwargs["default_config_path"] = default_config_path
         try:
             return model_cls(**kwargs)
         except TypeError as exc:
