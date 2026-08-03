@@ -5,10 +5,12 @@
 ## 建議閱讀順序
 
 1. [../README.md](../README.md)
-2. [ENV.md](ENV.md)
-3. [CONFIG.md](CONFIG.md)
-4. [OPERATIONS.md](OPERATIONS.md)
-5. [TESTING.md](TESTING.md)
+2. [EXPLANATION.md](EXPLANATION.md)
+3. [ENV.md](ENV.md)
+4. [HEALTH.md](HEALTH.md)
+5. [CONFIG.md](CONFIG.md)
+6. [OPERATIONS.md](OPERATIONS.md)
+7. [TESTING.md](TESTING.md)
 
 ## 依任務分類
 
@@ -16,9 +18,14 @@
 
 - [edge_core README](../README.md)
 
+### Explanation
+
+- [EXPLANATION.md](EXPLANATION.md)：`edge_core` 的設計理念與 DeepStream 關係
+
 ### Reference
 
 - [ENV.md](ENV.md)：環境變數與預設值
+- [HEALTH.md](HEALTH.md)：健康檢查端點與 Kubernetes probe 合約
 - [CONFIG.md](CONFIG.md)：設定結構與示例
 - [DETECTIONS.md](DETECTIONS.md)：資料模型與 detections 格式
 - [env/README.md](../env/README.md)：env 目錄與多實例設定檔使用方式（example / runtime 分工）
@@ -29,7 +36,7 @@
 - [EXTENDING.md](EXTENDING.md)：自訂 inference / publish / phase 控制
 - [SCHEDULED_INFERENCE.md](SCHEDULED_INFERENCE.md)：排程式推論使用方式
 - [DEPLOY_ORIN.md](DEPLOY_ORIN.md)：Orin 部署指南
-- [EDGE_SUBMODULE_GUIDE.md](EDGE_SUBMODULE_GUIDE.md)：主專案與 site repo 整合
+- [EDGE_SUBMODULE_GUIDE.md](EDGE_SUBMODULE_GUIDE.md)：外部專案整合
 
 ### Testing
 
@@ -41,6 +48,7 @@
 
 ## 快速對照
 
+- 需要「為什麼 edge_core 這樣設計」時，看 [EXPLANATION.md](EXPLANATION.md)
 - 需要「怎麼啟動多實例」時，看 [OPERATIONS.md](OPERATIONS.md)
 - 需要「某個環境變數代表什麼」時，看 [ENV.md](ENV.md)
 - 需要「怎麼寫自訂引擎」時，看 [EXTENDING.md](EXTENDING.md)

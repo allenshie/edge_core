@@ -1,7 +1,7 @@
 ## ScheduledInferenceEngine 使用說明
 
 本文件說明使用 `edge.pipeline.tasks.inference.scheduled:ScheduledInferenceEngine`
-時，主專案或 site repo 需要準備哪些檔案與設定。
+時，使用端專案需要準備哪些檔案與設定。
 
 ### 1. 必要環境變數
 
@@ -75,6 +75,13 @@ my_edge_site/
 - `weights_path` 可省略；省略時模型會以 mock mode 初始化。
 - `streaming.enabled` 會影響 `StreamingTask` 是否輸出可視化串流。
 
+補充說明：
+
+- `streaming.enabled` 只決定是否輸出可視化串流，不等同於整個服務是否存活或是否需要重啟。
+- 在 `non_working` 中將 `streaming.enabled` 設為 `false` 時，`edge_core` 會關閉可視化串流並背景回收 FFmpeg；此時 readiness 可能暫時為 false，但 liveness 不受影響。
+- 當 phase 回到 `working` 後，需等到實際成功寫入第一筆可視化 frame，readiness 才會恢復。
+- 若要進一步確認 probe 與 readiness 的判定語意，請參考 [HEALTH.md](HEALTH.md)。
+
 常用 `mode` 說明：
 
 - `every_frame`
@@ -109,11 +116,11 @@ site 層只應保留需要額外客製化邏輯的具體實作類，例如：
 - `IronGateStateModel(BaseYamlMockModel)`
 - `CargoPoseModel(YoloPoseModel)`
 
-其他模型可直接使用 `edge_core` 提供的共通類，不必再在 site repo 維護對應 wrapper。
+其他模型可直接使用 `edge_core` 提供的共通類，不必再在使用端專案維護對應 wrapper。
 
 ### 5. configs/models.yaml 用途
 
-`configs/models.yaml` 用來提供模型共用設定。site 實作類可透過自己的
+`configs/models.yaml` 用來提供模型共用設定。使用端專案實作類可透過自己的
 `config_loader` 讀取這份檔案，再傳給 `YoloDetectionModel` / `YoloPoseModel` / `BaseYamlMockModel`。
 
 若直接使用 `edge_core` 提供的 `YoloDetectionModel` / `YoloPoseModel`，
@@ -165,7 +172,7 @@ cargo_pose:
 - 對應環境變數，例如 `EDGE_IRON_GATES_CONFIG`
 - 預設 config path，例如 `configs/iron_gates.yaml`
 - 若直接在 `schedule.json` 使用 `edge.pipeline.tasks.inference.models:BaseYamlMockModel`，請在該 task entry 明確提供 `env_var` 與 `default_config_path`
-- `edge_core` 不會替特定 domain 提供內建預設物件或預設檔名，這類設定應由 site repo 負責
+- `edge_core` 不會替特定 domain 提供內建預設物件或預設檔名，這類設定應由使用端專案負責
 - YAML record 若有 `track_id` 會優先使用；若沒有，會退而使用 `id`；兩者都沒有才留空
 
 YAML 支援兩種格式：
@@ -186,13 +193,13 @@ camera_2:
     polygon: [[0, 0], [100, 0], [100, 100], [0, 100]]
 ```
 
-### 8. site 層職責
+### 8. 使用端專案層職責
 
-若要以 site repo 管理專案，建議：
+若要由使用端專案管理專案，建議：
 
 - `edge_core`：
   管理共通推理基類、共通 YOLO / YAML mock 類、推理工具函數
-- `site repo`：
+- `使用端專案`：
   管理具體實作類、`schedule.json`、`configs/`、`weights/`、`deploy/`
 
-site repo 的模型類應直接導入 `edge_core` 共通類，不要複製一份基底層。
+使用端專案的模型類應直接導入 `edge_core` 共通類，不要複製一份基底層。

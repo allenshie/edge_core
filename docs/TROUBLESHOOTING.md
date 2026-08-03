@@ -19,14 +19,25 @@
 | 找不到影格 / EOF 循環 | `EDGE_INGEST_MODE`、`EDGE_FILE_PATH`、`EDGE_RTSP_URL`、camera 權限 |
 | RTSP 一直重連 | source 是否穩定、網路是否可達、`EDGE_RTSP_RECONNECT` 是否過短 |
 | 串流沒有輸出 | `EDGE_STREAMING_ENABLED`、`EDGE_STREAMING_URL`、MediaMTX 是否啟動、`EDGE_STREAMING_STRATEGY` 是否為 `cpu` |
+| `readyz` 變成 false 但 `healthz` 正常 | 目前 phase 是否為 `non-working`、是否仍在等待首幀、或正在做 FFmpeg 背景回收 |
+| `Pod` 以 exit code 137 重啟 | 先看 `healthz` 是否已失效；若只是 `readyz` false 且 phase 為 `non-working`，通常不是重啟原因 |
+| 切回 `working` 後 `readyz` 沒恢復 | 先看最近一次 FFmpeg 寫入是否成功，及是否有 write failed / stderr backpressure log |
 | MQTT / webhook 沒收到訊息 | `EDGE_APP_INBOUND_BACKEND`、`EDGE_PHASE_*`、`EDGE_EVENTS_*`、broker / HTTP endpoint |
 | 多實例互相干擾 | 每份 env 是否都有不同的 camera id、service name、streaming URL、listen port |
 
+## 健康檢查與 phase 切換
+
+- `phase=non-working` 時 `readyz=false` 是預期行為，不代表控制迴圈已經失效。
+- 如果 `healthz` 正常但 `readyz` 為 false，通常代表尚未成功寫出第一筆可視化幀，或目前正在進行 FFmpeg 背景回收。
+- 如果 `healthz` 也失敗，才優先檢查 scheduler / control loop 是否卡住，以及 ffmpeg write / close log 是否顯示 backpressure、timeout 或其他異常。
+- 看到 `streaming deactivated: ... cleanup=background` 或 `ffmpeg async stop scheduled` 時，先把它視為正常回收訊號，再判斷是否真的有故障。
+- 若要確認 probe 合約與 `startupz` / `healthz` / `readyz` 的語意，請先看 [HEALTH.md](HEALTH.md)。
+
 ## 多實例問題
 
-如果你是透過上層專案的啟動腳本操作，先確認以下兩點：
+如果你是透過外部啟動腳本操作，先確認以下兩點：
 
-- `scripts/run_edge.sh` 會把每個名稱對應到 `env/.env.<name>`。
+- 你的啟動腳本是否把每個名稱正確對應到 `env/.env.<name>`。
 - `edge_core/scripts/run_all.sh` 會掃描 `edge_core/env/.env.cam??` runtime 檔，`*.example` 只作模板。
 
 當多個 instance 同時跑時，通常需要額外檢查：

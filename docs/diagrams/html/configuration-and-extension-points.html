@@ -17,7 +17,7 @@
         <div class="eyebrow">edge_core diagrams</div>
         <h1>Configuration and Extension Points</h1>
         <p class="lede">
-          這張圖把「哪個設定改到哪個行為」畫清楚。左邊是 site repo 的可替換內容，中間是控制面設定，
+          這張圖把「哪個設定改到哪個行為」畫清楚。左邊是使用端專案的可替換內容，中間是控制面設定，
           右邊是 edge_core runtime 內真正被 wire 起來的元件。
         </p>
         <div class="chip-row">
@@ -54,10 +54,10 @@
 
       <div class="layout-grid layout-grid--wide">
         <article class="panel panel--soft">
-          <div class="node-label">site repo</div>
+          <div class="node-label">使用端專案</div>
           <div class="node-title">場域專屬資源與實作</div>
           <p class="node-copy">
-            這一欄是 site repo 真正要維護的東西。它們不是 runtime 的共用骨架，而是各場域自己的變體。
+            這一欄是使用端專案真正要維護的東西。它們不是 runtime 的共用骨架，而是各場域自己的變體。
           </p>
           <div class="mini-list">
             <div class="mini">
@@ -66,11 +66,11 @@
             </div>
             <div class="mini">
               <div class="mini__title"><span>configs/models.yaml</span><span class="token token--accent-2">model config</span></div>
-              <div class="mini__meta">對應 site 的模型設定與參數，供 custom model classes 讀取。</div>
+              <div class="mini__meta">對應使用端專案的模型設定與參數，供 custom model classes 讀取。</div>
             </div>
             <div class="mini">
-              <div class="mini__title"><span>custom model / engine classes</span><span class="token token--warm">replaceable</span></div>
-              <div class="mini__meta">custom inference、publish 與 streaming engine 都屬於這一側的擴充。</div>
+              <div class="mini__title"><span>自訂模型類</span><span class="token token--warm">replaceable</span></div>
+              <div class="mini__meta">自訂 inference、publish 與 streaming engine 都屬於這一側的擴充。</div>
             </div>
           </div>
         </article>
@@ -94,7 +94,7 @@
             </div>
             <div class="node-card">
               <div class="node-label">engine overrides</div>
-              <div class="node-copy">指定哪個 task 要換成 custom inference / publish / streaming engine。</div>
+              <div class="node-copy">指定哪個 task 要換成自訂 inference / publish / streaming engine。</div>
             </div>
             <div class="node-card">
               <div class="node-label">runtime effect</div>

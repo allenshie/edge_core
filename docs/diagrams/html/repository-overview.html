@@ -567,7 +567,7 @@
         <h1>Repository Overview</h1>
         <p class="lede">
           這一頁只保留 <code class="inline-code">repository-overview.mmd</code> 的邊界語義：
-          Site Repo 提供場域輸入，<code class="inline-code">edge_core</code> 承接共用 runtime，
+          使用端專案提供場域輸入，<code class="inline-code">edge_core</code> 承接共用 runtime，
           App Backend 與 External Systems 則是右側的兩個外部觸點。
         </p>
         <div class="chip-row" aria-label="Diagram summary">
@@ -597,7 +597,7 @@
           <div class="section-kicker">Boundary map</div>
           <div class="section-title" id="boundary-map-title">四個邊界，保留原始 Mermaid 的依賴方向</div>
           <p class="section-note">
-            左欄是 site repo 的輸入，中間是 <code class="inline-code">edge_core</code> 的共用主幹，右欄拆成 App Backend 與 External Systems。
+            左欄是使用端專案的輸入，中間是 <code class="inline-code">edge_core</code> 的共用主幹，右欄拆成 App Backend 與 External Systems。
             實線表示直接資料流，虛線表示 runtime / subscription 類的 side channel。
           </p>
         </div>
@@ -612,7 +612,7 @@
           <div class="boundary__head">
             <div>
               <span class="boundary__kicker">Boundary 01</span>
-              <h2>Site Repo</h2>
+              <h2>使用端專案</h2>
             </div>
             <span class="boundary__tag">inputs</span>
           </div>
@@ -622,7 +622,7 @@
           <div class="node-list">
             <div class="node">
               <div class="node__label">
-                <span class="mono">site entrypoint</span>
+                <span class="mono">使用端專案入口</span>
                 <span class="node__hint">→ <span class="mono">edge_core/main.py</span></span>
               </div>
               <div class="node__meta">專案入口會先進入 launcher，再交給共用 runtime。</div>
@@ -632,11 +632,11 @@
                 <span class="mono">schedules / configs / weights</span>
                 <span class="node__hint">→ <span class="mono">edge.config</span></span>
               </div>
-              <div class="node__meta">site 控制的設定來源，直接影響 runtime 行為。</div>
+              <div class="node__meta">使用端專案控制的設定來源，直接影響 runtime 行為。</div>
             </div>
             <div class="node">
               <div class="node__label">
-                <span class="mono">custom models</span>
+                <span class="mono">自訂模型</span>
                 <span class="node__hint">→ <span class="mono">edge.pipeline</span></span>
               </div>
               <div class="node__meta">自訂模型掛到 pipeline，而不是寫進共用框架。</div>
@@ -774,7 +774,7 @@
       <div class="map-foot">
         <p>
           <strong>Reading order.</strong>
-          Site Repo feeds <code class="inline-code">edge_core/main.py</code>, <code class="inline-code">edge.main</code> fans out to the shared runtime modules,
+          使用端專案 feeds <code class="inline-code">edge_core/main.py</code>, <code class="inline-code">edge.main</code> fans out to the shared runtime modules,
           and the right-hand boundaries preserve the dotted backend and monitoring edges.
         </p>
         <p class="mono">No JavaScript. Single-file HTML. Semantics preserved from repository-overview.mmd.</p>

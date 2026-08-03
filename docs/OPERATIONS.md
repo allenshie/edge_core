@@ -7,6 +7,16 @@
 - `PipelineScheduler` 每圈會輸出實際耗時與 sleep 秒數，可搭配 `EDGE_LOG_LEVEL=DEBUG` 觀察節奏。
 - 若來源無法恢復，任務會拋 `TaskError`，WorkflowRunner 依 `EDGE_RETRY_BACKOFF` 重試並透過 Monitoring 回報。
 
+### Phase 切換與串流健康
+
+`working` / `non-working` 切換時，`edge_core` 會先更新 desired state，再以背景方式回收 FFmpeg 子程序。這代表：
+
+- `non-working` 期間 `readyz=false` 是預期行為，表示目前不提供可視化串流輸出。
+- 背景回收完成前，新舊 FFmpeg 可能短暫並存，但會由 generation guard 避免誤殺或誤啟動。
+- 如果 log 顯示 `cleanup=background`、`ffmpeg async stop scheduled`，通常代表正常回收中，不是卡死。
+- 運維判斷時請先看 `healthz` 是否還活著，再看 `readyz` 是否符合目前 phase；不要把單純的 `non-working` 誤判成 pod 故障。
+- 端點定義與 probe 合約請參考 [HEALTH.md](HEALTH.md)。
+
 ### 同時啟動多個 Edge 實例
 
 `edge_core/scripts/run_all.sh` 會掃描 `edge_core/env/` 底下符合 `env/.env.cam??` 的 runtime 檔，逐一在背景啟動多個 edge 節點。  
@@ -45,12 +55,9 @@ EDGE_MATCHING_RESULT_CHANNEL=integration/matching
 EDGE_MATCHING_RESULT_RESOURCE_NAME=matching_result_snapshot
 ```
 
-如果你是在上層 `smart_intersection_safety_edge` 專案中啟動單一或少量實例，則可以改用根目錄的 [scripts/run_edge.sh](../../scripts/run_edge.sh) 直接指定 `.env` 或 `camXX` 名稱。
-
 ### Docker / Compose 部署
 
-如果你要建立 repo 層級的正式容器映像，請先看根目錄的 [deploy/docker/README.md](../../deploy/docker/README.md)。  
-本節保留 [edge_core/docker-compose.yml](../docker-compose.yml) 的多實例 compose 用法，這份 compose 會直接以 `edge_core/Dockerfile` 建置 image，不再依賴舊版 `requirements.txt`。
+如果你要建立容器映像或 compose 部署，請以本模組的 [Dockerfile](../Dockerfile) 與 [docker-compose.yml](../docker-compose.yml) 為準。這份 compose 會直接以 `edge_core/Dockerfile` 建置 image，不再依賴舊版 `requirements.txt`。
 
 ```bash
 cp env/.env.cam01.example env/.env.cam01

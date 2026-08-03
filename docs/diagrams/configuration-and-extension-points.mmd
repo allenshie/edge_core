@@ -1,15 +1,15 @@
 graph LR
-    subgraph siteRepo["Site Repo"]
+    subgraph siteRepo["使用端專案"]
         schedules["schedule.json"]
         modelConfigs["configs/models.yaml"]
-        customModels["custom model classes"]
-        customInference["custom inference engine"]
-        customPublish["custom publish engine"]
-        customStreaming["custom streaming engine"]
+        customModels["自訂模型類"]
+        customInference["自訂 inference 引擎"]
+        customPublish["自訂 publish 引擎"]
+        customStreaming["自訂 streaming 引擎"]
     end
 
-    subgraph configuration["Configuration"]
-        sharedBackend["shared inbound backend"]
+    subgraph configuration["控制面設定"]
+        sharedBackend["共用 inbound backend"]
         routeConfig["phase / matching / events routes"]
         engineOverrides["engine class overrides"]
     end

@@ -91,10 +91,7 @@
 | `EDGE_HEALTH_READINESS_TIMEOUT_SECONDS` | `30` | `/readyz` 最近進度逾時門檻。 |
 | `EDGE_HEALTH_STARTUP_GRACE_SECONDS` | `10` | startup 完成後首次 loop/progress 寬限秒數。 |
 
-啟用後提供：
-- `/startupz`：startup task 是否完成。
-- `/healthz`：workflow loop 是否仍在更新。
-- `/readyz`：startup 完成、近期有進度且不在 backoff。
+端點合約、Kubernetes probe 範例與判讀規則請參考 [HEALTH.md](HEALTH.md)。
 
 ## MQTT 協議參數
 

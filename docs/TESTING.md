@@ -4,7 +4,7 @@
 
 ## 測試準備
 
-1. 複製 `env/.env.cam01.example` 為新的 `env/.env.cam01`，或在 site repo 內建立專案自己的 runtime `.env`。
+1. 複製 `env/.env.cam01.example` 為新的 `env/.env.cam01`，或在你的整合專案內建立專案自己的 runtime `.env`。
 2. 若要同時測多台相機，再額外複製 `env/.env.cam02.example` 為 `env/.env.cam02`。
 3. 依測試場景選擇取流模式：
    - `EDGE_INGEST_MODE=file`：設定 `EDGE_FILE_PATH=/path/to/your/video.mp4`，必要時調整 `EDGE_FILE_FPS`、`EDGE_FILE_LOOP`。
