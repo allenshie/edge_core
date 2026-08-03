@@ -8,14 +8,16 @@
 | --- | --- | --- |
 | `GET /startupz` | `startupProbe` | 啟動初始化是否完成。 |
 | `GET /healthz` | `livenessProbe` | control loop / scheduler 是否仍在持續運作。 |
-| `GET /readyz` | `readinessProbe` | 目前是否可接受可視化串流輸出。 |
+| `GET /readyz` | `readinessProbe` | 核心 runtime 是否已就緒、可接受工作。 |
 
 ## 狀態語意
 
 - `startupz` 用於容器啟動初期，避免初始化期間過早觸發 liveness 重啟。
-- `healthz` 只代表 runtime 還活著，與 `non-working` phase 無直接關聯。
-- `readyz` 代表是否已具備對外輸出能力；在 `non-working`、等待首幀、FFmpeg 背景回收、寫入失敗恢復期間，預期會是 `false`。
-- 當 phase 回到 `working`，且成功寫入第一筆可視化 frame 後，`readyz` 才會恢復為 `true`。
+- `healthz` 是 liveness，只代表 control loop / runtime 還活著。
+- `readyz` 是 readiness，代表核心 runtime 已完成啟動、持續有進度且可接受工作。
+- `working` 與 `non-working` 都是合法 phase；只要核心 runtime 健康，兩者都應維持 `readyz=true`。
+- 可視化串流是選配能力。`streaming.enabled=false`、尚未寫出第一筆 frame、FFmpeg 背景回收/backoff 或串流寫入失敗，都不會單獨讓 Pod 變成 NotReady。
+- 串流可用性仍由 streaming health snapshot、state、log 與輸出速率等資訊呈現，不作為 Kubernetes readiness gate。
 
 ## 建議的 Kubernetes probes
 
@@ -46,9 +48,9 @@ readinessProbe:
 
 ## 判讀建議
 
-- `healthz=true` 且 `readyz=false`：通常是正常的 phase 切換、等待首幀或背景回收狀態。
+- `healthz=true` 且 `readyz=false`：核心 runtime 還活著，但可能尚未完成啟動、近期沒有工作進度，或已進入 runtime backoff；請檢查 scheduler / control loop 狀態。
 - `healthz=false`：優先檢查 scheduler / control loop 是否卡住，或 process 是否已經異常退出。
-- `readyz=false` 且 phase 為 `non-working`：預期行為，不應直接視為故障。
+- `phase=non-working` 或串流未輸出時仍應為 Ready；若此時 `readyz=false`，原因應從核心 runtime 的 startup、progress、stopping 或 backoff 狀態排查。
 
 ## 相關設定
 

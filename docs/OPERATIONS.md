@@ -11,10 +11,11 @@
 
 `working` / `non-working` 切換時，`edge_core` 會先更新 desired state，再以背景方式回收 FFmpeg 子程序。這代表：
 
-- `non-working` 期間 `readyz=false` 是預期行為，表示目前不提供可視化串流輸出。
+- `non-working` 是合法狀態；只要核心 runtime 健康，Pod 仍應維持 `readyz=true`。
 - 背景回收完成前，新舊 FFmpeg 可能短暫並存，但會由 generation guard 避免誤殺或誤啟動。
 - 如果 log 顯示 `cleanup=background`、`ffmpeg async stop scheduled`，通常代表正常回收中，不是卡死。
-- 運維判斷時請先看 `healthz` 是否還活著，再看 `readyz` 是否符合目前 phase；不要把單純的 `non-working` 誤判成 pod 故障。
+- 串流輸出、等待首幀或 FFmpeg 背景回收不會改變 Kubernetes readiness；串流可用性請看 streaming state、health snapshot、log 與輸出速率。
+- 運維判斷時，`healthz` 用來確認 control loop / runtime 存活，`readyz` 用來確認核心 runtime 可接受工作；不要把單純的 `non-working` 或未輸出串流誤判成 Pod 故障。
 - 端點定義與 probe 合約請參考 [HEALTH.md](HEALTH.md)。
 
 ### 同時啟動多個 Edge 實例

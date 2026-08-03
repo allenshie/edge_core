@@ -76,12 +76,10 @@ def activate_stream(engine: Any, phase: str) -> bool:
     if not engine._url:
         engine._last_error = "EDGE_STREAMING_URL is empty"
         engine._state = STATE_DEGRADED
-        engine._set_service_readiness(False, phase=phase, reason="stream_url_missing")
         LOGGER.warning("streaming requested but url is empty (phase=%s)", phase)
         return False
     engine._stream_active = True
     engine._state = STATE_STREAMING
-    engine._set_service_readiness(False, phase=phase, reason="awaiting_frame")
     LOGGER.info("streaming activated (phase=%s)", phase)
     return True
 
@@ -95,7 +93,6 @@ def deactivate_stream(engine: Any, phase: str, reason: str) -> None:
     engine._stream_active = False
     engine._state = STATE_IDLE if reason == "no_frame_timeout" else STATE_INACTIVE
     engine._clear_latest_packet()
-    engine._set_service_readiness(False, phase=phase, reason=reason)
     cleanup_scheduled = False
     if was_active:
         cleanup_scheduled = engine._ffmpeg.close_async(reason=f"{reason}:{phase}")

@@ -58,11 +58,11 @@ class _SuccessfulFfmpeg(_FakeFfmpeg):
         pass
 
 
-def _context() -> TaskContext:
+def _context(*, streaming_enabled: bool = True) -> TaskContext:
     config = SimpleNamespace(
         camera=SimpleNamespace(camera_id="cam-1"),
         streaming=SimpleNamespace(
-            enabled=True,
+            enabled=streaming_enabled,
             fps=15,
             url="rtmp://localhost/test",
             strategy="cpu",
@@ -86,6 +86,22 @@ def _context() -> TaskContext:
     return TaskContext(logger=logging.getLogger("test"), config=config, monitor=_Monitor())
 
 
+def _healthy_state() -> EdgeHealthState:
+    state = EdgeHealthState(logging.getLogger("test"))
+    state.mark_startup_ok()
+    state.mark_loop_tick()
+    state.mark_progress()
+    return state
+
+
+def _probe_config() -> ProbeConfig:
+    return ProbeConfig(
+        liveness_timeout_seconds=1.0,
+        readiness_timeout_seconds=1.0,
+        startup_grace_seconds=1.0,
+    )
+
+
 def test_working_non_working_working_transition_does_not_wait_for_close() -> None:
     context = _context()
     health_state = EdgeHealthState(logging.getLogger("test"))
@@ -107,20 +123,20 @@ def test_working_non_working_working_transition_does_not_wait_for_close() -> Non
 
     assert working.should_stream is True
     assert working.stream_active is True
-    assert working_health.in_backoff is True
+    assert working_health.in_backoff is False
     assert elapsed < 0.1
     assert non_working.should_stream is False
     assert non_working.stream_active is False
-    assert non_working_health.in_backoff is True
+    assert non_working_health.in_backoff is False
     assert fake_ffmpeg.async_close_reasons == ["phase_disabled:non-working"]
     assert resumed.should_stream is True
     assert resumed.stream_active is True
-    assert resumed_health.in_backoff is True
+    assert resumed_health.in_backoff is False
 
 
-def test_readiness_requires_successful_write_in_current_desired_phase() -> None:
+def test_readiness_does_not_require_first_successful_stream_write() -> None:
     context = _context()
-    health_state = EdgeHealthState(logging.getLogger("test"))
+    health_state = _healthy_state()
     context.set_resource("health_state", health_state)
     engine = DefaultStreamingEngine(context, start_output_loop=False)
     engine._ffmpeg = _SuccessfulFfmpeg()
@@ -128,16 +144,19 @@ def test_readiness_requires_successful_write_in_current_desired_phase() -> None:
     frame = np.zeros((2, 2, 3), dtype=np.uint8)
 
     engine.push(frame, [], "working")
-    assert health_state.snapshot().in_backoff is True
+    ready, _ = _evaluate_readiness(health_state.snapshot(), time.time(), _probe_config())
+    assert ready is True
 
     engine._write_output_frame(frame, "stale-working")
-    assert health_state.snapshot().in_backoff is True
+    ready, _ = _evaluate_readiness(health_state.snapshot(), time.time(), _probe_config())
+    assert ready is True
 
     engine._write_output_frame(frame, "working")
-    assert health_state.snapshot().in_backoff is False
+    ready, _ = _evaluate_readiness(health_state.snapshot(), time.time(), _probe_config())
+    assert ready is True
 
 
-def test_late_successful_write_after_deactivation_cannot_restore_readiness() -> None:
+def test_late_successful_write_after_deactivation_does_not_change_readiness() -> None:
     class DelayedSuccessfulFfmpeg(_SuccessfulFfmpeg):
         def __init__(self) -> None:
             super().__init__()
@@ -149,7 +168,7 @@ def test_late_successful_write_after_deactivation_cannot_restore_readiness() -> 
             assert self.allow_write.wait(1.0)
 
     context = _context()
-    health_state = EdgeHealthState(logging.getLogger("test"))
+    health_state = _healthy_state()
     context.set_resource("health_state", health_state)
     engine = DefaultStreamingEngine(context, start_output_loop=False)
     ffmpeg = DelayedSuccessfulFfmpeg()
@@ -163,12 +182,14 @@ def test_late_successful_write_after_deactivation_cannot_restore_readiness() -> 
     assert ffmpeg.write_entered.wait(0.5)
 
     engine.push(frame, [], "non-working")
-    assert health_state.snapshot().in_backoff is True
+    ready, _ = _evaluate_readiness(health_state.snapshot(), time.time(), _probe_config())
+    assert ready is True
     ffmpeg.allow_write.set()
     writer.join(timeout=0.5)
 
     assert writer.is_alive() is False
-    assert health_state.snapshot().in_backoff is True
+    ready, _ = _evaluate_readiness(health_state.snapshot(), time.time(), _probe_config())
+    assert ready is True
 
 
 def test_cancelled_write_during_deactivation_does_not_restart_ffmpeg() -> None:
@@ -219,32 +240,54 @@ def test_deactivation_during_failure_rejects_late_restart() -> None:
     assert engine._state == STATE_INACTIVE
 
 
-def test_non_working_keeps_liveness_but_disables_readiness() -> None:
+def test_non_working_keeps_runtime_live_and_ready() -> None:
+    context = _context()
+    state = _healthy_state()
+    context.set_resource("health_state", state)
+    engine = DefaultStreamingEngine(context, start_output_loop=False)
+    engine._ffmpeg = _FakeFfmpeg()
+    engine._streaming_enabled_by_phase = {"non-working": False}
+
+    status = engine.push(np.zeros((2, 2, 3), dtype=np.uint8), [], "non-working")
+    snapshot = state.snapshot()
+    live, _ = _evaluate_liveness(snapshot, time.time(), _probe_config())
+    ready, _ = _evaluate_readiness(snapshot, time.time(), _probe_config())
+
+    assert status.should_stream is False
+    assert live is True
+    assert ready is True
+
+
+def test_streaming_disabled_keeps_runtime_ready() -> None:
+    context = _context(streaming_enabled=False)
+    state = _healthy_state()
+    context.set_resource("health_state", state)
+    engine = DefaultStreamingEngine(context, start_output_loop=False)
+    engine._ffmpeg = _FakeFfmpeg()
+
+    status = engine.push(np.zeros((2, 2, 3), dtype=np.uint8), [], "working")
+    ready, _ = _evaluate_readiness(state.snapshot(), time.time(), _probe_config())
+
+    assert status.should_stream is False
+    assert ready is True
+
+
+def test_healthz_and_readyz_use_distinct_runtime_signals() -> None:
     state = EdgeHealthState(logging.getLogger("test"))
     state.mark_startup_ok()
     state.mark_loop_tick()
-    state.mark_progress()
     config = ProbeConfig(
-        liveness_timeout_seconds=1.0,
-        readiness_timeout_seconds=1.0,
-        startup_grace_seconds=1.0,
+        liveness_timeout_seconds=10.0,
+        readiness_timeout_seconds=0.01,
+        startup_grace_seconds=0.01,
     )
+    now = time.time() + 0.02
 
-    state.set_service_ready(False, phase="non-working", reason="phase_disabled")
-    snapshot = state.snapshot()
-    live, _ = _evaluate_liveness(snapshot, time.time(), config)
-    ready, _ = _evaluate_readiness(snapshot, time.time(), config)
+    live, _ = _evaluate_liveness(state.snapshot(), now, config)
+    ready, _ = _evaluate_readiness(state.snapshot(), now, config)
 
     assert live is True
     assert ready is False
-
-    state.set_service_ready(True, phase="working", reason="streaming")
-    snapshot = state.snapshot()
-    live, _ = _evaluate_liveness(snapshot, time.time(), config)
-    ready, _ = _evaluate_readiness(snapshot, time.time(), config)
-
-    assert live is True
-    assert ready is True
 
 
 def test_non_working_stream_snapshot_is_disabled_not_degraded() -> None:

@@ -167,16 +167,7 @@ class BaseStreamingEngine(ABC):
         with self._latest_packet_lock:
             self._latest_packet = None
 
-    def _set_service_readiness(self, ready: bool, *, phase: str, reason: str) -> None:
-        context = self._context
-        if context is None:
-            return
-        health_state = context.get_resource("health_state")
-        setter = getattr(health_state, "set_service_ready", None)
-        if callable(setter):
-            setter(ready, phase=phase, reason=reason)
-
-    def _can_mark_service_ready(self, phase: str) -> bool:
+    def _can_accept_output_write(self, phase: str) -> bool:
         return (
             self._desired_streaming
             and self._stream_active
@@ -301,9 +292,9 @@ class BaseStreamingEngine(ABC):
             return
         try:
             self._ffmpeg.write_frame(vis_frame)
-            if not self._can_mark_service_ready(phase):
+            if not self._can_accept_output_write(phase):
                 LOGGER.debug(
-                    "streaming write completed outside desired phase; readiness unchanged: phase=%s current_phase=%s desired=%s active=%s stopping=%s",
+                    "streaming write completed outside desired phase; output state unchanged: phase=%s current_phase=%s desired=%s active=%s stopping=%s",
                     phase,
                     self._current_phase,
                     self._desired_streaming,
@@ -316,7 +307,6 @@ class BaseStreamingEngine(ABC):
             self._last_error = None
             self._last_write_ts = time.time()
             self._state = STATE_STREAMING
-            self._set_service_readiness(True, phase=phase, reason="streaming")
             self._write_rate.mark()
             if self._is_unique_output(frame_meta):
                 self._unique_write_rate.mark(
@@ -336,7 +326,6 @@ class BaseStreamingEngine(ABC):
             self._write_failures += 1
             self._last_error = str(exc)
             self._state = STATE_DEGRADED
-            self._set_service_readiness(False, phase=phase, reason="stream_write_failed")
 
             now = time.time()
             if (now - self._last_restart_ts) < self._restart_backoff_seconds:
