@@ -61,29 +61,52 @@ def should_stream_for_phase(enabled: bool, streaming_enabled_by_phase: Dict[str,
 
 
 def activate_stream(engine: Any, phase: str) -> bool:
+    previous_phase = getattr(engine, "_current_phase", None)
+    previous_desired = bool(getattr(engine, "_desired_streaming", False))
+    engine._current_phase = phase
+    engine._desired_streaming = True
+    if previous_phase != phase or not previous_desired:
+        LOGGER.info(
+            "streaming desired state changed: phase=%s previous_phase=%s desired=active",
+            phase,
+            previous_phase,
+        )
     if engine._stream_active:
         return True
     if not engine._url:
         engine._last_error = "EDGE_STREAMING_URL is empty"
         engine._state = STATE_DEGRADED
+        engine._set_service_readiness(False, phase=phase, reason="stream_url_missing")
         LOGGER.warning("streaming requested but url is empty (phase=%s)", phase)
         return False
     engine._stream_active = True
     engine._state = STATE_STREAMING
+    engine._set_service_readiness(False, phase=phase, reason="awaiting_frame")
     LOGGER.info("streaming activated (phase=%s)", phase)
     return True
 
 
 def deactivate_stream(engine: Any, phase: str, reason: str) -> None:
-    if not engine._stream_active:
-        if reason == "no_frame_timeout":
-            engine._state = STATE_IDLE
-        return
+    previous_phase = getattr(engine, "_current_phase", None)
+    previous_desired = bool(getattr(engine, "_desired_streaming", False))
+    was_active = bool(engine._stream_active)
+    engine._current_phase = phase
+    engine._desired_streaming = False
     engine._stream_active = False
     engine._state = STATE_IDLE if reason == "no_frame_timeout" else STATE_INACTIVE
     engine._clear_latest_packet()
-    engine._ffmpeg.close()
-    LOGGER.info("streaming deactivated (phase=%s reason=%s)", phase, reason)
+    engine._set_service_readiness(False, phase=phase, reason=reason)
+    cleanup_scheduled = False
+    if was_active:
+        cleanup_scheduled = engine._ffmpeg.close_async(reason=f"{reason}:{phase}")
+    if previous_phase != phase or previous_desired or was_active:
+        LOGGER.info(
+            "streaming deactivated: phase=%s previous_phase=%s reason=%s cleanup=%s",
+            phase,
+            previous_phase,
+            reason,
+            "background" if cleanup_scheduled else "not_needed",
+        )
 
 
 def build_status(engine: Any, phase: str, should_stream: bool, now: float) -> StreamingStatus:

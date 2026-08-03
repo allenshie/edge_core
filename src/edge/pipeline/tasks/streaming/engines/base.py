@@ -36,6 +36,8 @@ class BaseStreamingEngine(ABC):
         self._camera_id = str(getattr(camera_cfg, "camera_id", "unknown") or "unknown")
         self._stop_event = threading.Event()
         self._stream_active = False
+        self._desired_streaming = False
+        self._current_phase: str | None = None
         self._state = STATE_INACTIVE
         self._latest_packet_lock = threading.Lock()
         self._latest_packet: StreamPacket | None = None
@@ -165,6 +167,23 @@ class BaseStreamingEngine(ABC):
         with self._latest_packet_lock:
             self._latest_packet = None
 
+    def _set_service_readiness(self, ready: bool, *, phase: str, reason: str) -> None:
+        context = self._context
+        if context is None:
+            return
+        health_state = context.get_resource("health_state")
+        setter = getattr(health_state, "set_service_ready", None)
+        if callable(setter):
+            setter(ready, phase=phase, reason=reason)
+
+    def _can_mark_service_ready(self, phase: str) -> bool:
+        return (
+            self._desired_streaming
+            and self._stream_active
+            and phase == self._current_phase
+            and not self._stop_event.is_set()
+        )
+
     def _start_output_loop(self) -> None:
         if self._output_thread is not None:
             return
@@ -232,6 +251,8 @@ class BaseStreamingEngine(ABC):
         if vis_frame is None:
             return
         self._write_output_frame(vis_frame, packet.phase, packet.frame_meta)
+        if self._stop_event.is_set() or not self._stream_active:
+            return
         self._write_recording_frame(vis_frame, packet.phase, packet.frame_meta)
 
     @abstractmethod
@@ -280,11 +301,22 @@ class BaseStreamingEngine(ABC):
             return
         try:
             self._ffmpeg.write_frame(vis_frame)
+            if not self._can_mark_service_ready(phase):
+                LOGGER.debug(
+                    "streaming write completed outside desired phase; readiness unchanged: phase=%s current_phase=%s desired=%s active=%s stopping=%s",
+                    phase,
+                    self._current_phase,
+                    self._desired_streaming,
+                    self._stream_active,
+                    self._stop_event.is_set(),
+                )
+                return
             # 只有真的寫進 ffmpeg 才算一次有效輸出，這個 rate 才是 stream_output_fps。
             self._processed_frames += 1
             self._last_error = None
             self._last_write_ts = time.time()
             self._state = STATE_STREAMING
+            self._set_service_readiness(True, phase=phase, reason="streaming")
             self._write_rate.mark()
             if self._is_unique_output(frame_meta):
                 self._unique_write_rate.mark(
@@ -292,18 +324,19 @@ class BaseStreamingEngine(ABC):
                     ts=frame_meta.capture_ts if frame_meta is not None else None,
                 )
         except Exception as exc:  # noqa: BLE001
+            restart_generation = self._ffmpeg.lifecycle_generation()
+            if self._stop_event.is_set() or not self._stream_active:
+                LOGGER.debug(
+                    "streaming write cancelled after deactivation; skip ffmpeg restart: phase=%s error=%s",
+                    phase,
+                    exc,
+                )
+                return
+
             self._write_failures += 1
             self._last_error = str(exc)
             self._state = STATE_DEGRADED
-
-            if self._stop_event.is_set():
-                LOGGER.debug(
-                    "streaming write failed during shutdown; skip ffmpeg restart: phase=%s error=%s failures=%d",
-                    phase,
-                    exc,
-                    self._write_failures,
-                )
-                return
+            self._set_service_readiness(False, phase=phase, reason="stream_write_failed")
 
             now = time.time()
             if (now - self._last_restart_ts) < self._restart_backoff_seconds:
@@ -325,7 +358,7 @@ class BaseStreamingEngine(ABC):
                 self._reconnect_count,
             )
             try:
-                self._ffmpeg.restart()
+                self._ffmpeg.restart(expected_generation=restart_generation)
             except Exception as restart_exc:  # noqa: BLE001
                 self._last_error = str(restart_exc)
                 LOGGER.warning("streaming ffmpeg restart failed: %s", restart_exc)
