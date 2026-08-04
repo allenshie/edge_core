@@ -7,10 +7,11 @@
 1. [../README.md](../README.md)
 2. [EXPLANATION.md](EXPLANATION.md)
 3. [ENV.md](ENV.md)
-4. [HEALTH.md](HEALTH.md)
-5. [CONFIG.md](CONFIG.md)
-6. [OPERATIONS.md](OPERATIONS.md)
-7. [TESTING.md](TESTING.md)
+4. [STREAMING.md](STREAMING.md)
+5. [HEALTH.md](HEALTH.md)
+6. [CONFIG.md](CONFIG.md)
+7. [OPERATIONS.md](OPERATIONS.md)
+8. [TESTING.md](TESTING.md)
 
 ## 依任務分類
 
@@ -25,6 +26,7 @@
 ### Reference
 
 - [ENV.md](ENV.md)：環境變數與預設值
+- [STREAMING.md](STREAMING.md)：串流設定與 MediaMTX 驗證
 - [HEALTH.md](HEALTH.md)：健康檢查端點與 Kubernetes probe 合約
 - [CONFIG.md](CONFIG.md)：設定結構與示例
 - [DETECTIONS.md](DETECTIONS.md)：資料模型與 detections 格式
@@ -51,6 +53,7 @@
 - 需要「為什麼 edge_core 這樣設計」時，看 [EXPLANATION.md](EXPLANATION.md)
 - 需要「怎麼啟動多實例」時，看 [OPERATIONS.md](OPERATIONS.md)
 - 需要「某個環境變數代表什麼」時，看 [ENV.md](ENV.md)
+- 需要「串流怎麼啟動、MediaMTX 怎麼跑」時，看 [STREAMING.md](STREAMING.md)
 - 需要「怎麼寫自訂引擎」時，看 [EXTENDING.md](EXTENDING.md)
 - 需要「測試怎麼跑」時，看 [TESTING.md](TESTING.md)
 - 需要「先查錯再修」時，看 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)

@@ -177,20 +177,6 @@
 
 相容舊格式：`{"working": [ ... ]}` 仍可讀。
 
-## 串流測試（MediaMTX）
+## 串流啟動與 MediaMTX
 
-```bash
-docker run --rm -it -p 8554:8554 -p 1935:1935 -p 8888:8888 bluenviron/mediamtx:latest
-```
-
-推流 URL 例如：
-
-```env
-EDGE_STREAMING_URL=rtmp://127.0.0.1:1935/live/cam01
-```
-
-播放：
-
-```bash
-ffplay -rtsp_transport tcp -fflags nobuffer -flags low_delay -framedrop -probesize 32 -analyzeduration 0 rtsp://127.0.0.1:8554/live/cam01
-```
+串流輸出相關的環境變數、MediaMTX 啟動指令與本地驗證方式，請參考 [STREAMING.md](STREAMING.md)。

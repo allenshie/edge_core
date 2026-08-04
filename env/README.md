@@ -49,4 +49,6 @@ EDGE_STREAMING_OUT_HEIGHT=720
 
 `EDGE_STREAMING_OUT_WIDTH` / `EDGE_STREAMING_OUT_HEIGHT` 會在 `_draw_detections()` 後、送入 ffmpeg 前做縮放，兩者必須同時設定才會生效。
 
-完整變數請參考 `edge_core/docs/README.md`、`edge_core/docs/ENV.md` 與 `edge_core/docs/OPERATIONS.md`。
+串流啟動與 MediaMTX 驗證請參考 `edge_core/docs/STREAMING.md`。
+
+完整變數請參考 `edge_core/docs/README.md`、`edge_core/docs/ENV.md`、`edge_core/docs/STREAMING.md` 與 `edge_core/docs/OPERATIONS.md`。
