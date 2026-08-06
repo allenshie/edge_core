@@ -11,7 +11,7 @@ from typing import Sequence
 from smart_messaging_core import MessagingClient
 from smart_workflow import TaskContext
 
-from edge.messaging import EDGE_EVENTS_ROUTE, MessagingClientProvider
+from edge.messaging import EDGE_EVENTS_ROUTE, MESSAGING_CLIENT_RESOURCE, MessagingClientProvider
 from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection, EdgeEvent, FrameMeta
 
@@ -124,9 +124,12 @@ class MessagingPublishEngine(BasePublishEngine):
 
     def _resolve_client(self, context: TaskContext | None) -> tuple[MessagingClient, bool]:
         if context is not None:
+            shared_client = context.get_resource(MESSAGING_CLIENT_RESOURCE)
+            if shared_client is not None:
+                return shared_client, True
+
             provider = MessagingClientProvider(context.config)
-            created_client = provider.build()
-            return created_client, False
+            return provider.build(), False
         raise ValueError("MessagingPublishEngine requires TaskContext to initialize messaging client")
 
     def close(self) -> list[dict[str, object]]:
