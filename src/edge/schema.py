@@ -241,30 +241,66 @@ class MatchingResultPayload:
     def from_dict(cls, payload: Mapping[str, Any] | None) -> "MatchingResultPayload":
         raw_payload = dict(payload or {})
         grouped: dict[str, list[MatchingResultTrack]] = {}
+
+        def append_track(
+            camera_id: Any,
+            local_id: Any,
+            global_id: Any,
+            class_name: Any,
+        ) -> None:
+            camera_key = str(camera_id).strip()
+            parsed_local_id = _coerce_matching_local_id(local_id)
+            if not camera_key or parsed_local_id is None:
+                return
+            grouped.setdefault(camera_key, []).append(
+                MatchingResultTrack(
+                    local_id=parsed_local_id,
+                    global_id=global_id,
+                    class_name=str(class_name or "unknown"),
+                )
+            )
+
         camera_matches = raw_payload.get("camera_matches") or {}
         if isinstance(camera_matches, Mapping):
             for camera_id, tracks in camera_matches.items():
-                camera_key = str(camera_id).strip()
-                if not camera_key:
-                    continue
-                parsed_tracks: list[MatchingResultTrack] = []
                 if isinstance(tracks, Sequence) and not isinstance(tracks, (str, bytes)):
                     for item in tracks:
                         if not isinstance(item, Mapping):
                             continue
-                        local_id = _coerce_matching_local_id(item.get("local_id"))
-                        if local_id is None:
-                            continue
-                        parsed_tracks.append(
-                            MatchingResultTrack(
-                                local_id=local_id,
-                                global_id=item.get("global_id"),
-                                class_name=str(item.get("class_name") or "unknown"),
-                            )
+                        append_track(
+                            camera_id,
+                            item.get("local_id"),
+                            item.get("global_id"),
+                            item.get("class_name"),
                         )
-                if parsed_tracks:
-                    parsed_tracks.sort(key=lambda track: track.local_id)
-                    grouped[camera_key] = parsed_tracks
+
+        # Matching broadcast v2 stores locals under each global object's
+        # ``matched_locals`` list instead of the legacy camera-keyed mapping.
+        matching_objects = raw_payload.get("objects") or []
+        if isinstance(matching_objects, Sequence) and not isinstance(matching_objects, (str, bytes)):
+            for global_object in matching_objects:
+                if not isinstance(global_object, Mapping):
+                    continue
+                parent_global_id = global_object.get("global_id")
+                matched_locals = global_object.get("matched_locals") or []
+                if not isinstance(matched_locals, Sequence) or isinstance(matched_locals, (str, bytes)):
+                    continue
+                for local_object in matched_locals:
+                    if not isinstance(local_object, Mapping):
+                        continue
+                    local_global_id = local_object.get("global_id")
+                    if local_global_id is None:
+                        local_global_id = parent_global_id
+                    append_track(
+                        local_object.get("camera_id"),
+                        local_object.get("local_id"),
+                        local_global_id,
+                        local_object.get("class_name") or global_object.get("class_name"),
+                    )
+
+        for tracks in grouped.values():
+            tracks.sort(key=lambda track: track.local_id)
+
         return cls(
             schema_version=_coerce_optional_int(raw_payload.get("schema_version"), default=1),
             message_type=str(raw_payload.get("message_type") or "matching_result"),

@@ -89,6 +89,54 @@ def test_start_messaging_subscriber_subscribes_enabled_routes_and_writes_context
     assert matching_snapshot["camera_matches"]["cam01"][0]["global_id"] == "G-7"
 
 
+def test_matching_subscriber_parses_v2_snapshot_for_edge_camera(monkeypatch):
+    monkeypatch.setenv("EDGE_CAMERA_ID", "Cam2-southbound-1")
+    monkeypatch.setenv("EDGE_MATCHING_RESULT_ENABLED", "1")
+    monkeypatch.setenv("EDGE_MATCHING_RESULT_RESOURCE_NAME", "matching_snapshot")
+    config = EdgeConfig()
+    context = _DummyContext(config)
+    client = _FakeMessagingClient()
+    context.set_resource(MESSAGING_CLIENT_RESOURCE, client)
+
+    start_messaging_subscriber(context)
+
+    client.subscriptions[MATCHING_BROADCAST_ROUTE](
+        {
+            "schema_version": 2,
+            "message_type": "matching_snapshot",
+            "generated_at": "2026-08-18T00:00:00Z",
+            "session_id": "session-a",
+            "frame_seq": 12,
+            "capture_ts": "2026-08-18T00:00:00Z",
+            "objects": [
+                {
+                    "global_id": 7,
+                    "global_position": {"x": 1.0, "y": 2.0},
+                    "class_name": "car",
+                    "matched_locals": [
+                        {
+                            "camera_id": "Cam2-southbound-1",
+                            "local_id": 3,
+                            "global_id": 7,
+                            "global_position": {"x": 1.0, "y": 2.0},
+                            "class_name": "car",
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    matching_snapshot = context.get_resource("matching_snapshot")
+
+    assert matching_snapshot["camera_id"] == "Cam2-southbound-1"
+    assert matching_snapshot["schema_version"] == 2
+    assert matching_snapshot["message_type"] == "matching_snapshot"
+    assert matching_snapshot["matches"] == 1
+    assert matching_snapshot["local_to_global"] == {3: 7}
+    assert matching_snapshot["camera_matches"]["Cam2-southbound-1"][0]["global_id"] == 7
+
+
 def test_start_messaging_subscriber_skips_when_all_routes_disabled(monkeypatch):
     monkeypatch.setenv("EDGE_PHASE_ENABLED", "0")
     monkeypatch.setenv("EDGE_MATCHING_RESULT_ENABLED", "0")
