@@ -132,6 +132,7 @@ site 層只應保留需要額外客製化邏輯的具體實作類，例如：
 detect_and_track:
   infer_mode: track
   tracker: trackers/custom_tracker.yaml
+  track_reset_interval_seconds: 3600
   classes: [0, 1]
   tracked_classes: [0]
   conf: 0.25
@@ -163,6 +164,13 @@ cargo_pose:
   - `track`
 - `tracker`
 - `tracked_classes`
+
+- `track_reset_interval_seconds`
+  - 僅在 `infer_mode: track` 時生效。
+  - 使用 monotonic clock 計算間隔，避免系統時間調整造成誤判。
+  - 間隔到期後，會在下一次 `track()` 呼叫前重設現有 tracker。
+  - `0` 或未設定表示停用；重設 tracker 不會重新載入 YOLO 權重。
+  - reset 後 `track_id` 可能重新編號；若下游需要跨 reset 的唯一識別，需自行加入 camera/session scope。
 
 ### 7. YAML mock 類需要的設定
 

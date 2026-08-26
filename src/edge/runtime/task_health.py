@@ -237,6 +237,7 @@ class TaskHealthReporter:
         frame_meta: FrameMeta | None,
         outcome: Any,
         publish_rate_meter: RateMeter | DurationMeter,
+        publish_latency_meter: DurationMeter | None = None,
         stale_threshold_seconds: float,
         report_interval_seconds: float,
     ) -> str | None:
@@ -254,6 +255,8 @@ class TaskHealthReporter:
             "published": published,
             "status": status,
         }
+        if publish_latency_meter is not None:
+            summary_fields.update(publish_latency_meter.summary("publish_latency"))
         summary_line = self.report_execution(
             context,
             stage="publish",
@@ -274,6 +277,8 @@ class TaskHealthReporter:
             report_event = getattr(monitor, "report_event", None)
             if callable(report_event):
                 report_event("warning", detail=summary_line, component="edge-publish")
+        if summary_line is not None and publish_latency_meter is not None:
+            publish_latency_meter.mark_reported()
         return summary_line
 
     def snapshot_publish(

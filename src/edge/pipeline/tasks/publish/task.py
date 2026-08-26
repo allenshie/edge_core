@@ -164,6 +164,7 @@ class PublishResultTask(FrameTaskSupportMixin, BaseTask):
             frame_meta=frame_meta,
             outcome=outcome,
             publish_rate_meter=self._publish_rate,
+            publish_latency_meter=self._publish_latency,
             stale_threshold_seconds=runtime.stale_threshold_seconds,
             report_interval_seconds=runtime.report_interval_seconds,
         )

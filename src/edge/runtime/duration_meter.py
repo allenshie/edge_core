@@ -1,16 +1,14 @@
-"""Thread-safe rolling duration meter for stage latency-based throughput."""
+"""Thread-safe aggregate duration meter for stage latency-based throughput."""
 from __future__ import annotations
 
 import math
 import threading
-from collections import deque
 from typing import Any
 
 
 class DurationMeter:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._samples_ms: deque[float] = deque()
         self._sample_count = 0
         self._total_ms = 0.0
 
@@ -21,7 +19,6 @@ class DurationMeter:
         if not math.isfinite(value) or value <= 0:
             return
         with self._lock:
-            self._samples_ms.append(value)
             self._sample_count += 1
             self._total_ms += value
 
@@ -46,9 +43,20 @@ class DurationMeter:
     def snapshot(self, prefix: str) -> dict[str, Any]:
         return {f"{prefix}_fps": self.fps()}
 
+    def summary(self, prefix: str) -> dict[str, Any]:
+        with self._lock:
+            average_ms = (
+                self._total_ms / self._sample_count
+                if self._sample_count > 0
+                else None
+            )
+            return {
+                f"{prefix}_samples": self._sample_count,
+                f"{prefix}_avg_ms": average_ms,
+            }
+
     def mark_reported(self, now_monotonic: float | None = None) -> None:
         _ = now_monotonic
         with self._lock:
-            self._samples_ms.clear()
             self._sample_count = 0
             self._total_ms = 0.0

@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import logging
+import math
+import time
 from typing import Any, List
 
 from edge.schema import EdgeDetection
 
 from .yolo import BaseYoloModel
+
+LOGGER = logging.getLogger(__name__)
 
 
 class YoloDetectionModel(BaseYoloModel):
@@ -29,6 +34,59 @@ class YoloDetectionModel(BaseYoloModel):
         self._infer_mode = self.config.get("infer_mode", "track")
         self._tracker = self.config.get("tracker")
         self._tracked_classes = self.config.get("tracked_classes")
+        self._track_reset_interval_seconds = self._parse_track_reset_interval(
+            self.config.get("track_reset_interval_seconds", 0)
+        )
+        self._last_track_reset_monotonic: float | None = None
+        self._track_reset_count = 0
+
+    @staticmethod
+    def _parse_track_reset_interval(value: Any) -> float:
+        if value is None:
+            return 0.0
+        try:
+            interval = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("track_reset_interval_seconds must be a non-negative number") from exc
+        if not math.isfinite(interval) or interval < 0:
+            raise ValueError("track_reset_interval_seconds must be a non-negative finite number")
+        return interval
+
+    def _reset_trackers_if_due(self) -> None:
+        interval = self._track_reset_interval_seconds
+        if interval <= 0:
+            return
+
+        now = time.monotonic()
+        if self._last_track_reset_monotonic is None:
+            self._last_track_reset_monotonic = now
+            return
+        if now - self._last_track_reset_monotonic < interval:
+            return
+
+        predictor = getattr(self._model, "predictor", None)
+        trackers = getattr(predictor, "trackers", None)
+        if not trackers:
+            self._last_track_reset_monotonic = now
+            return
+
+        reset_count = 0
+        for tracker in trackers:
+            reset = getattr(tracker, "reset", None)
+            if callable(reset):
+                reset()
+                reset_count += 1
+
+        self._last_track_reset_monotonic = now
+        if reset_count:
+            self._track_reset_count += 1
+            LOGGER.info(
+                "reset %d tracker(s) for model=%s after %.1f seconds (reset_count=%d)",
+                reset_count,
+                self.name,
+                interval,
+                self._track_reset_count,
+            )
 
     def _predict_raw(self, frame: Any, metadata: Any):
         _ = metadata
@@ -36,6 +94,7 @@ class YoloDetectionModel(BaseYoloModel):
             return []
         kwargs = self._build_predict_kwargs()
         if self._infer_mode == "track":
+            self._reset_trackers_if_due()
             if self._tracker:
                 return self._model.track(frame, persist=True, tracker=self._tracker, **kwargs)
             return self._model.track(frame, persist=True, **kwargs)
