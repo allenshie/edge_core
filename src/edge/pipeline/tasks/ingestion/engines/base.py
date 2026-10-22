@@ -319,8 +319,14 @@ class BaseIngestionEngine:
         return self._fatal_reason is not None or self._finished_reason is not None
 
     def _wait_for_frame(self) -> bool:
-        """等待第一張畫面；engine 進入 fatal / finished 時立即拋出 TaskError，不必等到逾時。"""
-        deadline = time.monotonic() + self._first_frame_timeout_seconds
+        """等待畫面；engine 進入 fatal / finished 時立即拋出 TaskError，不必等到逾時。
+
+        來源在背景開啟，所以還沒收到任何畫面時，等待時間要再加上 open timeout。
+        """
+        timeout = self._first_frame_timeout_seconds
+        if not self._frame_ready.is_set():
+            timeout += self._worker_config.open_timeout_seconds
+        deadline = time.monotonic() + timeout
         while True:
             self._raise_if_terminal()
             remaining = deadline - time.monotonic()

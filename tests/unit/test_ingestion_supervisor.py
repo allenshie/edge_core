@@ -44,8 +44,10 @@ class FakeSource(FrameSource):
         then: str = "fail",
         ignore_abort: bool = False,
         fail_open: bool = False,
+        open_delay: float = 0.0,
     ) -> None:
         super().__init__()
+        self._open_delay = open_delay
         self.marker = marker
         self._remaining = frames
         self._then = then
@@ -56,6 +58,7 @@ class FakeSource(FrameSource):
         self.close_count = 0
 
     def open(self) -> None:
+        time.sleep(self._open_delay)
         if self._fail_open:
             raise FrameSourceError(f"open failed #{self.marker}")
 
@@ -261,3 +264,15 @@ def test_stop_then_start_uses_new_supervisor(engines) -> None:
 
     assert int(payload["frame"][0, 0, 0]) == 2
     assert engine.is_started() is True
+
+
+def test_first_fetch_waits_for_slow_open(engines) -> None:
+    # 舊版 start() 同步開啟後才開始等第一張畫面；改成背景開啟後，第一次等待必須包含 open timeout。
+    config = IngestionWorkerConfig(**{**FAST.__dict__, "open_timeout_seconds": 1.0})
+    engine = FakeEngine([FakeSource(marker=1, open_delay=0.8)], config=config)
+    engines.append(engine)
+
+    payload = engine.fetch()
+
+    assert int(payload["frame"][0, 0, 0]) == 1
+    assert engine.health_snapshot()["worker_generation"] == 1
