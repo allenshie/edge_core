@@ -99,12 +99,15 @@
 | --- | --- | --- |
 | `EDGE_MQTT_HOST` | `localhost` | broker host。 |
 | `EDGE_MQTT_PORT` | `1883` | broker port。 |
-| `EDGE_MQTT_QOS` | `1` | MQTT QoS。 |
+| `EDGE_MQTT_QOS` | `1` | MQTT QoS，同時套用到 publish 與 subscribe。部署範本使用 `0`，原因見下方說明。 |
 | `EDGE_MQTT_CLIENT_ID` | *(未設定)* | MQTT client id。 |
 | `EDGE_MQTT_AUTH_ENABLED` | `0` | 是否啟用 MQTT 帳密驗證。 |
 | `EDGE_MQTT_USERNAME` | *(未設定)* | MQTT 使用者名稱（`EDGE_MQTT_AUTH_ENABLED=1` 時必填）。 |
 | `EDGE_MQTT_PASSWORD` | *(未設定)* | MQTT 密碼（建議透過 Secret 或 env 注入）。 |
 | `EDGE_MQTT_ENABLED` | `0` | 是否啟用 MQTT 協議設定；目前只影響 broker 連線/認證參數是否生效，不再用來決定 phase / matching route backend。 |
+| `EDGE_MQTT_LOG_THROTTLE_SECONDS` | `60` | `smart_messaging_core` MQTT 警告的節流時間窗：同一種警告在窗口內只輸出第一筆，下一筆會附上略過的筆數。設為 `0` 關閉節流。 |
+
+**QoS 0 的取捨：** QoS 1 的訊息會留在 paho client 的佇列中等待 PUBACK，而 `smart_messaging_core` 沒有設定佇列上限，broker 斷線或回應慢時，佇列和記憶體會一直增加。QoS 0 在斷線時直接丟棄訊息（publish 回傳失敗），不會排隊。訂閱端的影響很小：paho 預設 `clean_session=True`，broker 本來就不會替離線的 client 保留訊息，QoS 1 只多保護連線中斷當下正在傳送的訊息。phase 這類狀態訊息建議由 App 端以 retain 發布，重連後就能拿到最新值。
 
 ## Messaging Routes
 
