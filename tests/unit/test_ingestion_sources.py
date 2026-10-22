@@ -66,8 +66,8 @@ def test_worker_config_defaults() -> None:
     cfg = IngestionWorkerConfig()
 
     assert cfg.open_timeout_seconds == 10.0
-    assert cfg.read_timeout_seconds == 5.0
-    assert cfg.stall_seconds == 10.0
+    assert cfg.read_timeout_seconds == 15.0
+    assert cfg.stall_seconds == 20.0
     assert cfg.reconnect_max_seconds == 30.0
     assert cfg.worker_stop_timeout_seconds == 2.0
     assert cfg.max_stuck_workers == 3

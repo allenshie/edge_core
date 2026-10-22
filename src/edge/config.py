@@ -226,15 +226,19 @@ class CameraSourceConfig:
 
 @dataclass
 class IngestionWorkerConfig:
-    """Capture worker 的逾時、重連與卡住判定設定，所有 ingestion mode 共用。"""
+    """Capture worker 的逾時、重連與卡住判定設定，所有 ingestion mode 共用。
+
+    read timeout 與 stall 必須大於攝影機的 GOP（I-frame 間隔）：從 GOP 中間接上串流時，
+    要等到下一個 I-frame 才解得出第一張畫面。
+    """
 
     open_timeout_seconds: float = field(
         default_factory=lambda: float(os.environ.get("EDGE_INGESTION_OPEN_TIMEOUT_SECONDS", "10"))
     )
     read_timeout_seconds: float = field(
-        default_factory=lambda: float(os.environ.get("EDGE_INGESTION_READ_TIMEOUT_SECONDS", "5"))
+        default_factory=lambda: float(os.environ.get("EDGE_INGESTION_READ_TIMEOUT_SECONDS", "15"))
     )
-    stall_seconds: float = field(default_factory=lambda: float(os.environ.get("EDGE_INGESTION_STALL_SECONDS", "10")))
+    stall_seconds: float = field(default_factory=lambda: float(os.environ.get("EDGE_INGESTION_STALL_SECONDS", "20")))
     reconnect_max_seconds: float = field(
         default_factory=lambda: float(os.environ.get("EDGE_INGESTION_RECONNECT_MAX_SECONDS", "30"))
     )

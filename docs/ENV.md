@@ -45,8 +45,8 @@
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
 | `EDGE_INGESTION_OPEN_TIMEOUT_SECONDS` | `10` | 開啟 URL 來源的逾時（OpenCV `CAP_PROP_OPEN_TIMEOUT_MSEC`）。 |
-| `EDGE_INGESTION_READ_TIMEOUT_SECONDS` | `5` | 讀取 URL 來源的逾時（OpenCV `CAP_PROP_READ_TIMEOUT_MSEC`）。 |
-| `EDGE_INGESTION_STALL_SECONDS` | `10` | 超過這段時間沒有新畫面就更換 worker；開啟階段的寬限為 open timeout 加上這個值。應大於 read timeout。 |
+| `EDGE_INGESTION_READ_TIMEOUT_SECONDS` | `15` | 讀取 URL 來源的逾時（OpenCV `CAP_PROP_READ_TIMEOUT_MSEC`）。**必須大於攝影機的 GOP（I-frame 間隔）**：從 GOP 中間接上串流時，要等到下一個 I-frame 才會有第一張畫面，太短會一直重連。 |
+| `EDGE_INGESTION_STALL_SECONDS` | `20` | 超過這段時間沒有新畫面就更換 worker；開啟階段的寬限為 open timeout 加上這個值。應大於 read timeout。 |
 | `EDGE_INGESTION_RECONNECT_MAX_SECONDS` | `30` | 重連退避的上限秒數。 |
 | `EDGE_INGESTION_WORKER_STOP_TIMEOUT_SECONDS` | `2` | 要求 worker 停止後等待的秒數；逾時仍未結束就列為卡住的 worker。 |
 | `EDGE_INGESTION_MAX_STUCK_WORKERS` | `3` | 卡住的 worker 達到這個數量時，ingestion 標記為 fatal，liveness 隨後失敗（見 [HEALTH.md](HEALTH.md#ingestion-fatal)）。 |
