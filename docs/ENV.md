@@ -28,7 +28,11 @@
 | `EDGE_RTSP_DROP_FRAMES` | `2` | 每輪丟棄舊影格數。 |
 | `EDGE_RTSP_RECONNECT` | `1` | RTSP 重連退避的起始秒數；連續失敗時每次加倍，上限為 `EDGE_INGESTION_RECONNECT_MAX_SECONDS`。 |
 | `EDGE_RTSP_FPS` | `30` | RTSP 模式目標 FPS。 |
-| `EDGE_RTSP_WIDTH` / `EDGE_RTSP_HEIGHT` | *(未設定)* | RTSP 解碼輸出解析度。OpenCV 的 FFmpeg backend 對網路串流通常會忽略這個設定。 |
+| `EDGE_RTSP_WIDTH` / `EDGE_RTSP_HEIGHT` | *(未設定)* | RTSP 解碼輸出解析度。`ffmpeg` decoder 會縮放到這個尺寸（兩者都要設定）；未設定時每次連線先以 ffprobe 取得來源尺寸。`opencv` decoder 對網路串流通常會忽略這個設定。 |
+| `EDGE_RTSP_DECODER` | `ffmpeg` | `ffmpeg`：以 ffmpeg 子程序解碼，停止時可以直接 kill，不會留下卡住的 worker；`opencv`：使用 `cv2.VideoCapture`（備援，例如 image 內沒有 ffmpeg 時）。兩者解出的畫面逐位元相同。 |
+| `EDGE_RTSP_TRANSPORT` | `tcp` | `tcp` 或 `udp`（僅 `ffmpeg` decoder）。 |
+| `EDGE_RTSP_FFMPEG_BIN` | `ffmpeg` | ffmpeg 執行檔；ffprobe 取同一個目錄下的執行檔。啟動時找不到會直接報錯。 |
+| `EDGE_RTSP_FFMPEG_INPUT_ARGS` | *(空)* | 額外的 ffmpeg 輸入參數，插在 `-i` 之前，例如 `-threads 2` 限制解碼執行緒數（多核心機器上可明顯降低 CPU，但高解析度時要確認 capture fps 跟得上），或之後的硬體解碼參數。 |
 | `EDGE_FILE_PATH` | *(未設定)* | `file` 模式影片路徑。 |
 | `EDGE_FILE_LOOP` | `1` | 影片結束後是否重播。 |
 | `EDGE_FILE_FPS` | *(未設定)* | `file` 模式目標 FPS。 |

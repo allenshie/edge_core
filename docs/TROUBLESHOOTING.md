@@ -18,6 +18,9 @@
 | `python main.py` 很快結束 | `.env` 是否存在、語法是否正確、必要變數是否缺失 |
 | 找不到影格 / EOF 循環 | `EDGE_INGEST_MODE`、`EDGE_FILE_PATH`、`EDGE_RTSP_URL`、camera 權限 |
 | RTSP 一直重連 | source 是否穩定、網路是否可達；log 中 `IngestionWorker-N 結束（原因：錯誤）` 的原因（`open_failed` / `read_failed` / `stalled`）；ingest health 的 `reconnect_count`、`worker_generation`、`reconnect_backoff_s` |
+| RTSP 啟動時報「找不到 ffmpeg 執行檔」 | image 內是否安裝 ffmpeg / ffprobe；暫時可設定 `EDGE_RTSP_DECODER=opencv` |
+| log 出現 `ffprobe 無法取得畫面尺寸` | 來源是否可連線；或直接設定 `EDGE_RTSP_WIDTH` / `EDGE_RTSP_HEIGHT` 省略探測 |
+| `ffmpeg` decoder 的 CPU 比 `opencv` 高 | 多核心機器上 ffmpeg 預設的多執行緒解碼同步成本較高；可試 `EDGE_RTSP_FFMPEG_INPUT_ARGS="-threads 2"`，並確認 capture fps 不下降 |
 | log 出現「無法停止，列為卡住的 worker」或 `ingestion fatal` | 解碼函式庫卡住且 timeout 沒有生效；ingest health 的 `stuck_workers` 達到 `EDGE_INGESTION_MAX_STUCK_WORKERS` 後 liveness 會失敗並重啟 pod（見 [HEALTH.md](HEALTH.md#ingestion-fatal)）。可用 `py-spy dump --pid <pid>` 查看卡在哪個呼叫 |
 | 串流沒有輸出 | `EDGE_STREAMING_ENABLED`、`EDGE_STREAMING_URL`、MediaMTX 是否啟動、`EDGE_STREAMING_STRATEGY` 是否為 `cpu` |
 | `readyz` 變成 false 但 `healthz` 正常 | 核心 runtime 是否完成啟動、近期是否仍有工作進度、是否 stopping 或 runtime backoff |
