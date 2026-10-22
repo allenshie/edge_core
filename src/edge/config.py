@@ -225,11 +225,32 @@ class CameraSourceConfig:
 
 
 @dataclass
+class IngestionWorkerConfig:
+    """Capture worker 的逾時、重連與卡住判定設定，所有 ingestion mode 共用。"""
+
+    open_timeout_seconds: float = field(
+        default_factory=lambda: float(os.environ.get("EDGE_INGESTION_OPEN_TIMEOUT_SECONDS", "10"))
+    )
+    read_timeout_seconds: float = field(
+        default_factory=lambda: float(os.environ.get("EDGE_INGESTION_READ_TIMEOUT_SECONDS", "5"))
+    )
+    stall_seconds: float = field(default_factory=lambda: float(os.environ.get("EDGE_INGESTION_STALL_SECONDS", "10")))
+    reconnect_max_seconds: float = field(
+        default_factory=lambda: float(os.environ.get("EDGE_INGESTION_RECONNECT_MAX_SECONDS", "30"))
+    )
+    worker_stop_timeout_seconds: float = field(
+        default_factory=lambda: float(os.environ.get("EDGE_INGESTION_WORKER_STOP_TIMEOUT_SECONDS", "2"))
+    )
+    max_stuck_workers: int = field(default_factory=lambda: int(os.environ.get("EDGE_INGESTION_MAX_STUCK_WORKERS", "3")))
+
+
+@dataclass
 class IngestionConfig:
     mode: str = field(default_factory=lambda: (os.environ.get("EDGE_INGEST_MODE", "rtsp") or "rtsp").strip().lower())
     rtsp: RtspConfig = field(default_factory=RtspConfig)
     file: FileSourceConfig = field(default_factory=FileSourceConfig)
     camera: CameraSourceConfig = field(default_factory=CameraSourceConfig)
+    worker: IngestionWorkerConfig = field(default_factory=IngestionWorkerConfig)
 
 
 @dataclass
