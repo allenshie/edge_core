@@ -123,6 +123,10 @@ class RtspConfig:
     frame_height: int | None = field(
         default_factory=lambda: int(os.environ.get("EDGE_RTSP_HEIGHT")) if os.environ.get("EDGE_RTSP_HEIGHT") else None
     )
+    decoder: str = field(default_factory=lambda: (os.environ.get("EDGE_RTSP_DECODER", "ffmpeg") or "ffmpeg").strip().lower())
+    transport: str = field(default_factory=lambda: (os.environ.get("EDGE_RTSP_TRANSPORT", "tcp") or "tcp").strip().lower())
+    ffmpeg_bin: str = field(default_factory=lambda: os.environ.get("EDGE_RTSP_FFMPEG_BIN", "ffmpeg") or "ffmpeg")
+    ffmpeg_input_args: str = field(default_factory=lambda: os.environ.get("EDGE_RTSP_FFMPEG_INPUT_ARGS", ""))
 
 
 @dataclass
