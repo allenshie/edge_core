@@ -26,9 +26,9 @@
 | `EDGE_INGEST_MODE` | `rtsp` | `rtsp` / `file` / `camera`。 |
 | `EDGE_RTSP_URL` | `rtsp://localhost:554/stream` | RTSP 來源 URL。 |
 | `EDGE_RTSP_DROP_FRAMES` | `2` | 每輪丟棄舊影格數。 |
-| `EDGE_RTSP_RECONNECT` | `1` | RTSP 斷線重連秒數。 |
+| `EDGE_RTSP_RECONNECT` | `1` | RTSP 重連退避的起始秒數；連續失敗時每次加倍，上限為 `EDGE_INGESTION_RECONNECT_MAX_SECONDS`。 |
 | `EDGE_RTSP_FPS` | `30` | RTSP 模式目標 FPS。 |
-| `EDGE_RTSP_WIDTH` / `EDGE_RTSP_HEIGHT` | *(未設定)* | RTSP 解碼輸出解析度。 |
+| `EDGE_RTSP_WIDTH` / `EDGE_RTSP_HEIGHT` | *(未設定)* | RTSP 解碼輸出解析度。OpenCV 的 FFmpeg backend 對網路串流通常會忽略這個設定。 |
 | `EDGE_FILE_PATH` | *(未設定)* | `file` 模式影片路徑。 |
 | `EDGE_FILE_LOOP` | `1` | 影片結束後是否重播。 |
 | `EDGE_FILE_FPS` | *(未設定)* | `file` 模式目標 FPS。 |
@@ -37,6 +37,19 @@
 | `EDGE_CAMERA_FPS` | *(未設定)* | `camera` 模式希望設定的 FPS。 |
 | `EDGE_CAMERA_WIDTH` / `EDGE_CAMERA_HEIGHT` | *(未設定)* | `camera` 模式解析度設定。 |
 | `EDGE_CAMERA_DROP_FRAMES` | `0` | `camera` 模式每輪丟棄舊影格數。 |
+
+### Capture worker（所有模式共用）
+
+每次連線由一個 capture worker 負責（一條 thread 加上一個來源），由 engine 內的 supervisor 監看。超過 stall 時間沒有新畫面就停止並更換 worker，依退避時間重連。
+
+| 變數 | 預設 | 說明 |
+| --- | --- | --- |
+| `EDGE_INGESTION_OPEN_TIMEOUT_SECONDS` | `10` | 開啟 URL 來源的逾時（OpenCV `CAP_PROP_OPEN_TIMEOUT_MSEC`）。 |
+| `EDGE_INGESTION_READ_TIMEOUT_SECONDS` | `5` | 讀取 URL 來源的逾時（OpenCV `CAP_PROP_READ_TIMEOUT_MSEC`）。 |
+| `EDGE_INGESTION_STALL_SECONDS` | `10` | 超過這段時間沒有新畫面就更換 worker；開啟階段的寬限為 open timeout 加上這個值。應大於 read timeout。 |
+| `EDGE_INGESTION_RECONNECT_MAX_SECONDS` | `30` | 重連退避的上限秒數。 |
+| `EDGE_INGESTION_WORKER_STOP_TIMEOUT_SECONDS` | `2` | 要求 worker 停止後等待的秒數；逾時仍未結束就列為卡住的 worker。 |
+| `EDGE_INGESTION_MAX_STUCK_WORKERS` | `3` | 卡住的 worker 達到這個數量時，ingestion 標記為 fatal，liveness 隨後失敗（見 [HEALTH.md](HEALTH.md#ingestion-fatal)）。 |
 
 ## 推理與排程
 
