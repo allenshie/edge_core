@@ -1,10 +1,19 @@
 """Frame source contract shared by ingestion workers."""
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+
+
+_URL_CREDENTIALS_RE = re.compile(r"(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*://)[^/@\s]+@")
+
+
+def redact_url(text: str) -> str:
+    """遮蔽字串中所有 URL 的帳密（scheme://user:pass@ → scheme://***@），避免寫進 log 與 health。"""
+    return _URL_CREDENTIALS_RE.sub(r"\g<scheme>***@", text)
 
 
 class FrameSourceError(Exception):

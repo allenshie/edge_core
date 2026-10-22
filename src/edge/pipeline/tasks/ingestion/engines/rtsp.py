@@ -9,7 +9,7 @@ from smart_workflow import TaskContext, TaskError
 
 from edge.config import RtspConfig
 
-from ..sources import FfmpegFrameSource, FrameSource, OpenCvFrameSource
+from ..sources import FfmpegFrameSource, FrameSource, OpenCvFrameSource, redact_url
 from .base import BaseIngestionEngine
 
 LOGGER = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class RtspIngestionEngine(BaseIngestionEngine):
             raise TaskError(f"找不到 ffmpeg 執行檔：{config.ffmpeg_bin}；可設定 EDGE_RTSP_DECODER=opencv 改用 OpenCV")
 
     def _build_source(self, config: RtspConfig) -> FrameSource:
-        LOGGER.info("Connecting to RTSP source (%s): %s", config.decoder, config.url)
+        LOGGER.info("Connecting to RTSP source (%s): %s", config.decoder, redact_url(config.url))
         if config.decoder == "ffmpeg":
             return FfmpegFrameSource(
                 config.url,

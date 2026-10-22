@@ -243,6 +243,8 @@ class IngestionWorkerConfig:
         default_factory=lambda: float(os.environ.get("EDGE_INGESTION_READ_TIMEOUT_SECONDS", "15"))
     )
     stall_seconds: float = field(default_factory=lambda: float(os.environ.get("EDGE_INGESTION_STALL_SECONDS", "20")))
+    # 最近 stall_seconds 內少於這個張數就視為 stall；上游凍結但連線還在時，每次 read timeout 仍會放出一張舊畫面。
+    stall_min_frames: int = field(default_factory=lambda: int(os.environ.get("EDGE_INGESTION_STALL_MIN_FRAMES", "5")))
     reconnect_max_seconds: float = field(
         default_factory=lambda: float(os.environ.get("EDGE_INGESTION_RECONNECT_MAX_SECONDS", "30"))
     )

@@ -17,7 +17,7 @@
 | --- | --- |
 | `python main.py` 很快結束 | `.env` 是否存在、語法是否正確、必要變數是否缺失 |
 | 找不到影格 / EOF 循環 | `EDGE_INGEST_MODE`、`EDGE_FILE_PATH`、`EDGE_RTSP_URL`、camera 權限 |
-| RTSP 一直重連 | source 是否穩定、網路是否可達；log 中 `IngestionWorker-N 結束（原因：錯誤）` 的原因（`open_failed` / `read_failed` / `stalled`）；ingest health 的 `reconnect_count`、`worker_generation`、`reconnect_backoff_s` |
+| RTSP 一直重連 | source 是否穩定、網路是否可達；log 中 `IngestionWorker-N 結束（原因：錯誤）` 的原因（`open_failed` / `read_failed` / `stalled`，stall 會寫明視窗內收到幾張）；低 fps 來源是否低於 `EDGE_INGESTION_STALL_MIN_FRAMES / EDGE_INGESTION_STALL_SECONDS`；ingest health 的 `reconnect_count`、`worker_generation`、`reconnect_backoff_s` |
 | RTSP 啟動時報「找不到 ffmpeg 執行檔」 | image 內是否安裝 ffmpeg / ffprobe；暫時可設定 `EDGE_RTSP_DECODER=opencv` |
 | log 出現 `ffprobe 無法取得畫面尺寸` | 來源是否可連線；或直接設定 `EDGE_RTSP_WIDTH` / `EDGE_RTSP_HEIGHT` 省略探測 |
 | `ffmpeg` decoder 的 CPU 比 `opencv` 高 | 多核心機器上 ffmpeg 預設的多執行緒解碼同步成本較高；可試 `EDGE_RTSP_FFMPEG_INPUT_ARGS="-threads 2"`，並確認 capture fps 不下降 |

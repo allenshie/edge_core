@@ -12,7 +12,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from .base import FrameSource, FrameSourceError, SourceFrame
+from .base import FrameSource, FrameSourceError, SourceFrame, redact_url
 
 LOGGER = logging.getLogger(__name__)
 
@@ -117,14 +117,18 @@ def probe_frame_size(
         "csv=p=0:s=x",
         url,
     ]
+    # 錯誤訊息不帶指令內容，且遮蔽 URL 帳密：訊息會進 log、health snapshot 與 monitor 事件。
+    safe_url = redact_url(url)
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_seconds, check=False)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise FrameSourceError(f"ffprobe 無法取得畫面尺寸：{url}（{exc}）") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise FrameSourceError(f"ffprobe 無法取得畫面尺寸：{safe_url}（逾時 {timeout_seconds:g} 秒）") from exc
+    except OSError as exc:
+        raise FrameSourceError(f"ffprobe 無法執行：{exc.strerror or exc}") from exc
     match = re.search(r"(\d+)x(\d+)", result.stdout)
     if result.returncode != 0 or match is None:
         detail = (result.stderr or result.stdout).strip().splitlines()[-1:] or ["no output"]
-        raise FrameSourceError(f"ffprobe 無法取得畫面尺寸：{url}（{detail[0]}）")
+        raise FrameSourceError(f"ffprobe 無法取得畫面尺寸：{safe_url}（{redact_url(detail[0])}）")
     return int(match.group(1)), int(match.group(2))
 
 
@@ -250,7 +254,7 @@ class FfmpegFrameSource(FrameSource):
             for raw in iter(stream.readline, b""):
                 line = raw.decode("utf-8", errors="replace").strip()
                 if line:
-                    self._stderr_tail.append(line)
+                    self._stderr_tail.append(redact_url(line))
         except (OSError, ValueError):
             pass
 

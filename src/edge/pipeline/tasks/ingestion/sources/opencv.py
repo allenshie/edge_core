@@ -7,7 +7,7 @@ from pathlib import Path
 
 import cv2  # type: ignore[import]
 
-from .base import FrameSource, FrameSourceError, SourceFrame
+from .base import FrameSource, FrameSourceError, SourceFrame, redact_url
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class OpenCvFrameSource(FrameSource):
         ok, frame = self._capture.read()
         if ok and frame is not None:
             return SourceFrame(image=frame)
-        self.last_error = f"無法讀取影格：{self._target}"
+        self.last_error = f"無法讀取影格：{redact_url(str(self._target))}"
         return None
 
     def close(self) -> None:
@@ -64,7 +64,7 @@ class OpenCvFrameSource(FrameSource):
         return cv2.VideoCapture(self._target)
 
     def _open_error_message(self) -> str:
-        return f"無法開啟來源：{self._target}"
+        return f"無法開啟來源：{redact_url(str(self._target))}"
 
 
 class OpenCvFileSource(OpenCvFrameSource):

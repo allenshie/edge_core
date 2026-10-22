@@ -46,6 +46,7 @@ def test_worker_config_reads_env(monkeypatch) -> None:
     monkeypatch.setenv("EDGE_INGESTION_OPEN_TIMEOUT_SECONDS", "3")
     monkeypatch.setenv("EDGE_INGESTION_READ_TIMEOUT_SECONDS", "2")
     monkeypatch.setenv("EDGE_INGESTION_STALL_SECONDS", "4")
+    monkeypatch.setenv("EDGE_INGESTION_STALL_MIN_FRAMES", "7")
     monkeypatch.setenv("EDGE_INGESTION_RECONNECT_MAX_SECONDS", "8")
     monkeypatch.setenv("EDGE_INGESTION_WORKER_STOP_TIMEOUT_SECONDS", "1.5")
     monkeypatch.setenv("EDGE_INGESTION_MAX_STUCK_WORKERS", "5")
@@ -56,6 +57,7 @@ def test_worker_config_reads_env(monkeypatch) -> None:
         open_timeout_seconds=3.0,
         read_timeout_seconds=2.0,
         stall_seconds=4.0,
+        stall_min_frames=7,
         reconnect_max_seconds=8.0,
         worker_stop_timeout_seconds=1.5,
         max_stuck_workers=5,
@@ -68,6 +70,7 @@ def test_worker_config_defaults() -> None:
     assert cfg.open_timeout_seconds == 10.0
     assert cfg.read_timeout_seconds == 15.0
     assert cfg.stall_seconds == 20.0
+    assert cfg.stall_min_frames == 5
     assert cfg.reconnect_max_seconds == 30.0
     assert cfg.worker_stop_timeout_seconds == 2.0
     assert cfg.max_stuck_workers == 3
@@ -158,3 +161,14 @@ def test_missing_file_raises_open_error(tmp_path) -> None:
 
     with pytest.raises(FrameSourceError, match="無法開啟指定影片"):
         source.open()
+
+
+def test_open_error_hides_credentials(fake_capture, monkeypatch) -> None:
+    monkeypatch.setattr(_FakeCapture, "isOpened", lambda self: False)
+    source = OpenCvFrameSource("rtsp://admin:s3cret@cam/live", open_timeout_seconds=1, read_timeout_seconds=1)
+
+    with pytest.raises(FrameSourceError) as excinfo:
+        source.open()
+
+    assert "s3cret" not in str(excinfo.value)
+    assert "rtsp://***@cam/live" in str(excinfo.value)

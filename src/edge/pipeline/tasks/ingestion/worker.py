@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections import deque
 from collections.abc import Callable
 from datetime import datetime, timezone
 
@@ -31,6 +32,7 @@ class CaptureWorker:
         frames_per_cycle: int,
         interval_fn: IntervalFn,
         name: str,
+        recent_reads: int = 1,
     ) -> None:
         self.generation = generation
         self._source = source
@@ -40,11 +42,13 @@ class CaptureWorker:
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run, name=name, daemon=True)
         self.started_monotonic: float | None = None
-        self.last_read_monotonic: float | None = None
+        # 最近 recent_reads 次成功讀取的時間，supervisor 用來判斷時間視窗內的畫面數。
+        self._recent_reads: deque[float] = deque(maxlen=max(int(recent_reads), 1))
         self.frames_delivered = 0
         self.exit_reason: str | None = None
         self.error: str | None = None
-        self.stalled = False
+        # 由 supervisor 設定；worker thread 結束時會改寫 error，所以 stall 原因另外存放。
+        self.stall_reason: str | None = None
 
     @property
     def name(self) -> str:
@@ -69,6 +73,10 @@ class CaptureWorker:
 
     def is_alive(self) -> bool:
         return self._thread.is_alive()
+
+    def read_times(self) -> list[float]:
+        """最近幾次成功讀取的 monotonic 時間，由舊到新。"""
+        return list(self._recent_reads)
 
     def _run(self) -> None:
         try:
@@ -102,7 +110,7 @@ class CaptureWorker:
                     self.exit_reason = "eof" if self._source.end_of_stream else "read_failed"
                     self.error = self._source.last_error
                     break
-                self.last_read_monotonic = time.monotonic()
+                self._recent_reads.append(time.monotonic())
                 latest = frame
                 latest_ts = datetime.now(timezone.utc)
 

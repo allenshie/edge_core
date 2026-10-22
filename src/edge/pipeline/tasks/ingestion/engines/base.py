@@ -210,8 +210,8 @@ class BaseIngestionEngine:
                 self._watch_worker(worker, stop_event)
                 if stop_event.is_set() or self._fatal_reason is not None:
                     return
-                reason = "stalled" if worker.stalled else worker.exit_reason or "unknown"
-                self._last_error = worker.error or f"{self.source_label} worker exited: {reason}"
+                reason = "stalled" if worker.stall_reason else worker.exit_reason or "unknown"
+                self._last_error = worker.stall_reason or worker.error or f"{self.source_label} worker exited: {reason}"
                 if worker.frames_delivered:
                     backoff.reset()
                 if not self._should_reconnect(reason):
@@ -247,6 +247,7 @@ class BaseIngestionEngine:
             frames_per_cycle=max(self._get_drop_frames(config), 0) + 1,
             interval_fn=lambda cycle_start: self._get_capture_interval_seconds(config, cycle_start),
             name=f"{self.source_label.capitalize()}IngestionWorker-{generation}",
+            recent_reads=self._worker_config.stall_min_frames,
         )
         self._worker = worker
         worker.start()
@@ -254,20 +255,30 @@ class BaseIngestionEngine:
 
     def _watch_worker(self, worker: CaptureWorker, stop_event: threading.Event) -> None:
         cfg = self._worker_config
+        min_frames = max(cfg.stall_min_frames, 1)
         while not stop_event.wait(timeout=self._poll_seconds()):
             if not worker.is_alive():
                 return
-            if worker.last_read_monotonic is None:
-                last, limit = worker.started_monotonic or time.monotonic(), cfg.open_timeout_seconds + cfg.stall_seconds
+            now = time.monotonic()
+            reads = worker.read_times()
+            if not reads:
+                stalled = now - (worker.started_monotonic or now) > cfg.open_timeout_seconds + cfg.stall_seconds
             else:
-                last, limit = worker.last_read_monotonic, cfg.stall_seconds
-            if time.monotonic() - last > limit:
-                worker.stalled = True
+                # reads 最多保留 min_frames 筆：最舊的一筆超出視窗，代表視窗內少於 min_frames 張。
+                # 剛開始讀、累積不到 min_frames 筆時，以第一張畫面的時間起算，同樣要撐過一個完整視窗。
+                stalled = now - reads[0] > cfg.stall_seconds
+            if stalled:
+                recent = sum(1 for t in reads if now - t <= cfg.stall_seconds)
+                worker.stall_reason = (
+                    f"最近 {cfg.stall_seconds:g} 秒只收到 {recent} 張畫面（最少需要 {min_frames} 張）"
+                    if reads
+                    else f"開啟後 {cfg.open_timeout_seconds + cfg.stall_seconds:g} 秒內沒有畫面"
+                )
                 self._retire_worker(worker)
                 return
 
     def _retire_worker(self, worker: CaptureWorker) -> None:
-        LOGGER.warning("%s 超過 %.1f 秒沒有新畫面，停止並更換 worker", worker.name, self._worker_config.stall_seconds)
+        LOGGER.warning("%s stall：%s，停止並更換 worker", worker.name, worker.stall_reason)
         worker.request_stop()
         if worker.join(self._worker_config.worker_stop_timeout_seconds):
             return

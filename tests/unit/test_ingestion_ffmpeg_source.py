@@ -269,3 +269,48 @@ def test_real_ffmpeg_frames_are_identical_to_opencv() -> None:
 def test_real_ffmpeg_version_is_detected() -> None:
     banner = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, check=False).stdout
     assert ffmpeg_module.detect_ffmpeg_version("ffmpeg") == parse_ffmpeg_version(banner)
+
+
+def test_redact_url_hides_credentials() -> None:
+    from edge.pipeline.tasks.ingestion.sources import redact_url
+
+    assert redact_url("rtsp://admin:s3cret@10.0.0.5:554/live") == "rtsp://***@10.0.0.5:554/live"
+    assert redact_url("open rtsp://u:p@h/a and rtsps://x@h/b") == "open rtsp://***@h/a and rtsps://***@h/b"
+    assert redact_url("rtsp://10.0.0.5/live") == "rtsp://10.0.0.5/live"
+
+
+def test_ffprobe_timeout_message_has_no_command_or_password(monkeypatch) -> None:
+    def fake_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, kwargs["timeout"])
+
+    monkeypatch.setattr(ffmpeg_module.subprocess, "run", fake_run)
+
+    with pytest.raises(ffmpeg_module.FrameSourceError) as excinfo:
+        ffmpeg_module.probe_frame_size(
+            ffprobe="ffprobe", url="rtsp://admin:s3cret@cam/live", transport="tcp", timeout_seconds=10, version=(5, 1)
+        )
+
+    message = str(excinfo.value)
+    assert "s3cret" not in message
+    assert "-select_streams" not in message
+    assert "逾時 10 秒" in message
+
+
+def test_ffmpeg_stderr_tail_is_redacted(tmp_path) -> None:
+    script = tmp_path / "fake_ffmpeg_leak"
+    script.write_text(
+        f"#!{sys.executable}\n"
+        "import sys\n"
+        "if '-version' in sys.argv:\n"
+        "    print('ffmpeg version 5.1.6'); sys.exit(0)\n"
+        "sys.stderr.write('rtsp://admin:s3cret@cam/live: Connection refused\\n'); sys.exit(1)\n"
+    )
+    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    source = FfmpegFrameSource("rtsp://admin:s3cret@cam/live", binary=str(script), width=4, height=2)
+    source.open()
+    try:
+        assert source.read() is None
+        assert "s3cret" not in (source.last_error or "")
+        assert "Connection refused" in (source.last_error or "")
+    finally:
+        source.close()

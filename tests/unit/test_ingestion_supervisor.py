@@ -45,9 +45,11 @@ class FakeSource(FrameSource):
         ignore_abort: bool = False,
         fail_open: bool = False,
         open_delay: float = 0.0,
+        trickle_seconds: float = 0.0,
     ) -> None:
         super().__init__()
         self._open_delay = open_delay
+        self._trickle_seconds = trickle_seconds
         self.marker = marker
         self._remaining = frames
         self._then = then
@@ -75,6 +77,11 @@ class FakeSource(FrameSource):
         if self._then == "block":
             self.unblock.wait()
             return None
+        if self._then == "trickle":
+            # 模擬上游凍結但連線還在：每次讀取逾時才放出一張舊畫面。
+            if self.unblock.wait(self._trickle_seconds):
+                return None
+            return SourceFrame(image=np.full((2, 2, 3), self.marker, dtype=np.uint8))
         self.last_error = f"read failed #{self.marker}"
         return None
 
@@ -275,4 +282,46 @@ def test_first_fetch_waits_for_slow_open(engines) -> None:
     payload = engine.fetch()
 
     assert int(payload["frame"][0, 0, 0]) == 1
+    assert engine.health_snapshot()["worker_generation"] == 1
+
+
+def _trickle_config(min_frames: int) -> IngestionWorkerConfig:
+    return IngestionWorkerConfig(**{**FAST.__dict__, "stall_seconds": 0.3, "stall_min_frames": min_frames})
+
+
+def test_trickling_source_is_treated_as_stalled(engines) -> None:
+    # 每 0.2 秒才一張畫面：最後一張的間隔永遠小於 0.3 秒，但 0.3 秒內最多只有 2 張，少於門檻 3 張。
+    first = FakeSource(marker=1, frames=5, then="trickle", trickle_seconds=0.2)
+    second = FakeSource(marker=2)
+    engine = FakeEngine([first, second], config=_trickle_config(3))
+    engines.append(engine)
+    engine.fetch()
+
+    _wait_until(lambda: _marker(engine) == 2)
+
+    snapshot = engine.health_snapshot()
+    assert snapshot["worker_generation"] == 2
+    assert snapshot["stuck_workers"] == 0
+    assert "最少" in snapshot["last_read_failure_reason"]
+    assert first.close_count == 1
+
+
+def test_min_frames_one_keeps_last_frame_only_behavior(engines) -> None:
+    first = FakeSource(marker=1, frames=5, then="trickle", trickle_seconds=0.2)
+    engine = FakeEngine([first], config=_trickle_config(1))
+    engines.append(engine)
+    engine.fetch()
+
+    time.sleep(1.0)
+
+    assert engine.health_snapshot()["worker_generation"] == 1
+
+
+def test_steady_source_is_not_replaced_with_min_frames(engines) -> None:
+    engine = FakeEngine([FakeSource(marker=1)], config=_trickle_config(5))
+    engines.append(engine)
+    engine.fetch()
+
+    time.sleep(1.0)
+
     assert engine.health_snapshot()["worker_generation"] == 1
