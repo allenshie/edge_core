@@ -3,10 +3,11 @@ from __future__ import annotations
 import logging
 
 import cv2  # type: ignore[import]
-from smart_workflow import TaskContext, TaskError
+from smart_workflow import TaskContext
 
 from edge.config import CameraSourceConfig
 
+from ..sources import FrameSource, OpenCvFrameSource
 from .base import BaseIngestionEngine
 
 LOGGER = logging.getLogger(__name__)
@@ -17,28 +18,18 @@ class CameraIngestionEngine(BaseIngestionEngine):
 
     def __init__(self, context: TaskContext | None = None) -> None:
         super().__init__(context)
-        self._camera_config = context.config.ingestion.camera if context else None
-        self._cached_config = self._camera_config
+        self._cached_config = context.config.ingestion.camera if context else None
 
-    def _get_config(self, context: TaskContext) -> CameraSourceConfig:
-        cfg = self._camera_config
-        if cfg is None:
-            ingestion = getattr(context.config, "ingestion", None)
-            cfg = ingestion.camera if ingestion else None
-        if cfg is None:
-            raise TaskError("找不到 camera ingestion 設定")
-        return cfg
-
-    def _open_capture(self, config: CameraSourceConfig) -> cv2.VideoCapture:
+    def _build_source(self, config: CameraSourceConfig) -> FrameSource:
         LOGGER.info("Opening camera device: %s", config.device)
-        capture = cv2.VideoCapture(int(config.device))
+        properties: dict[int, float] = {}
         if config.frame_width:
-            capture.set(cv2.CAP_PROP_FRAME_WIDTH, config.frame_width)
+            properties[cv2.CAP_PROP_FRAME_WIDTH] = config.frame_width
         if config.frame_height:
-            capture.set(cv2.CAP_PROP_FRAME_HEIGHT, config.frame_height)
+            properties[cv2.CAP_PROP_FRAME_HEIGHT] = config.frame_height
         if config.fps:
-            capture.set(cv2.CAP_PROP_FPS, config.fps)
-        return capture
+            properties[cv2.CAP_PROP_FPS] = config.fps
+        return OpenCvFrameSource(int(config.device), properties=properties)
 
     def _get_drop_frames(self, config: CameraSourceConfig) -> int:
         return max(config.drop_frames, 0)

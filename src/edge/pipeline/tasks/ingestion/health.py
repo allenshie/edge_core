@@ -55,14 +55,6 @@ class IngestionHealthEvaluation:
     snapshot: dict[str, Any]
 
 
-@dataclass(frozen=True)
-class IngestionRecoveryDecision:
-    action: str
-    reason: str | None
-    cooldown_remaining_s: float | None
-    extra_fields: dict[str, Any]
-
-
 class IngestionHealthPolicy:
     @staticmethod
     def evaluate(
@@ -134,51 +126,4 @@ class IngestionHealthPolicy:
             worker_alive=worker_alive,
             extra_fields=extra_fields,
             snapshot=snapshot,
-        )
-
-
-class IngestionRecoveryPolicy:
-    @staticmethod
-    def evaluate(
-        *,
-        evaluation: IngestionHealthEvaluation,
-        tracker_snapshot: Mapping[str, Any],
-        recovery_cooldown_seconds: float = 30.0,
-    ) -> IngestionRecoveryDecision:
-        last_reconnect_ts = tracker_snapshot.get("last_reconnect_ts")
-        cooldown_remaining_s: float | None = None
-        if isinstance(last_reconnect_ts, datetime):
-            elapsed_s = max(0.0, (datetime.now(timezone.utc) - last_reconnect_ts).total_seconds())
-            cooldown_remaining_s = max(0.0, recovery_cooldown_seconds - elapsed_s)
-
-        if not evaluation.worker_alive:
-            return IngestionRecoveryDecision(
-                action="restart",
-                reason="worker_not_alive",
-                cooldown_remaining_s=cooldown_remaining_s,
-                extra_fields={
-                    "recovery_action": "restart",
-                    "recovery_reason": "worker_not_alive",
-                    "recovery_cooldown_remaining_s": cooldown_remaining_s,
-                },
-            )
-
-        should_restart = evaluation.reason in {"stale_capture", "source_unhealthy"}
-        reason = evaluation.reason if should_restart else None
-
-        if should_restart and cooldown_remaining_s is not None and cooldown_remaining_s > 0:
-            should_restart = False
-            reason = "restart_cooldown"
-
-        action = "restart" if should_restart else "none"
-        extra_fields = {
-            "recovery_action": action,
-            "recovery_reason": reason,
-            "recovery_cooldown_remaining_s": cooldown_remaining_s,
-        }
-        return IngestionRecoveryDecision(
-            action=action,
-            reason=reason,
-            cooldown_remaining_s=cooldown_remaining_s,
-            extra_fields=extra_fields,
         )

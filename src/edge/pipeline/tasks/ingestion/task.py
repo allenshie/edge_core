@@ -20,12 +20,7 @@ from .engines import (
     FileIngestionEngine,
     RtspIngestionEngine,
 )
-from .health import (
-    IngestionHealthEvaluation,
-    IngestionHealthPolicy,
-    IngestionRecoveryDecision,
-    IngestionRecoveryPolicy,
-)
+from .health import IngestionHealthEvaluation, IngestionHealthPolicy
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,6 +40,7 @@ class IngestionTask(FrameTaskSupportMixin, BaseTask):
         self._mode_logged = False
         self._session_id: str | None = None
         self._last_frame_meta: FrameMeta | None = None
+        self._fatal_reported = False
         self._stats = StageStats(task_name="ingest")
         self._health = TaskHealthReporter(self._stats)
         if context is not None:
@@ -150,7 +146,6 @@ class IngestionTask(FrameTaskSupportMixin, BaseTask):
             capture_fps=capture_fps,
         )
         self._report_ingestion(context, evaluation)
-        self._maybe_restart_ingestion(context, evaluation, engine_snapshot)
         return self._build_task_result(self._build_ingestion_payload(payload, frame_meta, is_new_frame), frame_meta)
 
     def _is_new_frame(self, frame_meta: FrameMeta) -> bool:
@@ -213,6 +208,7 @@ class IngestionTask(FrameTaskSupportMixin, BaseTask):
 
     def _handle_ingestion_failure(self, context: TaskContext, exc: TaskError) -> None:
         engine_snapshot = self._engine.health_snapshot() if self._engine is not None else {}
+        self._report_fatal(context, engine_snapshot)
         self._stats.record_error(str(exc), worker_alive=self._engine.is_started())
         self._health.report_ingestion_failure(
             context,
@@ -225,40 +221,17 @@ class IngestionTask(FrameTaskSupportMixin, BaseTask):
             report_interval_seconds=self._health_report_interval(context),
         )
 
-    def _maybe_restart_ingestion(
-        self,
-        context: TaskContext,
-        evaluation: IngestionHealthEvaluation,
-        engine_snapshot: Mapping[str, Any],
-    ) -> None:
-        recovery: IngestionRecoveryDecision = IngestionRecoveryPolicy.evaluate(
-            evaluation=evaluation,
-            tracker_snapshot=engine_snapshot,
-            recovery_cooldown_seconds=float(
-                getattr(context.config, "ingestion_recovery_cooldown_seconds", 30.0) or 30.0
-            ),
-        )
-        if recovery.action != "restart" or self._engine is None:
+    def _report_fatal(self, context: TaskContext, engine_snapshot: Mapping[str, Any]) -> None:
+        """Engine 已無法自行恢復時，交給 liveness 讓 k8s 重啟 pod；只回報一次。"""
+        if self._fatal_reported or not engine_snapshot.get("fatal"):
             return
-        context.logger.warning(
-            "%s source unhealthy, attempting restart: %s",
-            self.source_label,
-            recovery.reason,
-        )
-        try:
-            self._engine.restart()
-        except TaskError as exc:
-            self._stats.record_error(str(exc), worker_alive=self._engine.is_started())
-            LOGGER.warning("%s ingestion restart failed: %s", self.source_label, exc)
-            raise
-        context.monitor.report_event(
-            "warning",
-            detail=(
-                f"{self.source_label} recovery action=restart reason={recovery.reason} "
-                f"cooldown_remaining_s={recovery.cooldown_remaining_s}"
-            ),
-            component=self.name,
-        )
+        self._fatal_reported = True
+        reason = f"{self.source_label} ingestion fatal: {engine_snapshot.get('fatal_reason')}"
+        LOGGER.critical(reason)
+        context.monitor.report_event("error", detail=reason, component=self.name)
+        mark_fatal = getattr(context.get_resource("health_state"), "mark_fatal", None)
+        if callable(mark_fatal):
+            mark_fatal(reason)
 
     def _build_ingestion_payload(
         self,

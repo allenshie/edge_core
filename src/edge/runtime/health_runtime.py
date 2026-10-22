@@ -14,6 +14,24 @@ class EdgeHealthState(HealthState):
     def __init__(self, logger) -> None:
         super().__init__()
         _ = logger
+        self._fatal_reason: str | None = None
+
+    @property
+    def fatal_reason(self) -> str | None:
+        return self._fatal_reason
+
+    def mark_fatal(self, reason: str) -> None:
+        """標記無法自行恢復的錯誤：之後不再更新 loop / progress，讓 liveness 與 readiness 逾時失敗。"""
+        self._fatal_reason = reason
+        super().mark_error(reason)
+
+    def mark_loop_tick(self) -> None:
+        if self._fatal_reason is None:
+            super().mark_loop_tick()
+
+    def mark_progress(self) -> None:
+        if self._fatal_reason is None:
+            super().mark_progress()
 
 
 def is_health_enabled() -> bool:
