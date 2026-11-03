@@ -154,7 +154,7 @@ class MqttConfig:
     enabled: bool = field(default_factory=lambda: _to_bool(os.environ.get("EDGE_MQTT_ENABLED"), False))
     host: str = field(default_factory=lambda: os.environ.get("EDGE_MQTT_HOST", "localhost"))
     port: int = field(default_factory=lambda: int(os.environ.get("EDGE_MQTT_PORT", "1883")))
-    qos: int = field(default_factory=lambda: int(os.environ.get("EDGE_MQTT_QOS", "1")))
+    qos: int = field(default_factory=lambda: int(os.environ.get("EDGE_MQTT_QOS", "0")))
     client_id: str | None = field(default_factory=lambda: os.environ.get("EDGE_MQTT_CLIENT_ID"))
     auth_enabled: bool = field(default_factory=lambda: _to_bool(os.environ.get("EDGE_MQTT_AUTH_ENABLED"), False))
     username: str | None = field(default_factory=lambda: os.environ.get("EDGE_MQTT_USERNAME"))
