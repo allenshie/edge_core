@@ -7,10 +7,11 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-from smart_workflow import TaskContext, TaskError
+from smart_workflow import EngineStatusCell, TaskContext, TaskError
 
 from edge.config import IngestionWorkerConfig
 from edge.pipeline.tasks.ingestion.backoff import ReconnectBackoff
+from edge.pipeline.tasks.ingestion.engines.status import IngestionStatusMixin
 from edge.pipeline.tasks.ingestion.health import IngestionHealthTracker
 from edge.pipeline.tasks.ingestion.sources import FrameSource, SourceFrame
 from edge.pipeline.tasks.ingestion.worker import CaptureWorker
@@ -20,7 +21,7 @@ from edge.runtime.shutdown_summary import cleanup_record
 LOGGER = logging.getLogger(__name__)
 
 
-class BaseIngestionEngine:
+class BaseIngestionEngine(IngestionStatusMixin):
     """Supervisor：每次連線建立一個 CaptureWorker，負責換 worker、退避重連與卡住判定。
 
     恢復責任完全在 engine 內；呼叫端只透過 fetch() / health_snapshot() 觀察。
@@ -51,6 +52,9 @@ class BaseIngestionEngine:
         self._last_error: str | None = None
         self._health = IngestionHealthTracker(source_label=self.source_label)
         self._capture_rate = RateMeter()
+        # 健康回報（ingest-worker）：只由 worker 的讀取通知與 supervisor 更新，回報執行緒讀取。
+        self._status_cell = EngineStatusCell()
+        self._status_generation: int | None = None
 
     # ------------------------------------------------------------------ lifecycle
 
@@ -240,6 +244,9 @@ class BaseIngestionEngine:
             self._generation += 1
             generation = self._generation
             self._reconnect_pending = generation > 1
+            # busy_since 跟著目前的 worker。
+            self._status_generation = generation
+            self._status_cell.mark_idle()
         worker = CaptureWorker(
             generation=generation,
             source=self._build_source(config),
@@ -248,6 +255,8 @@ class BaseIngestionEngine:
             interval_fn=lambda cycle_start: self._get_capture_interval_seconds(config, cycle_start),
             name=f"{self.source_label.capitalize()}IngestionWorker-{generation}",
             recent_reads=self._worker_config.stall_min_frames,
+            on_read_begin=self._on_read_begin,
+            on_read_end=self._on_read_end,
         )
         self._worker = worker
         worker.start()
@@ -279,6 +288,12 @@ class BaseIngestionEngine:
 
     def _retire_worker(self, worker: CaptureWorker) -> None:
         LOGGER.warning("%s stall：%s，停止並更換 worker", worker.name, worker.stall_reason)
+        # 退休中的 worker 交給 supervisor 處理（換 worker、累計卡住的 worker、fatal），
+        # 不再更新健康狀態，避免它卡住的讀取先被判成 background_stuck。
+        with self._frame_lock:
+            if self._status_generation == worker.generation:
+                self._status_generation = None
+                self._status_cell.mark_idle()
         worker.request_stop()
         if worker.join(self._worker_config.worker_stop_timeout_seconds):
             return
@@ -288,6 +303,7 @@ class BaseIngestionEngine:
         if stuck >= self._worker_config.max_stuck_workers:
             self._fatal_reason = f"{stuck} 個 capture worker 無法停止"
             LOGGER.critical("%s ingestion fatal: %s", self.source_label, self._fatal_reason)
+            self._status_cell.mark_fatal("ingest_workers_stuck", self._fatal_reason)
 
     def _count_stuck_workers(self) -> int:
         self._stuck_workers = [worker for worker in self._stuck_workers if worker.is_alive()]
@@ -313,6 +329,7 @@ class BaseIngestionEngine:
             self._last_error = None
             self._reconnect_backoff_s = 0.0
             self._health.mark_frame_success()
+            self._status_cell.mark_success()
             self._frame_ready.set()
             self._capture_rate.mark(frame_seq=self._latest_frame_seq, ts=capture_ts)
 

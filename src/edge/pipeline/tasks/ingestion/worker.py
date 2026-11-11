@@ -14,6 +14,9 @@ LOGGER = logging.getLogger(__name__)
 
 FrameCallback = Callable[[int, SourceFrame, datetime], None]
 IntervalFn = Callable[[float], float]
+ReadBeginFn = Callable[[int], None]
+# (generation, outcome, error)；outcome 為 frame、eof、read_failed、open_failed、error 之一。
+ReadEndFn = Callable[[int, str, "str | None"], None]
 
 
 class CaptureWorker:
@@ -33,12 +36,17 @@ class CaptureWorker:
         interval_fn: IntervalFn,
         name: str,
         recent_reads: int = 1,
+        on_read_begin: ReadBeginFn | None = None,
+        on_read_end: ReadEndFn | None = None,
     ) -> None:
         self.generation = generation
         self._source = source
         self._on_frame = on_frame
         self._frames_per_cycle = max(int(frames_per_cycle), 1)
         self._interval_fn = interval_fn
+        # 健康狀態用的通知，只觀察讀取，不影響讀取流程。
+        self._on_read_begin = on_read_begin
+        self._on_read_end = on_read_end
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run, name=name, daemon=True)
         self.started_monotonic: float | None = None
@@ -85,12 +93,14 @@ class CaptureWorker:
             except FrameSourceError as exc:
                 self.exit_reason = "open_failed"
                 self.error = str(exc)
+                self._notify_end("open_failed", self.error)
                 return
             self._read_loop()
         except Exception as exc:  # noqa: BLE001 - 任何例外都轉成 worker 結束原因，交給 supervisor 重連
             self.exit_reason = "error"
             self.error = str(exc)
             LOGGER.exception("%s crashed", self.name)
+            self._notify_end("error", self.error)
         finally:
             try:
                 self._source.close()
@@ -105,11 +115,14 @@ class CaptureWorker:
             for _ in range(self._frames_per_cycle):
                 if self._stop_event.is_set():
                     break
+                self._notify_begin()
                 frame = self._source.read()
                 if frame is None:
                     self.exit_reason = "eof" if self._source.end_of_stream else "read_failed"
                     self.error = self._source.last_error
+                    self._notify_end(self.exit_reason, self.error)
                     break
+                self._notify_end("frame", None)
                 self._recent_reads.append(time.monotonic())
                 latest = frame
                 latest_ts = datetime.now(timezone.utc)
@@ -124,3 +137,19 @@ class CaptureWorker:
             if sleep_seconds > 0:
                 self._stop_event.wait(timeout=sleep_seconds)
         self.exit_reason = "stopped"
+
+    def _notify_begin(self) -> None:
+        if self._on_read_begin is None:
+            return
+        try:
+            self._on_read_begin(self.generation)
+        except Exception:  # noqa: BLE001 - 健康通知失敗不能影響讀取
+            LOGGER.debug("%s read-begin hook failed", self.name, exc_info=True)
+
+    def _notify_end(self, outcome: str, error: str | None) -> None:
+        if self._on_read_end is None:
+            return
+        try:
+            self._on_read_end(self.generation, outcome, error)
+        except Exception:  # noqa: BLE001 - 健康通知失敗不能影響讀取
+            LOGGER.debug("%s read-end hook failed", self.name, exc_info=True)

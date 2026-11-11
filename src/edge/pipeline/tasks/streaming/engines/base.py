@@ -19,11 +19,12 @@ from ..recording import FfmpegRecordingWriter
 from ..types import StreamPacket
 from .overlay import _draw_detection_box_and_label, _format_detection_label
 from .policy import STATE_DEGRADED, STATE_INACTIVE, STATE_STREAMING
+from .status import StreamingStatusMixin
 
 LOGGER = logging.getLogger(__name__)
 
 
-class BaseStreamingEngine(ABC):
+class BaseStreamingEngine(StreamingStatusMixin, ABC):
     """Common pacing, latest-frame cache and shared health helpers."""
 
     def __init__(self, context: TaskContext | None = None) -> None:
@@ -42,6 +43,7 @@ class BaseStreamingEngine(ABC):
         self._latest_packet_lock = threading.Lock()
         self._latest_packet: StreamPacket | None = None
         self._output_thread: threading.Thread | None = None
+        self._init_status()
         self._next_output_deadline = 0.0
         self._target_fps = self._resolve_fps(context)
         self._target_period = 1.0 / self._target_fps if self._target_fps > 0 else 1.0 / 30.0
@@ -290,9 +292,12 @@ class BaseStreamingEngine(ABC):
     def _write_output_frame(self, vis_frame: Any, phase: str, frame_meta: FrameMeta | None = None) -> None:
         if self._stop_event.is_set():
             return
+        self._status_write_begin()
         try:
             self._ffmpeg.write_frame(vis_frame)
-            if not self._can_accept_output_write(phase):
+            accepted = self._can_accept_output_write(phase)
+            self._status_write_done(counted=accepted)
+            if not accepted:
                 LOGGER.debug(
                     "streaming write completed outside desired phase; output state unchanged: phase=%s current_phase=%s desired=%s active=%s stopping=%s",
                     phase,
@@ -314,6 +319,7 @@ class BaseStreamingEngine(ABC):
                     ts=frame_meta.capture_ts if frame_meta is not None else None,
                 )
         except Exception as exc:  # noqa: BLE001
+            self._status_write_failed(str(exc), counted=not (self._stop_event.is_set() or not self._stream_active))
             restart_generation = self._ffmpeg.lifecycle_generation()
             if self._stop_event.is_set() or not self._stream_active:
                 LOGGER.debug(
