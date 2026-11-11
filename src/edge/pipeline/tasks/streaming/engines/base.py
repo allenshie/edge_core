@@ -11,7 +11,6 @@ from typing import Any, Sequence
 import cv2
 from smart_workflow import TaskContext
 
-from edge.runtime.rate_meter import RateMeter
 from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection, FrameMeta
 
@@ -48,8 +47,6 @@ class BaseStreamingEngine(StreamingStatusMixin, ABC):
         self._target_fps = self._resolve_fps(context)
         self._target_period = 1.0 / self._target_fps if self._target_fps > 0 else 1.0 / 30.0
         self._output_size = self._resolve_output_size(streaming_cfg)
-        self._last_emitted_identity: tuple[str | None, int | None] | None = None
-        self._unique_write_rate = RateMeter()
         show_track_info = getattr(overlay_cfg, "show_track_info", False) if overlay_cfg is not None else False
         self._show_track_info = bool(show_track_info) if isinstance(show_track_info, bool) else False
         show_score_info = getattr(overlay_cfg, "show_score_info", False) if overlay_cfg is not None else False
@@ -312,17 +309,10 @@ class BaseStreamingEngine(StreamingStatusMixin, ABC):
                     self._stop_event.is_set(),
                 )
                 return
-            # 只有真的寫進 ffmpeg 才算一次有效輸出，這個 rate 才是 stream_output_fps。
             self._processed_frames += 1
             self._last_error = None
             self._last_write_ts = time.time()
             self._state = STATE_STREAMING
-            self._write_rate.mark()
-            if self._is_unique_output(frame_meta):
-                self._unique_write_rate.mark(
-                    frame_seq=frame_meta.frame_seq if frame_meta is not None else None,
-                    ts=frame_meta.capture_ts if frame_meta is not None else None,
-                )
         except Exception as exc:  # noqa: BLE001
             self._status_write_failed(str(exc), counted=not (self._stop_event.is_set() or not self._stream_active))
             restart_generation = self._ffmpeg.lifecycle_generation()
@@ -382,23 +372,6 @@ class BaseStreamingEngine(StreamingStatusMixin, ABC):
     def write_failures(self) -> int:
         """啟動以來寫入 ffmpeg 失敗的次數。"""
         return int(getattr(self, "_write_failures", 0) or 0)
-
-    @property
-    def write_rate_meter(self) -> RateMeter:
-        return self._write_rate
-
-    @property
-    def unique_write_rate_meter(self) -> RateMeter:
-        return self._unique_write_rate
-
-    def _is_unique_output(self, frame_meta: FrameMeta | None) -> bool:
-        if frame_meta is None:
-            return False
-        identity = (frame_meta.session_id, frame_meta.frame_seq)
-        if self._last_emitted_identity == identity:
-            return False
-        self._last_emitted_identity = identity
-        return True
 
     def _resolve_matching_overlay_label(self, det: EdgeDetection) -> str | None:
         if not getattr(self, "_matching_result_enabled", False):

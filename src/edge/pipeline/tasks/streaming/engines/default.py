@@ -7,7 +7,6 @@ from typing import Any, Sequence
 
 from smart_workflow import TaskContext
 
-from edge.runtime.rate_meter import RateMeter
 from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection, FrameMeta
 
@@ -60,7 +59,6 @@ class DefaultStreamingEngine(BaseStreamingEngine):
         self._last_write_ts: float | None = None
         self._last_health_log_ts: float = 0.0
         self._last_restart_ts: float = 0.0
-        self._write_rate = RateMeter()
 
         self._streaming_enabled_by_phase = load_streaming_schedule(context)
         self._ffmpeg = FfmpegProcessManager(

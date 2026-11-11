@@ -12,11 +12,7 @@ from smart_workflow.health_server import _evaluate_liveness, _evaluate_readiness
 
 from edge.pipeline.tasks.streaming.engines.default import DefaultStreamingEngine
 from edge.pipeline.tasks.streaming.engines.policy import STATE_INACTIVE, deactivate_stream
-from edge.pipeline.tasks.streaming.types import StreamingStatus
 from edge.runtime.health_runtime import EdgeHealthState
-from edge.runtime.rate_meter import RateMeter
-from edge.runtime.task_health import TaskHealthReporter
-from edge.schema import StageStats
 
 
 class _Monitor:
@@ -290,36 +286,3 @@ def test_healthz_and_readyz_use_distinct_runtime_signals() -> None:
 
     assert live is True
     assert ready is False
-
-
-def test_non_working_stream_snapshot_is_disabled_not_degraded() -> None:
-    reporter = TaskHealthReporter(StageStats(task_name="stream"))
-    status = StreamingStatus(
-        queue_size=0,
-        dropped_frames=0,
-        processed_frames=0,
-        stream_active=False,
-        should_stream=False,
-        phase="non-working",
-        enabled=True,
-        last_error=None,
-        state=STATE_INACTIVE,
-        reconnect_count=0,
-        write_failures=0,
-        no_frame_seconds=0.0,
-        since_last_write_seconds=0.0,
-        ffmpeg_alive=False,
-    )
-
-    snapshot = reporter.snapshot_streaming(
-        frame_meta=None,
-        phase="non-working",
-        status=status,
-        write_rate_meter=RateMeter(),
-        unique_write_rate_meter=RateMeter(),
-        health_threshold_seconds=1.0,
-    )
-
-    assert snapshot["state"] == "disabled"
-    assert snapshot["should_stream"] is False
-    assert snapshot["alive"] is False

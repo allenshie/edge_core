@@ -14,7 +14,6 @@ from edge.pipeline.tasks.ingestion.backoff import ReconnectBackoff
 from edge.pipeline.tasks.ingestion.engines.status import IngestionStatusMixin
 from edge.pipeline.tasks.ingestion.sources import FrameSource, SourceFrame
 from edge.pipeline.tasks.ingestion.worker import CaptureWorker
-from edge.runtime.rate_meter import RateMeter
 from edge.runtime.shutdown_summary import cleanup_record
 
 LOGGER = logging.getLogger(__name__)
@@ -54,7 +53,6 @@ class BaseIngestionEngine(IngestionStatusMixin):
         self._reconnect_count = 0
         self._read_failure_count = 0
         self._last_read_failure_reason: str | None = None
-        self._capture_rate = RateMeter()
         # 健康回報（ingest-worker）：只由 worker 的讀取通知與 supervisor 更新，回報執行緒讀取。
         self._status_cell = EngineStatusCell()
         self._status_generation: int | None = None
@@ -170,10 +168,6 @@ class BaseIngestionEngine(IngestionStatusMixin):
     def read_failure_count(self) -> int:
         """啟動以來讀取或開啟失敗（worker 結束後要重連）的次數。"""
         return self._read_failure_count
-
-    @property
-    def capture_rate_meter(self) -> RateMeter:
-        return self._capture_rate
 
     def fetch(self) -> dict[str, Any]:
         self.start()
@@ -351,7 +345,6 @@ class BaseIngestionEngine(IngestionStatusMixin):
             self._reconnect_backoff_s = 0.0
             self._status_cell.mark_success()
             self._frame_ready.set()
-            self._capture_rate.mark(frame_seq=self._latest_frame_seq, ts=capture_ts)
 
     def _snapshot_latest_frame(self) -> tuple[Any, datetime | None, int]:
         with self._frame_lock:

@@ -15,7 +15,6 @@ from edge.pipeline.tasks.publish.engine import BasePublishEngine, PublishOutcome
 from edge.pipeline.tasks.publish.task import PublishResultTask
 from edge.pipeline.tasks.streaming.engines.default import DefaultStreamingEngine
 from edge.pipeline.tasks.streaming.task import StreamingTask
-from edge.runtime.rate_meter import RateMeter
 from edge.schema import FrameMeta
 
 from edge_health_testkit import FakeFfmpeg, Monitor, streaming_config
@@ -223,7 +222,6 @@ class BareIngestion:
     """不繼承 BaseIngestionEngine 的自訂 Engine：沒有計數器屬性。"""
 
     source_label = "bare"
-    capture_rate_meter = RateMeter()
 
     def fetch(self) -> dict:
         return {"frame": FRAME, "source": "bare", "capture_ts": datetime(2026, 1, 1, tzinfo=timezone.utc),
