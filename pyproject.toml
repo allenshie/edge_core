@@ -8,7 +8,7 @@ dependencies = [
     "lap>=0.4",
     "numpy>=1.26,<2",
     "paho-mqtt>=1.6.1",
-    "smart-workflow @ git+https://github.com/allenshie/smart-workflow.git@b5ef4c4dbab3525a5dc1c5f1c7eb689da5baf6ee",
+    "smart-workflow @ git+https://github.com/allenshie/smart-workflow.git@903e561b7304764b6af985435fea38f5bac48884",
     "smart-messaging-core==0.1.3",
 ]
 

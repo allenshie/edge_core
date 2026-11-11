@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import logging
 import time
 from pathlib import Path
@@ -103,11 +104,12 @@ def test_fatal_health_state_stops_loop_and_progress() -> None:
     health_state.mark_progress()
 
     snapshot = health_state.snapshot()
-    later = time.time() + 31
-    assert _evaluate_liveness(snapshot, later, probe)[0] is False
-    assert _evaluate_readiness(snapshot, later, probe)[0] is False
+    view = health_state.probe_view()
+    later = dataclasses.replace(view, now=view.now + 31)
+    assert _evaluate_liveness(later, probe)[0] is False
+    assert _evaluate_readiness(later, probe)[0] is False
     assert snapshot.last_error == "rtsp ingestion fatal"
-    assert _evaluate_liveness(snapshot, time.time(), probe)[0] is True
+    assert _evaluate_liveness(view, probe)[0] is True
 
 
 @pytest.mark.skipif(not VIDEO.exists(), reason="test video not available")

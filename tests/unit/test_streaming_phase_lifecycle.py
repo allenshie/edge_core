@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import logging
 import threading
 import time
@@ -144,15 +145,15 @@ def test_readiness_does_not_require_first_successful_stream_write() -> None:
     frame = np.zeros((2, 2, 3), dtype=np.uint8)
 
     engine.push(frame, [], "working")
-    ready, _ = _evaluate_readiness(health_state.snapshot(), time.time(), _probe_config())
+    ready, _ = _evaluate_readiness(health_state.probe_view(), _probe_config())
     assert ready is True
 
     engine._write_output_frame(frame, "stale-working")
-    ready, _ = _evaluate_readiness(health_state.snapshot(), time.time(), _probe_config())
+    ready, _ = _evaluate_readiness(health_state.probe_view(), _probe_config())
     assert ready is True
 
     engine._write_output_frame(frame, "working")
-    ready, _ = _evaluate_readiness(health_state.snapshot(), time.time(), _probe_config())
+    ready, _ = _evaluate_readiness(health_state.probe_view(), _probe_config())
     assert ready is True
 
 
@@ -182,13 +183,13 @@ def test_late_successful_write_after_deactivation_does_not_change_readiness() ->
     assert ffmpeg.write_entered.wait(0.5)
 
     engine.push(frame, [], "non-working")
-    ready, _ = _evaluate_readiness(health_state.snapshot(), time.time(), _probe_config())
+    ready, _ = _evaluate_readiness(health_state.probe_view(), _probe_config())
     assert ready is True
     ffmpeg.allow_write.set()
     writer.join(timeout=0.5)
 
     assert writer.is_alive() is False
-    ready, _ = _evaluate_readiness(health_state.snapshot(), time.time(), _probe_config())
+    ready, _ = _evaluate_readiness(health_state.probe_view(), _probe_config())
     assert ready is True
 
 
@@ -249,9 +250,9 @@ def test_non_working_keeps_runtime_live_and_ready() -> None:
     engine._streaming_enabled_by_phase = {"non-working": False}
 
     status = engine.push(np.zeros((2, 2, 3), dtype=np.uint8), [], "non-working")
-    snapshot = state.snapshot()
-    live, _ = _evaluate_liveness(snapshot, time.time(), _probe_config())
-    ready, _ = _evaluate_readiness(snapshot, time.time(), _probe_config())
+    view = state.probe_view()
+    live, _ = _evaluate_liveness(view, _probe_config())
+    ready, _ = _evaluate_readiness(view, _probe_config())
 
     assert status.should_stream is False
     assert live is True
@@ -266,7 +267,7 @@ def test_streaming_disabled_keeps_runtime_ready() -> None:
     engine._ffmpeg = _FakeFfmpeg()
 
     status = engine.push(np.zeros((2, 2, 3), dtype=np.uint8), [], "working")
-    ready, _ = _evaluate_readiness(state.snapshot(), time.time(), _probe_config())
+    ready, _ = _evaluate_readiness(state.probe_view(), _probe_config())
 
     assert status.should_stream is False
     assert ready is True
@@ -281,10 +282,11 @@ def test_healthz_and_readyz_use_distinct_runtime_signals() -> None:
         readiness_timeout_seconds=0.01,
         startup_grace_seconds=0.01,
     )
-    now = time.time() + 0.02
+    view = state.probe_view()
+    later = dataclasses.replace(view, now=view.now + 0.02)
 
-    live, _ = _evaluate_liveness(state.snapshot(), now, config)
-    ready, _ = _evaluate_readiness(state.snapshot(), now, config)
+    live, _ = _evaluate_liveness(later, config)
+    ready, _ = _evaluate_readiness(later, config)
 
     assert live is True
     assert ready is False
