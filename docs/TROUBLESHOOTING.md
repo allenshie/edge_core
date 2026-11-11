@@ -17,15 +17,17 @@
 | --- | --- |
 | `python main.py` 很快結束 | `.env` 是否存在、語法是否正確、必要變數是否缺失 |
 | 找不到影格 / EOF 循環 | `EDGE_INGEST_MODE`、`EDGE_FILE_PATH`、`EDGE_RTSP_URL`、camera 權限 |
-| RTSP 一直重連 | source 是否穩定、網路是否可達；log 中 `IngestionWorker-N 結束（原因：錯誤）` 的原因（`open_failed` / `read_failed` / `stalled`，stall 會寫明視窗內收到幾張）；低 fps 來源是否低於 `EDGE_INGESTION_STALL_MIN_FRAMES / EDGE_INGESTION_STALL_SECONDS`；ingest health 的 `reconnect_count`、`worker_generation`、`reconnect_backoff_s` |
+| RTSP 一直重連 | source 是否穩定、網路是否可達；log 中 `IngestionWorker-N 結束（原因：錯誤）` 的原因（`open_failed` / `read_failed` / `stalled`，stall 會寫明視窗內收到幾張）；低 fps 來源是否低於 `EDGE_INGESTION_STALL_MIN_FRAMES / EDGE_INGESTION_STALL_SECONDS`；`/status` 的 `ingest-worker` 燈號與 `ingest` 的 `reconnects`、`read_failures` |
 | RTSP 啟動時報「找不到 ffmpeg 執行檔」 | image 內是否安裝 ffmpeg / ffprobe；暫時可設定 `EDGE_RTSP_DECODER=opencv` |
 | log 出現 `ffprobe 無法取得畫面尺寸` | 來源是否可連線；或直接設定 `EDGE_RTSP_WIDTH` / `EDGE_RTSP_HEIGHT` 省略探測 |
 | `ffmpeg` decoder 的 CPU 比 `opencv` 高 | 多核心機器上 ffmpeg 預設的多執行緒解碼同步成本較高；可試 `EDGE_RTSP_FFMPEG_INPUT_ARGS="-threads 2"`，並確認 capture fps 不下降 |
-| log 出現「無法停止，列為卡住的 worker」或 `ingestion fatal` | 解碼函式庫卡住且 timeout 沒有生效；ingest health 的 `stuck_workers` 達到 `EDGE_INGESTION_MAX_STUCK_WORKERS` 後 liveness 會失敗並重啟 pod（見 [HEALTH.md](HEALTH.md#ingestion-fatal)）。可用 `py-spy dump --pid <pid>` 查看卡在哪個呼叫 |
+| log 出現「無法停止，列為卡住的 worker」或 `ingestion fatal` | 解碼函式庫卡住且 timeout 沒有生效；卡住的 worker 達到 `EDGE_INGESTION_MAX_STUCK_WORKERS` 後判斷為 `ingest_workers_stuck`：正常模式結束程式（代碼 70）由 systemd／k8s 重啟；**觀察模式與關閉模式不會結束，`/healthz` 維持 200、只有 `/readyz` 變 503，需要手動重啟**（見 [HEALTH.md](HEALTH.md#ingestion-fatal)）。可用 `py-spy dump --pid <pid>` 查看卡在哪個呼叫 |
 | 串流沒有輸出 | `EDGE_STREAMING_ENABLED`、`EDGE_STREAMING_URL`、MediaMTX 是否啟動、`EDGE_STREAMING_STRATEGY` 是否為 `cpu` |
 | `readyz` 變成 false 但 `healthz` 正常 | 核心 runtime 是否完成啟動、近期是否仍有工作進度、是否 stopping 或 runtime backoff |
 | `Pod` 以 exit code 137 重啟 | 先看 `healthz` 是否已失效，再檢查容器 memory limit / OOM 訊號；`non-working` 本身不會讓 readiness 失敗 |
-| 切回 `working` 後串流沒恢復 | 看最近一次 FFmpeg 寫入、write failed / stderr backpressure log 與 streaming health；這不應影響 `readyz` |
+| 切回 `working` 後串流沒恢復 | 看最近一次 FFmpeg 寫入、write failed / stderr backpressure log 與 `/status` 的 `stream-output`；這不應影響 `readyz` |
+| `/status` 某節點紅燈或灰燈 | 依 [HEALTH.md](HEALTH.md#從-status-與-log-判斷) 的對照表判斷是卡住、斷線還是 fatal；灰燈 `upstream_not_ready`／`lane_blocked` 先看上游或同 lane 的紅燈節點 |
+| 程式以代碼 70 結束 | 健康回報判斷為無法恢復；看結束前的 `smart_workflow.health` CRITICAL log 的 `reason` 與節點 |
 | MQTT / webhook 沒收到訊息 | `EDGE_APP_INBOUND_BACKEND`、`EDGE_PHASE_*`、`EDGE_EVENTS_*`、broker / HTTP endpoint |
 | 多實例互相干擾 | 每份 env 是否都有不同的 camera id、service name、streaming URL、listen port |
 

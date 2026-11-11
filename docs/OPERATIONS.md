@@ -14,7 +14,7 @@
 - `non-working` 是合法狀態；只要核心 runtime 健康，Pod 仍應維持 `readyz=true`。
 - 背景回收完成前，新舊 FFmpeg 可能短暫並存，但會由 generation guard 避免誤殺或誤啟動。
 - 如果 log 顯示 `cleanup=background`、`ffmpeg async stop scheduled`，通常代表正常回收中，不是卡死。
-- 串流輸出、等待首幀或 FFmpeg 背景回收不會改變 Kubernetes readiness；串流可用性請看 streaming state、health snapshot、log 與輸出速率。
+- 串流輸出、等待首幀或 FFmpeg 背景回收不會改變 Kubernetes readiness；串流可用性請看 `/status` 的 `stream`、`stream-output` 節點（`ffmpeg_restarts`、`write_failures`、`rate_per_s`）與 log。
 - 運維判斷時，`healthz` 用來確認 control loop / runtime 存活，`readyz` 用來確認核心 runtime 可接受工作；不要把單純的 `non-working` 或未輸出串流誤判成 Pod 故障。
 - 端點定義與 probe 合約請參考 [HEALTH.md](HEALTH.md)。
 

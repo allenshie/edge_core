@@ -2,7 +2,7 @@
 
 ## 未發布（健康回報，smart-workflow 0.2.0）
 
-導入 [smart-health-record](https://pypi.org/project/smart-health-record/)：各節點回報健康狀態，判斷為無法恢復時結束程式，交給 systemd 或 k8s 重啟。舊的健康程式碼（`TaskHealthReporter`、健康摘要 log、`MonitoringClient` 呼叫）仍保留，之後的版本才移除。
+導入 [smart-health-record](https://pypi.org/project/smart-health-record/)：各節點回報健康狀態，判斷為無法恢復時結束程式，交給 systemd 或 k8s 重啟。舊的健康程式碼（`TaskHealthReporter`、健康摘要 log、`MonitoringClient` 呼叫）已移除，改用 smart_health 的燈號與 metric。
 
 ### 依賴
 
@@ -18,6 +18,16 @@
 - `FrameMeta.capture_monotonic`（不送給 App、不參與比較，`to_dict()` 不變）；ingestion `fetch()` 的 dict 多一個 `capture_monotonic` 鍵。
 - 模型暖機：`BaseInferenceEngine.warmup()`（預設不做事）、`ScheduledInferenceEngine.warmup()`、`DefaultInferenceEngine.warmup()`、`BaseInferenceModel.warmup()`（預設呼叫 `run()`）、`BaseYoloModel.warmup()`（用 `predict`，不經過 tracker）。
 - 查詢介面：`BaseInferenceEngine.has_work_for(phase)`、`BaseStreamingEngine.wants_stream_for(phase)`、`EdgePipeline.find_node()`。
+- 舊機制的計數器改成 metric：`ingest.reconnects`、`ingest.read_failures`、`publish.published`、`stream.ffmpeg_restarts`、`stream.write_failures`；Engine 新增 `BaseIngestionEngine.reconnect_count`、`read_failure_count`，`BaseStreamingEngine.ffmpeg_restarts`、`write_failures`。
+
+### 移除
+
+- `TaskHealthReporter`（`edge/runtime/task_health.py`）、`edge/runtime/stage_logging.py`、`edge/runtime/pipeline_summary.py`、`edge/runtime/health_contract.py`（`HealthSummaryRow`、`HealthSummaryMetrics`、`HealthSnapshotProvider`）、`edge/pipeline/tasks/ingestion/health.py`、`edge.schema.StageStats`。
+- 各 NodeTask 的 `snapshot_health()`／`health_snapshot()`、`EdgePipeline.health_rows()`、`PipelineScheduler` 的 pipeline 摘要 log 與 `MonitoringClient.heartbeat` 呼叫、ingestion 的 `report_event` 呼叫。Engine 的 `health_snapshot()` 保留。
+- `EdgeHealthState.mark_fatal()`、`fatal_reason`：ingestion fatal 不再讓 `/healthz` 失敗。正常模式由 smart-workflow 結束程式；**觀察模式與 `EDGE_HEALTH_ENABLED=0` 時只有 `/readyz` 變 503，k8s 不會自動重啟**（systemd 不受影響），見 `docs/HEALTH.md`。
+- Engine 的 `capture_rate_meter`、`write_rate_meter`、`unique_write_rate_meter`（只供舊健康摘要使用）。`RateMeter`、`DurationMeter` 模組保留。
+- env `EDGE_HEALTH_STALE_THRESHOLD_SEC`：設定了也不會生效。
+- `smart_warehouse_edge` 更新 submodule 時，`tests/unit/test_pipeline_summary.py` 與 `tests/unit/test_stage_latency_metrics.py` 中使用 `build_pipeline_summary`、`snapshot_health()`、`_infer_rate` 等的測試需要刪除或修改。
 
 ### 預設行為的改變（升級前請確認）
 
@@ -37,7 +47,7 @@
 - **`MONITOR_ENDPOINT`：** 已淘汰。設定時啟動會記一次 WARNING 並發出 `DeprecationWarning`，行為不變。
 - **systemd：** `EDGE_HEALTH_ENABLED=0` 時不會送 `READY=1`／`WATCHDOG=1`，`Type=notify` 的 unit 要加 `health-disabled.conf` drop-in，見 `docs/DEPLOY_ORIN.md`。
 - **k8s：** 暖機讓啟動變慢，startupProbe 的總時限建議 300 秒（`failureThreshold: 150`、`periodSeconds: 2`）。
-- 停用健康回報（`EDGE_HEALTH_ENABLED=0`）時，Edge 的行為和導入前相同；Engine 的狀態照常更新，但沒有人讀取。
+- 停用健康回報（`EDGE_HEALTH_ENABLED=0`）時，Edge 的業務行為和導入前相同；Engine 的狀態照常更新，但沒有人讀取。例外：舊的健康摘要 log 已移除，ingestion fatal 也不再讓 `/healthz` 失敗（見上方「移除」）。
 
 ### 修正
 

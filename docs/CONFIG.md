@@ -67,8 +67,7 @@ EDGE_MATCHING_RESULT_RESOURCE_NAME=matching_result_snapshot
 | `EDGE_STREAMING_RECORD_ENABLED` | `0` | 是否將最終 streaming 畫面另外錄成 mp4。|
 | `EDGE_STREAMING_RECORD_OUTPUT_DIR` | `./recordings` | 錄影輸出目錄，會自動建立。|
 | `EDGE_STREAMING_RECORD_FILENAME_TEMPLATE` | `{camera_id}_{phase}_{start_dt:%Y%m%d_%H%M%S}.mp4` | 錄影檔名樣板，可用 `camera_id`、`phase`、`start_dt` 等欄位。|
-| `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康摘要輸出間隔。|
-| `EDGE_HEALTH_STALE_THRESHOLD_SEC` | `5` | 健康摘要判定 stale / degraded 的時間門檻。|
+| `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康回報定期摘要 log 的間隔（見 [HEALTH.md](HEALTH.md#log)）。|
 | `EDGE_VISUAL_SHOW_TRACK_INFO` | `0` | 控制 label 是否附加 `track_id`。|
 | `EDGE_VISUAL_SHOW_SCORE_INFO` | `0` | 控制 state label 是否附加 `score`。|
 | `EDGE_VISUAL_DETECTION_COLOR` | `0,255,0` | 偵測框與 label 背景顏色，格式為 `B,G,R`。 |

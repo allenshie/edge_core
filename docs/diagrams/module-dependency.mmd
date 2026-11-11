@@ -6,9 +6,8 @@ graph LR
     Runtime[edge.runtime]
     MessagingRuntime[messaging_runtime]
     HealthRuntime[health_runtime]
-    PipelineSummary[pipeline_summary]
+    HealthReporting[health_bootstrap / health_topology]
     ShutdownSummary[shutdown_summary]
-    TaskHealth[task_health]
     Pipeline[pipeline]
     Tasks[edge.pipeline.tasks]
     Ingest[ingestion]
@@ -26,9 +25,8 @@ graph LR
     Main --> Pipeline
     Runtime --> MessagingRuntime
     Runtime --> HealthRuntime
-    Runtime --> PipelineSummary
+    Runtime --> HealthReporting
     Runtime --> ShutdownSummary
-    Runtime --> TaskHealth
     Runtime --> Messaging
     Runtime --> Schema
     Pipeline --> Tasks

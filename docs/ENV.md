@@ -104,15 +104,14 @@
 | `EDGE_HEALTH_SERVER_ENABLED` | `0` | 啟用內建健康檢查 HTTP server。 |
 | `EDGE_HEALTH_SERVER_HOST` | `0.0.0.0` | 健康檢查 server 綁定 host。 |
 | `EDGE_HEALTH_SERVER_PORT` | `8081` | 健康檢查 server port。 |
-| `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康摘要輸出間隔秒數。 |
-| `EDGE_HEALTH_STALE_THRESHOLD_SEC` | `5` | 距離上次更新超過多久視為 stale / degraded。 |
+| `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康回報定期摘要 log 的間隔秒數（見下方說明）。 |
 | `EDGE_HEALTH_LIVENESS_TIMEOUT_SECONDS` | `30` | `/healthz` loop 心跳逾時門檻。 |
 | `EDGE_HEALTH_READINESS_TIMEOUT_SECONDS` | `30` | `/readyz` 最近進度逾時門檻。 |
 | `EDGE_HEALTH_STARTUP_GRACE_SECONDS` | `10` | startup 完成後首次 loop/progress 寬限秒數。 |
 
 端點合約、Kubernetes probe 範例與判讀規則請參考 [HEALTH.md](HEALTH.md)。
 
-`EDGE_HEALTH_REPORT_INTERVAL_SEC` 同時是健康回報定期摘要 log 的間隔，以及 publish 的 `capture_age_ms_max` 的統計區間。`EDGE_HEALTH_STALE_THRESHOLD_SEC` 只給舊的健康摘要使用，階段 E 會移除。
+`EDGE_HEALTH_REPORT_INTERVAL_SEC` 同時是健康回報定期摘要 log 的間隔，以及 publish 的 `capture_age_ms_max` 的統計區間。舊的 `EDGE_HEALTH_STALE_THRESHOLD_SEC` 已移除（只給舊的健康摘要使用），設定了也不會生效；主迴圈節點的 stale 門檻改用 `EDGE_HEALTH_STALE_AFTER_SECONDS`。
 
 ## 健康回報（smart_health）
 
@@ -140,7 +139,7 @@
 | `EDGE_MQTT_ENABLED` | `0` | 是否啟用 MQTT 協議設定；目前只影響 broker 連線/認證參數是否生效，不再用來決定 phase / matching route backend。 |
 | `EDGE_MQTT_LOG_THROTTLE_SECONDS` | `60` | `smart_messaging_core` MQTT 警告的節流時間窗：同一種警告在窗口內只輸出第一筆，下一筆會附上略過的筆數。設為 `0` 關閉節流。 |
 
-**QoS 0 的取捨：** QoS 1 的訊息會留在 paho client 的佇列中等待 PUBACK，而 `smart_messaging_core` 沒有設定佇列上限，broker 斷線或回應慢時，佇列和記憶體會一直增加。QoS 0 在斷線時直接丟棄訊息（publish 回傳失敗），不會排隊。正式環境的舊版 edge 在 QoS 1 下一週內記憶體從 1.2GB 升到 1.8GB，改成 QoS 0 後維持 1.2GB。訂閱端的影響很小：paho 預設 `clean_session=True`，broker 本來就不會替離線的 client 保留訊息，QoS 1 只多保護連線中斷當下正在傳送的訊息。phase 這類狀態訊息建議由 App 端以 retain 發布，重連後就能拿到最新值。
+**QoS 0 的取捨：** QoS 1 的訊息會留在 paho client 的佇列中等待 PUBACK，`smart_messaging_core` 0.1.3 起已設定 `max_queued_messages=1000`，佇列不會無限增加，但 broker 斷線或回應慢時仍會累積到上限、占用記憶體。QoS 0 在斷線時直接丟棄訊息（publish 回傳失敗），不會排隊。正式環境的舊版 edge 在 QoS 1 下一週內記憶體從 1.2GB 升到 1.8GB，改成 QoS 0 後維持 1.2GB。訂閱端的影響很小：paho 預設 `clean_session=True`，broker 本來就不會替離線的 client 保留訊息，QoS 1 只多保護連線中斷當下正在傳送的訊息。phase 這類狀態訊息建議由 App 端以 retain 發布，重連後就能拿到最新值。
 
 ## Messaging Routes
 
