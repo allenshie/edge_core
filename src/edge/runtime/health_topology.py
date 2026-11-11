@@ -22,6 +22,7 @@ LOGGER = logging.getLogger(__name__)
 SERVICE = "edge"
 STARTUP_GRACE_S = 30.0
 ERROR_WINDOW_S = 30.0
+INFER_STUCK_AFTER_S = 10.0
 
 LANES = (
     ("main", "主迴圈", True),
@@ -45,14 +46,23 @@ class NodeDefinition:
     error_window_s: float = ERROR_WINDOW_S
 
 
-def derive_stale_after(poll_interval: float, override: float | None) -> float:
-    """主迴圈節點的 stale 門檻：max(5, 3 × 每輪間隔)，每輪間隔為 0 時以 1 秒計算；有覆寫時用覆寫值。"""
+def derive_stale_after(
+    poll_interval: float,
+    override: float | None,
+    *,
+    infer_stuck_after_s: float = INFER_STUCK_AFTER_S,
+) -> float:
+    """主迴圈節點的 stale 門檻：max(5, 3 × 每輪間隔, infer 的 stuck 門檻 + 1)。
+
+    每輪間隔為 0 時以 1 秒計算；有覆寫時用覆寫值。main 是 sequential lane，推理卡住時
+    其他節點也沒有新的成功，stale 門檻要比 infer 的 stuck 門檻長，才不會先由別的節點轉紅。
+    """
     if override is not None:
         return float(override)
     interval = float(poll_interval or 0.0)
     if interval <= 0:
         interval = 1.0
-    return max(5.0, 3.0 * interval)
+    return max(5.0, 3.0 * interval, infer_stuck_after_s + 1.0)
 
 
 def _find_node(context: TaskContext, task_type: type) -> Any:
@@ -135,7 +145,7 @@ def node_definitions(context: TaskContext, settings: HealthSettings) -> list[Nod
         NodeDefinition("ingest", "取流", "main", upstream=("ingest-worker",), stale_after_s=derived,
                        stuck_after_s=20.0),
         NodeDefinition("infer", "推理", "main", upstream=("ingest",), enabled=fns["infer"],
-                       stale_after_s=derived, stuck_after_s=10.0),
+                       stale_after_s=derived, stuck_after_s=INFER_STUCK_AFTER_S),
         NodeDefinition("stream", "推流", "main", upstream=("infer",), enabled=fns["stream"],
                        stale_after_s=derived, stuck_after_s=5.0),
         NodeDefinition("stream-output", "推流輸出", "stream-bg", upstream=("stream",),

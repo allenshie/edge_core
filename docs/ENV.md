@@ -122,7 +122,7 @@
 | `EDGE_HEALTH_EXIT_ON_FAILURE` | `1` | `0` 為觀察模式：照常判斷並寫 CRITICAL log，但不結束程式。 |
 | `EDGE_HEALTH_STATUS_HOST` | `127.0.0.1` | StatusServer 綁定位址；Orin 設 `0.0.0.0`，只開放內網。 |
 | `EDGE_HEALTH_STATUS_PORT` | *(未設定)* | 設定時啟動 StatusServer（`GET /status`）。cam01～cam06 用 18081～18086。綁定失敗時記 ERROR，程式繼續執行。 |
-| `EDGE_HEALTH_STALE_AFTER_SECONDS` | *(未設定)* | 覆寫主迴圈節點的 stale 門檻；未設定時為 `max(5, 3 × EDGE_POLL_INTERVAL)`，`EDGE_POLL_INTERVAL=0` 以 1 秒計算。 |
+| `EDGE_HEALTH_STALE_AFTER_SECONDS` | *(未設定)* | 覆寫主迴圈節點的 stale 門檻；未設定時為 `max(5, 3 × EDGE_POLL_INTERVAL, 11)`（11 為 `infer` 的 stuck 門檻 10 秒加 1），`EDGE_POLL_INTERVAL=0` 以 1 秒計算。 |
 | `EDGE_HEALTH_LOOP_TIMEOUT_SECONDS` | `30` | 主迴圈超過這個秒數沒有跑完一輪就判斷為無法恢復。必須大於 `EDGE_POLL_INTERVAL + EDGE_RETRY_BACKOFF`，否則啟動時拋 `ValueError`。 |
 
 ## MQTT 協議參數

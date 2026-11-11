@@ -33,7 +33,7 @@ def _context(config=None) -> TaskContext:
 
 @pytest.mark.parametrize(
     ("poll", "override", "expected"),
-    [(5.0, None, 15.0), (1.0, None, 5.0), (0.0, None, 5.0), (2.5, None, 7.5), (0.0, 12.0, 12.0), (5.0, 3.0, 3.0)],
+    [(5.0, None, 15.0), (1.0, None, 11.0), (0.0, None, 11.0), (2.5, None, 11.0), (0.0, 12.0, 12.0), (5.0, 3.0, 3.0)],
 )
 def test_derive_stale_after(poll: float, override: float | None, expected: float) -> None:
     assert derive_stale_after(poll, override) == expected

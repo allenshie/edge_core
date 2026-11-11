@@ -79,7 +79,7 @@ readinessProbe:
 | `stream-output` | `stream-bg` | `stream` | `stream_sink` | 同 `stream` | 5 秒 | 10 秒 |
 | `publish` | `main` | `infer` | `messaging` | `EDGE_PUBLISH_ENABLED` | 推算 | 10 秒 |
 
-「推算」為 `max(5, 3 × EDGE_POLL_INTERVAL)`，可用 `EDGE_HEALTH_STALE_AFTER_SECONDS` 覆寫。所有節點的啟動寬限與錯誤視窗都是 30 秒。沒有新畫面時，`ingest`、`infer`、`stream`、`publish` 記為 skipped（不算成功，持續沒有新畫面就會 stale）。metrics：`infer.detections`、`publish.capture_age_ms`、`publish.capture_age_ms_max`，以及各節點的 `duration_ms`、`rate_per_s`。
+「推算」為 `max(5, 3 × EDGE_POLL_INTERVAL, infer 的 stuck 門檻 + 1)`，預設為 11 秒（`main` 是 sequential lane，推理卡住時其他節點也沒有新的成功；門檻比 `infer` 的 10 秒長，才會由 `infer` 先轉紅），可用 `EDGE_HEALTH_STALE_AFTER_SECONDS` 覆寫。所有節點的啟動寬限與錯誤視窗都是 30 秒。沒有新畫面時，`ingest`、`infer`、`stream`、`publish` 記為 skipped（不算成功，持續沒有新畫面就會 stale）。metrics：`infer.detections`、`publish.capture_age_ms`、`publish.capture_age_ms_max`，以及各節點的 `duration_ms`、`rate_per_s`。
 
 ### 無法恢復時
 
