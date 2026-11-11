@@ -32,6 +32,10 @@ ENGINE_BY_MODE: dict[str, Type[BaseIngestionEngine]] = {
 }
 
 
+# metric 名稱 → Engine 屬性（spec-edge.md 9.2）
+INGEST_COUNTERS = {"reconnects": "reconnect_count", "read_failures": "read_failure_count"}
+
+
 class IngestionTask(FrameTaskSupportMixin, BaseTask):
     name = "edge-ingestion"
     health_node = "ingest"
@@ -107,12 +111,16 @@ class IngestionTask(FrameTaskSupportMixin, BaseTask):
             self._mode_logged = True
         started_at = time.perf_counter()
         try:
-            payload = self._engine.fetch()
-        except TaskError as exc:
-            self._handle_ingestion_failure(context, exc)
-            LOGGER.warning("%s ingestion failed: %s", self.source_label, exc)
-            raise
-        return self._process_ingestion(context, payload, started_at)
+            try:
+                payload = self._engine.fetch()
+            except TaskError as exc:
+                self._handle_ingestion_failure(context, exc)
+                LOGGER.warning("%s ingestion failed: %s", self.source_label, exc)
+                raise
+            return self._process_ingestion(context, payload, started_at)
+        finally:
+            # 取流失敗時也要寫入，斷線期間才看得到 read_failures 增加。
+            self._set_counter_metrics(self._engine, INGEST_COUNTERS)
 
     def snapshot_health(self, context: TaskContext | None = None) -> dict:
         engine_snapshot = self._engine.health_snapshot() if self._engine is not None else {}

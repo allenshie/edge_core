@@ -51,6 +51,9 @@ class BaseIngestionEngine(IngestionStatusMixin):
         self._latest_capture_monotonic: float | None = None
         self._latest_frame_seq: int = 0
         self._last_error: str | None = None
+        # 啟動以來的計數器（供健康回報的 metric 讀取；只在 supervisor／worker 中遞增）。
+        self._reconnect_count = 0
+        self._read_failure_count = 0
         self._health = IngestionHealthTracker(source_label=self.source_label)
         self._capture_rate = RateMeter()
         # 健康回報（ingest-worker）：只由 worker 的讀取通知與 supervisor 更新，回報執行緒讀取。
@@ -155,7 +158,19 @@ class BaseIngestionEngine(IngestionStatusMixin):
             "finished": self._finished_reason is not None,
             "reconnect_backoff_s": self._reconnect_backoff_s,
             **self._health.snapshot(),
+            "reconnect_count": self._reconnect_count,
+            "read_failure_count": self._read_failure_count,
         }
+
+    @property
+    def reconnect_count(self) -> int:
+        """啟動以來 supervisor 重新連線成功的次數。"""
+        return self._reconnect_count
+
+    @property
+    def read_failure_count(self) -> int:
+        """啟動以來讀取或開啟失敗（worker 結束後要重連）的次數。"""
+        return self._read_failure_count
 
     @property
     def capture_rate_meter(self) -> RateMeter:
@@ -227,6 +242,7 @@ class BaseIngestionEngine(IngestionStatusMixin):
                     self._finished_reason = self._last_error
                     LOGGER.warning("%s ingestion finished: %s", self.source_label, self._last_error)
                     return
+                self._read_failure_count += 1
                 self._health.record_read_failure(f"{self.source_label} {reason}: {self._last_error}")
                 delay = backoff.next_delay()
                 self._reconnect_backoff_s = delay
@@ -326,6 +342,7 @@ class BaseIngestionEngine(IngestionStatusMixin):
                 return
             if self._reconnect_pending:
                 self._reconnect_pending = False
+                self._reconnect_count += 1
                 self._health.record_reconnect()
                 LOGGER.info("%s 重新連線成功（worker #%d）", self.source_label, generation)
             self._latest_frame_seq += 1

@@ -374,6 +374,16 @@ class BaseStreamingEngine(StreamingStatusMixin, ABC):
             self._recording = None
 
     @property
+    def ffmpeg_restarts(self) -> int:
+        """啟動以來推流 ffmpeg 因寫入失敗而重新啟動的次數。"""
+        return int(getattr(self, "_reconnect_count", 0) or 0)
+
+    @property
+    def write_failures(self) -> int:
+        """啟動以來寫入 ffmpeg 失敗的次數。"""
+        return int(getattr(self, "_write_failures", 0) or 0)
+
+    @property
     def write_rate_meter(self) -> RateMeter:
         return self._write_rate
 

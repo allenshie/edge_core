@@ -150,6 +150,7 @@ class PublishResultTask(FrameTaskSupportMixin, BaseTask):
             self._publish_latency.mark(elapsed_ms)
         if outcome is None:
             raise TaskError("publish engine did not return an outcome")
+        self.set_metric("published", outcome.published)
         self._publish_rate.mark(frame_seq=frame_meta.frame_seq if isinstance(frame_meta, FrameMeta) else None)
         self._last_outcome = outcome
         self._last_frame_meta = frame_meta

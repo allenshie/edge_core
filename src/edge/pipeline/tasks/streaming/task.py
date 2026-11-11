@@ -16,6 +16,10 @@ from .engines.policy import resolve_phase
 from .types import StreamingStatus
 
 
+# metric 名稱 → Engine 屬性（spec-edge.md 9.2）
+STREAM_COUNTERS = {"ffmpeg_restarts": "ffmpeg_restarts", "write_failures": "write_failures"}
+
+
 class StreamingTask(FrameTaskSupportMixin, BaseTask):
     name = "edge-streaming"
     health_node = "stream"
@@ -109,7 +113,10 @@ class StreamingTask(FrameTaskSupportMixin, BaseTask):
         started_at = time.perf_counter()
         if self._engine is None:
             raise TaskError("streaming engine is not initialized")
-        status = self._engine.push(frame, detections, phase, frame_meta=frame_meta)
+        try:
+            status = self._engine.push(frame, detections, phase, frame_meta=frame_meta)
+        finally:
+            self._set_counter_metrics(self._engine, STREAM_COUNTERS)
         elapsed_ms = (time.perf_counter() - started_at) * 1000.0
         context.set_resource("streaming_status", status.to_dict())
         self._last_status = status
