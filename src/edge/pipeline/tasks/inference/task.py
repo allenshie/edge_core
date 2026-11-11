@@ -123,6 +123,12 @@ class InferenceTask(FrameTaskSupportMixin, BaseTask):
             {"detections": detections}, frame_meta, status=result, reason=reason, message=message
         )
 
+    def warmup(self) -> None:
+        """啟動時暖機（只在啟用健康回報時由 EdgePipeline.warmup() 呼叫）。"""
+        warmup = getattr(self._engine, "warmup", None)
+        if callable(warmup):
+            warmup()
+
     @property
     def engine(self) -> BaseInferenceEngine:
         return self._engine

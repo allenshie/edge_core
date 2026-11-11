@@ -67,6 +67,19 @@ class BaseYoloModel(BaseEdgeModel):
             return []
         return self._model.predict(frame, **self._build_predict_kwargs())
 
+    def warmup(self, frame: Any, metadata: Any) -> None:
+        """用 predict 暖機，參數和正式推理相同（_build_predict_kwargs），不經過 tracker 與 reset 計時。
+
+        以 track(persist=True) 推理的模型，ByteTrack 對第 1 幀的處理和之後不同；
+        暖機若佔用第 1 幀，第一張真實畫面的追蹤結果就會不同。
+        """
+        if self._model is None:
+            return
+        prepared = self._prepare_frame(frame, metadata)
+        if prepared is None:
+            return
+        self._model.predict(prepared, **self._build_predict_kwargs())
+
     @abstractmethod
     def _postprocess_results(self, results: Any, frame: Any, metadata: Any) -> List[EdgeDetection]:
         """Convert raw YOLO results into edge detections."""

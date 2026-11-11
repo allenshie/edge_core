@@ -13,6 +13,7 @@ from smart_workflow import TaskContext, TaskError
 from edge.pipeline.tasks.inference.device import normalize_device
 from edge.pipeline.tasks.inference.engine import BaseInferenceEngine, InferenceOutcome
 from edge.pipeline.tasks.inference.models import BaseYamlMockModel
+from edge.pipeline.tasks.inference.warmup import run_model_warmups
 from edge.schema import EdgeDetection
 
 from .activity import (
@@ -151,6 +152,17 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
                 reason="phase_disabled",
             )
         return InferenceOutcome(detections=detections, models_run=executed, models_reuse=reused)
+
+    def warmup(self) -> None:
+        """對所有時段的每個模型各暖機一次（略過沒有模型的 replay_last），不經過 process()。"""
+        camera_id = getattr(self._camera_config, "camera_id", None) or "unknown"
+        entries = [
+            (phase, task.name, task.model)
+            for phase, tasks in self._tasks_by_phase.items()
+            for task in tasks
+            if task.model is not None
+        ]
+        run_model_warmups(entries, camera_id=str(camera_id))
 
     def has_work_for(self, phase: str) -> bool:
         """排程這個時段是否有推理任務。"""

@@ -2,14 +2,17 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List
 
 from smart_workflow import EngineResult, TaskContext, TaskError
+import numpy as np
 from ultralytics import YOLO
 
 from edge.config import ModelConfig
+from edge.pipeline.tasks.inference.warmup import DEFAULT_WARMUP_SIZE
 from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection
 
@@ -44,6 +47,10 @@ class BaseInferenceEngine:
         metadata: dict[str, Any] | None = None,
     ) -> InferenceOutcome:
         raise NotImplementedError
+
+    def warmup(self) -> None:
+        """啟動時暖機；自訂 Engine 預設不做任何事。"""
+        return None
 
     def has_work_for(self, phase: str) -> bool:
         """這個時段是否會推理；供健康架構判斷 infer 節點是否啟用。自訂 Engine 預設為 True。"""
@@ -95,6 +102,17 @@ class DefaultInferenceEngine(BaseInferenceEngine):
         results = self._model.track(frame, **track_kwargs)  # type: ignore[union-attr]
         detections = self._parse_results(results, threshold)
         return InferenceOutcome(detections=detections)
+
+    def warmup(self) -> None:
+        """載入模型後用空白畫面 predict 一次；參數和正式推理相同（verbose=False），不經過 tracker。"""
+        started = time.perf_counter()
+        self._ensure_model()
+        frame = np.zeros((DEFAULT_WARMUP_SIZE, DEFAULT_WARMUP_SIZE, 3), dtype=np.uint8)
+        try:
+            self._model.predict(frame, verbose=False)  # type: ignore[union-attr]
+        except Exception as exc:  # noqa: BLE001 - 暖機失敗就是啟動失敗
+            raise TaskError(f"模型暖機失敗：模型={self._model_config.weights_path}：{exc}") from exc
+        LOGGER.info("模型暖機全部完成：1 個模型，總耗時 %.0f ms", (time.perf_counter() - started) * 1000.0)
 
     def _ensure_model(self) -> None:
         if self._model is not None:

@@ -39,3 +39,7 @@ class BaseInferenceModel:
 
     def run(self, frame, metadata):
         raise NotImplementedError("Model must implement run(frame, metadata)")
+
+    def warmup(self, frame, metadata) -> None:
+        """啟動時的暖機推理，預設沿用 run()。有狀態的模型（例如 tracker）要覆寫，讓暖機不影響之後的結果。"""
+        self.run(frame, metadata)
