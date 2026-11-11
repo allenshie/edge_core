@@ -5,7 +5,6 @@ import os
 import sys
 
 from smart_workflow import (
-    HealthAwareWorkflowRunner,
     MonitoringClient,
     TaskContext,
     WorkflowRunner,
@@ -13,7 +12,9 @@ from smart_workflow import (
 
 from edge.config import EdgeConfig, load_config
 from edge.pipeline import build_edge_workflow
+from edge.runtime.health_bootstrap import start_health_reporting
 from edge.runtime.health_runtime import start_health_server, stop_health_server
+from edge.runtime.health_settings import HealthSettings
 from edge.runtime.log_throttle import install_mqtt_log_throttle
 from edge.runtime.messaging_runtime import (
     close_messaging_client,
@@ -55,7 +56,8 @@ def build_context(config: EdgeConfig) -> TaskContext:
     return context
 
 
-def run_daemon(config: EdgeConfig) -> None:
+def run_daemon(config: EdgeConfig, health_settings: HealthSettings | None = None) -> None:
+    settings = health_settings or HealthSettings.from_env()
     context = build_context(config)
     logger = context.logger
 
@@ -63,26 +65,20 @@ def run_daemon(config: EdgeConfig) -> None:
 
     start_messaging_subscriber(context)
 
+    # EDGE_HEALTH_ENABLED=1 時建立 HealthMonitor、StatusServer 與 HealthRuntime（context.health）。
+    health_bootstrap = start_health_reporting(context, settings)
+
     workflow = build_edge_workflow()
     health_server, health_state = start_health_server(context, logger)
 
-    if health_state is not None:
-        runner = HealthAwareWorkflowRunner(
+    try:
+        runner = WorkflowRunner(
             context=context,
             workflow=workflow,
             loop_interval=config.poll_interval,
             retry_backoff=config.retry_backoff,
             health_state=health_state,
         )
-    else:
-        runner = WorkflowRunner(
-            context=context,
-            workflow=workflow,
-            loop_interval=config.poll_interval,
-            retry_backoff=config.retry_backoff,
-        )
-
-    try:
         runner.run()
     finally:
         logger.info("shutting down")
@@ -95,6 +91,7 @@ def run_daemon(config: EdgeConfig) -> None:
 
         shutdown_records.extend(append_shutdown_records(context, close_messaging_client(context)))
         shutdown_records.extend(append_shutdown_records(context, stop_health_server(health_server)))
+        shutdown_records.extend(append_shutdown_records(context, health_bootstrap.stop()))
 
         context_records = get_shutdown_records(context)
         if context_records:
