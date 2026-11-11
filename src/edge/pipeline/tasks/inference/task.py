@@ -26,10 +26,10 @@ class InferenceTask(FrameTaskSupportMixin, BaseTask):
         frame = context.get_resource("decoded_frame")
         frame_meta = runtime.frame_meta
         if runtime.is_new_frame is False:
-            return self._handle_stale_frame(context, frame_meta)
-        return self._process_inference(context, frame, frame_meta)
+            return self._handle_stale_frame(context, runtime, frame_meta)
+        return self._process_inference(context, runtime, frame, frame_meta)
 
-    def _handle_stale_frame(self, context: TaskContext, frame_meta: FrameMeta | None) -> TaskResult:
+    def _handle_stale_frame(self, context: TaskContext, runtime, frame_meta: FrameMeta | None) -> TaskResult:
         return self._skip_result(
             context,
             frame_meta=frame_meta,
@@ -43,7 +43,7 @@ class InferenceTask(FrameTaskSupportMixin, BaseTask):
             payload={"detections": context.get_resource("inference_output") or [], "skipped": True},
         )
 
-    def _process_inference(self, context: TaskContext, frame, frame_meta: FrameMeta | None) -> TaskResult:
+    def _process_inference(self, context: TaskContext, runtime, frame, frame_meta: FrameMeta | None) -> TaskResult:
         phase = self._resolve_phase(context)
         camera_id = context.config.camera.camera_id if context and context.config and context.config.camera else "unknown"
         try:

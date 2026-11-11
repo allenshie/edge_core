@@ -30,12 +30,12 @@ class StreamingTask(FrameTaskSupportMixin, BaseTask):
         frame_meta = runtime.frame_meta
         phase = self._resolve_phase(context)
         if not self._enabled:
-            return self._handle_disabled(context, frame_meta)
+            return self._handle_disabled(context, runtime, frame_meta, phase)
         frame = context.get_resource("decoded_frame")
         detections: Sequence[EdgeDetection] = context.get_resource("inference_output") or []
         return self._process_streaming(context, runtime, frame, detections, frame_meta, phase)
 
-    def _handle_disabled(self, context: TaskContext, frame_meta: FrameMeta | None) -> TaskResult:
+    def _handle_disabled(self, context: TaskContext, runtime, frame_meta: FrameMeta | None, phase: str) -> TaskResult:
         return self._skip_result(
             context,
             frame_meta=frame_meta,

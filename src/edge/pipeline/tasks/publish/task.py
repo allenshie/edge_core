@@ -26,13 +26,13 @@ class PublishResultTask(FrameTaskSupportMixin, BaseTask):
         runtime = self._frame_runtime(context)
         frame_meta = runtime.frame_meta
         if not self._enabled:
-            return self._handle_disabled(context, frame_meta)
+            return self._handle_disabled(context, runtime, frame_meta)
         detections: Sequence = context.get_resource("inference_output") or []
         if runtime.is_new_frame is False:
-            return self._handle_stale_frame(context, frame_meta)
-        return self._process_publish(context, detections, frame_meta)
+            return self._handle_stale_frame(context, runtime, frame_meta)
+        return self._process_publish(context, runtime, detections, frame_meta)
 
-    def _handle_disabled(self, context: TaskContext, frame_meta: FrameMeta | None) -> TaskResult:
+    def _handle_disabled(self, context: TaskContext, runtime, frame_meta: FrameMeta | None) -> TaskResult:
         return self._skip_result(
             context,
             frame_meta=frame_meta,
@@ -44,7 +44,7 @@ class PublishResultTask(FrameTaskSupportMixin, BaseTask):
             payload={"published": 0, "status": None, "skipped": True, "reason": "publish_disabled"},
         )
 
-    def _handle_stale_frame(self, context: TaskContext, frame_meta: FrameMeta | None) -> TaskResult:
+    def _handle_stale_frame(self, context: TaskContext, runtime, frame_meta: FrameMeta | None) -> TaskResult:
         return self._skip_result(
             context,
             frame_meta=frame_meta,
@@ -59,6 +59,7 @@ class PublishResultTask(FrameTaskSupportMixin, BaseTask):
     def _process_publish(
         self,
         context: TaskContext,
+        runtime,
         detections: Sequence,
         frame_meta: FrameMeta | None,
     ) -> TaskResult:
