@@ -64,6 +64,42 @@ readinessProbe:
 - `healthz=false`：優先檢查 scheduler / control loop 是否卡住，或 process 是否已經異常退出；若 log 中有 `ingestion fatal`，代表是 ingestion 卡住的 worker 達到上限（見上方「Ingestion fatal」）。
 - `phase=non-working` 或串流未輸出時仍應為 Ready；若此時 `readyz=false`，原因應從核心 runtime 的 startup、progress、stopping 或 backoff 狀態排查。
 
+## smart_health 健康回報（edge_core 0.2 起）
+
+`EDGE_HEALTH_ENABLED=1`（預設）時，啟動時建立 `HealthMonitor("edge", <EDGE_CAMERA_ID>)`，各節點的狀態由 smart-workflow 的 `BaseTask` 與回報執行緒記錄。上方的 probe server 仍照舊運作，兩者並存；舊的健康摘要 log 在階段 E 才移除。
+
+### 節點
+
+| 節點 | lane | 上游 | 依賴 | 啟用條件 | stale | stuck |
+|---|---|---|---|---|---|---|
+| `ingest-worker` | `ingest-bg` | — | — | 一律 | 5 秒（`no_new_frame`） | 20 秒 |
+| `ingest` | `main` | `ingest-worker` | — | 一律 | 推算 | 20 秒 |
+| `infer` | `main` | `ingest` | — | 排程這個時段有推理 | 推算 | 10 秒 |
+| `stream` | `main` | `infer` | — | 推流已啟用，而且這個時段要推流 | 推算 | 5 秒 |
+| `stream-output` | `stream-bg` | `stream` | `stream_sink` | 同 `stream` | 5 秒 | 10 秒 |
+| `publish` | `main` | `infer` | `messaging` | `EDGE_PUBLISH_ENABLED` | 推算 | 10 秒 |
+
+「推算」為 `max(5, 3 × EDGE_POLL_INTERVAL)`，可用 `EDGE_HEALTH_STALE_AFTER_SECONDS` 覆寫。所有節點的啟動寬限與錯誤視窗都是 30 秒。沒有新畫面時，`ingest`、`infer`、`stream`、`publish` 記為 skipped（不算成功，持續沒有新畫面就會 stale）。metrics：`infer.detections`、`publish.capture_age_ms`、`publish.capture_age_ms_max`，以及各節點的 `duration_ms`、`rate_per_s`。
+
+### 無法恢復時
+
+下列情況由 smart-workflow 判斷為無法恢復，寫 CRITICAL log 後以代碼 70 結束程式，交給 systemd 或 k8s 重啟：
+
+- 三種 CUDA 錯誤（`illegal memory access`、`unspecified launch failure`、`device-side assert triggered`）：`infer` 拋出 `FatalTaskError(cuda_unrecoverable)`。改版前這些錯誤和其他推理錯誤一樣，只會中斷這一輪並退避重試，CUDA context 損壞後每一輪都會失敗。
+- 卡住的 capture worker 達到 `EDGE_INGESTION_MAX_STUCK_WORKERS`（`ingest_workers_stuck`）。
+- 背景執行緒（ingestion supervisor、推流輸出執行緒）在該工作時死掉（`background_dead`），或單次讀取／寫入卡住太久（`background_stuck`；ingestion 至少 30 秒，且晚於 supervisor 換 worker 的時間）。
+- 主迴圈超過 `EDGE_HEALTH_LOOP_TIMEOUT_SECONDS` 沒有跑完一輪（`main_loop_stalled`）。
+
+觀察模式（`EDGE_HEALTH_EXIT_ON_FAILURE=0`）只寫 CRITICAL log，不結束程式。
+
+### 暖機
+
+啟用健康回報時，啟動任務會用空白畫面把排程中所有時段的每個模型各推理一次（大小取模型設定的 `imgsz`，預設 640×640），每個模型一行 INFO 加上總耗時。YOLO 模型用 `predict` 暖機，參數和正式推理相同，不經過 tracker，避免改變第一張真實畫面的追蹤結果。暖機失敗時啟動失敗、程式結束。
+
+### StatusServer
+
+設定 `EDGE_HEALTH_STATUS_PORT` 時，`GET http://<host>:<port>/status` 回傳各節點的 `state`、`reason` 與 metrics。只開放內網。
+
 ## 相關設定
 
 健康檢查的環境變數與預設值，請參考 [ENV.md](ENV.md#健康檢查k8s-probe)。

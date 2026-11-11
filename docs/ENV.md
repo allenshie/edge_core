@@ -16,7 +16,7 @@
 | --- | --- | --- |
 | `EDGE_CAMERA_ID` | `cam01` | 邊緣節點識別。 |
 | `EDGE_LOG_LEVEL` | `INFO` | Log 等級。 |
-| `MONITOR_ENDPOINT` | `http://localhost:9400` | 監控服務 endpoint。 |
+| `MONITOR_ENDPOINT` | `http://localhost:9400` | 監控服務 endpoint。**已淘汰**：設定時啟動會記一次 WARNING（smart-workflow 0.2.0 的 `MonitoringClient`），請改用下方「健康回報」。 |
 | `EDGE_MONITOR_SERVICE_NAME` | `edge-{EDGE_CAMERA_ID}` | 監控服務名稱。 |
 
 ## 取流設定
@@ -24,6 +24,7 @@
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
 | `EDGE_INGEST_MODE` | `rtsp` | `rtsp` / `file` / `camera`。 |
+| `INGESTION_ENGINE_CLASS` | *(未設定)* | 自訂取流引擎 class path（`module:Class` 或 `module.Class`），必須繼承 `BaseIngestionEngine`。未設定時依 `EDGE_INGEST_MODE` 選擇。 |
 | `EDGE_RTSP_URL` | `rtsp://localhost:554/stream` | RTSP 來源 URL。 |
 | `EDGE_RTSP_DROP_FRAMES` | `2` | 每輪丟棄舊影格數。 |
 | `EDGE_RTSP_RECONNECT` | `1` | RTSP 重連退避的起始秒數；連續失敗時每次加倍，上限為 `EDGE_INGESTION_RECONNECT_MAX_SECONDS`。 |
@@ -111,6 +112,19 @@
 
 端點合約、Kubernetes probe 範例與判讀規則請參考 [HEALTH.md](HEALTH.md)。
 
+`EDGE_HEALTH_REPORT_INTERVAL_SEC` 同時是健康回報定期摘要 log 的間隔，以及 publish 的 `capture_age_ms_max` 的統計區間。`EDGE_HEALTH_STALE_THRESHOLD_SEC` 只給舊的健康摘要使用，階段 E 會移除。
+
+## 健康回報（smart_health）
+
+| 變數 | 預設 | 說明 |
+| --- | --- | --- |
+| `EDGE_HEALTH_ENABLED` | `1` | 總開關。`0` 時不建立 HealthMonitor、不啟動 StatusServer、不暖機、不送 systemd 通知，行為和導入前相同（systemd 需要搭配 `health-disabled.conf`，見 [DEPLOY_ORIN.md](DEPLOY_ORIN.md)）。 |
+| `EDGE_HEALTH_EXIT_ON_FAILURE` | `1` | `0` 為觀察模式：照常判斷並寫 CRITICAL log，但不結束程式。 |
+| `EDGE_HEALTH_STATUS_HOST` | `127.0.0.1` | StatusServer 綁定位址；Orin 設 `0.0.0.0`，只開放內網。 |
+| `EDGE_HEALTH_STATUS_PORT` | *(未設定)* | 設定時啟動 StatusServer（`GET /status`）。cam01～cam06 用 18081～18086。綁定失敗時記 ERROR，程式繼續執行。 |
+| `EDGE_HEALTH_STALE_AFTER_SECONDS` | *(未設定)* | 覆寫主迴圈節點的 stale 門檻；未設定時為 `max(5, 3 × EDGE_POLL_INTERVAL)`，`EDGE_POLL_INTERVAL=0` 以 1 秒計算。 |
+| `EDGE_HEALTH_LOOP_TIMEOUT_SECONDS` | `30` | 主迴圈超過這個秒數沒有跑完一輪就判斷為無法恢復。必須大於 `EDGE_POLL_INTERVAL + EDGE_RETRY_BACKOFF`，否則啟動時拋 `ValueError`。 |
+
 ## MQTT 協議參數
 
 | 變數 | 預設 | 說明 |
@@ -118,6 +132,7 @@
 | `EDGE_MQTT_HOST` | `localhost` | broker host。 |
 | `EDGE_MQTT_PORT` | `1883` | broker port。 |
 | `EDGE_MQTT_QOS` | `0` | MQTT QoS，同時套用到 publish 與 subscribe。原因見下方說明。 |
+| `EDGE_MQTT_KEEPALIVE` | `15` | MQTT keepalive 秒數，傳給 `smart_messaging_core` 的 `MqttConfig.keepalive`。原本固定 60 秒；改短是為了更快發現斷線，需要舊行為時設為 `60`。 |
 | `EDGE_MQTT_CLIENT_ID` | *(未設定)* | MQTT client id。 |
 | `EDGE_MQTT_AUTH_ENABLED` | `0` | 是否啟用 MQTT 帳密驗證。 |
 | `EDGE_MQTT_USERNAME` | *(未設定)* | MQTT 使用者名稱（`EDGE_MQTT_AUTH_ENABLED=1` 時必填）。 |
