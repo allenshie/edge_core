@@ -12,7 +12,6 @@ from smart_workflow import EngineStatusCell, TaskContext, TaskError
 from edge.config import IngestionWorkerConfig
 from edge.pipeline.tasks.ingestion.backoff import ReconnectBackoff
 from edge.pipeline.tasks.ingestion.engines.status import IngestionStatusMixin
-from edge.pipeline.tasks.ingestion.health import IngestionHealthTracker
 from edge.pipeline.tasks.ingestion.sources import FrameSource, SourceFrame
 from edge.pipeline.tasks.ingestion.worker import CaptureWorker
 from edge.runtime.rate_meter import RateMeter
@@ -54,7 +53,7 @@ class BaseIngestionEngine(IngestionStatusMixin):
         # 啟動以來的計數器（供健康回報的 metric 讀取；只在 supervisor／worker 中遞增）。
         self._reconnect_count = 0
         self._read_failure_count = 0
-        self._health = IngestionHealthTracker(source_label=self.source_label)
+        self._last_read_failure_reason: str | None = None
         self._capture_rate = RateMeter()
         # 健康回報（ingest-worker）：只由 worker 的讀取通知與 supervisor 更新，回報執行緒讀取。
         self._status_cell = EngineStatusCell()
@@ -157,9 +156,9 @@ class BaseIngestionEngine(IngestionStatusMixin):
             "fatal_reason": self._fatal_reason,
             "finished": self._finished_reason is not None,
             "reconnect_backoff_s": self._reconnect_backoff_s,
-            **self._health.snapshot(),
             "reconnect_count": self._reconnect_count,
             "read_failure_count": self._read_failure_count,
+            "last_read_failure_reason": self._last_read_failure_reason,
         }
 
     @property
@@ -243,7 +242,7 @@ class BaseIngestionEngine(IngestionStatusMixin):
                     LOGGER.warning("%s ingestion finished: %s", self.source_label, self._last_error)
                     return
                 self._read_failure_count += 1
-                self._health.record_read_failure(f"{self.source_label} {reason}: {self._last_error}")
+                self._last_read_failure_reason = f"{self.source_label} {reason}: {self._last_error}"
                 delay = backoff.next_delay()
                 self._reconnect_backoff_s = delay
                 LOGGER.warning(
@@ -343,7 +342,6 @@ class BaseIngestionEngine(IngestionStatusMixin):
             if self._reconnect_pending:
                 self._reconnect_pending = False
                 self._reconnect_count += 1
-                self._health.record_reconnect()
                 LOGGER.info("%s 重新連線成功（worker #%d）", self.source_label, generation)
             self._latest_frame_seq += 1
             self._latest_frame = frame.image
@@ -351,7 +349,6 @@ class BaseIngestionEngine(IngestionStatusMixin):
             self._latest_capture_monotonic = time.monotonic()
             self._last_error = None
             self._reconnect_backoff_s = 0.0
-            self._health.mark_frame_success()
             self._status_cell.mark_success()
             self._frame_ready.set()
             self._capture_rate.mark(frame_seq=self._latest_frame_seq, ts=capture_ts)
