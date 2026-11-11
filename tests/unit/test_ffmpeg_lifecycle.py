@@ -123,6 +123,10 @@ def test_stderr_is_drained_while_process_is_running(monkeypatch) -> None:
     process = manager._process
     assert process is not None
     assert process.wait(timeout=1.0) == 0
+    # 程式結束後 stderr 執行緒可能還沒讀完管線，先等它讀到 EOF 再檢查最後一行。
+    with manager._stderr_lock:
+        drain_thread = manager._stderr_threads[id(process)]
+    drain_thread.join(timeout=2.0)
     with manager._stderr_lock:
         tail = list(manager._stderr_tails[id(process)])
     manager.close()
