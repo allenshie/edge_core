@@ -27,6 +27,13 @@ class IngestionStatusMixin:
         alive = self._supervisor_alive()  # type: ignore[attr-defined]
         return dataclasses.replace(self._status_cell.get(), active=active, alive=alive)
 
+    def stuck_exit_seconds(self) -> float:
+        """讀取卡住多久判定為無法恢復：至少 30 秒，而且要晚於 supervisor 自己的處理
+        （開啟逾時 + stall 判定 + 停止 worker 的等待，再加 5 秒），避免換 worker 之前就結束程式。"""
+        cfg = self._worker_config  # type: ignore[attr-defined]
+        handled_by_supervisor = cfg.open_timeout_seconds + cfg.stall_seconds + cfg.worker_stop_timeout_seconds + 5.0
+        return max(30.0, float(handled_by_supervisor))
+
     def _on_read_begin(self, generation: int) -> None:
         if generation == self._status_generation:
             self._status_cell.mark_busy()

@@ -20,6 +20,10 @@ from edge.runtime.shutdown_summary import (
 )
 
 
+def _health_enabled(context: TaskContext) -> bool:
+    return bool(getattr(getattr(context, "health", None), "enabled", False))
+
+
 class EdgePipeline:
     """Sequential pipeline that reuses instantiated tasks across loop runs."""
 
@@ -29,6 +33,26 @@ class EdgePipeline:
 
     def warmup(self, context: TaskContext) -> None:
         context.logger.info("edge pipeline initialized with %d nodes", len(self._nodes))
+        # 只有啟用健康回報時才暖機（EDGE_HEALTH_ENABLED=0 時行為和導入前相同）。
+        if not _health_enabled(context):
+            return
+        for node in self._nodes:
+            warmup = getattr(node, "warmup", None)
+            if callable(warmup):
+                warmup()
+
+    def bind_background(self, context: TaskContext) -> None:
+        """把 Engine 的背景執行緒狀態交給健康回報（ingest-worker、stream-output）。"""
+        if not _health_enabled(context):
+            return
+        ingestion = self.find_node(IngestionTask)
+        engine = getattr(ingestion, "engine", None)
+        if engine is not None and callable(getattr(engine, "status", None)):
+            context.health.bind_background("ingest-worker", engine.status, stuck_exit_s=engine.stuck_exit_seconds())
+        streaming = self.find_node(StreamingTask)
+        engine = getattr(streaming, "engine", None) if getattr(streaming, "enabled", False) else None
+        if engine is not None and callable(getattr(engine, "status", None)):
+            context.health.bind_background("stream-output", engine.status)
 
     def execute(self, context: TaskContext) -> None:
         for node in self._nodes:
@@ -117,6 +141,7 @@ class InitPipelineTask(BaseTask):
         ]
         nodes = [factory(context) for factory in factories]
         pipeline = EdgePipeline(nodes)
+        pipeline.bind_background(context)
         pipeline.warmup(context)
         context.set_resource("edge_pipeline", pipeline)
         return TaskResult()
