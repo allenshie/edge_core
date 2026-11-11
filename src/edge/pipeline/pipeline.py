@@ -34,6 +34,13 @@ class EdgePipeline:
         for node in self._nodes:
             node.execute(context)
 
+    def find_node(self, task_type: type) -> BaseTask | None:
+        """回傳第一個屬於 task_type 的節點；健康架構用來取得 Engine。"""
+        for node in self._nodes:
+            if isinstance(node, task_type):
+                return node
+        return None
+
     def health_rows(self, context: TaskContext) -> list[HealthSummaryMetrics]:
         rows: list[HealthSummaryMetrics] = []
         for node in self._nodes:
