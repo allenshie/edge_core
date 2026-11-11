@@ -15,6 +15,7 @@ from edge.runtime.task_health import TaskHealthReporter
 from edge.schema import FrameMeta, StageStats
 
 from .engine import BaseInferenceEngine, DefaultInferenceEngine
+from .errors import raise_if_cuda_unrecoverable
 
 
 class InferenceTask(FrameTaskSupportMixin, BaseTask):
@@ -77,11 +78,15 @@ class InferenceTask(FrameTaskSupportMixin, BaseTask):
         start = time.perf_counter()
         phase = self._resolve_phase(context)
         camera_id = context.config.camera.camera_id if context and context.config and context.config.camera else "unknown"
-        outcome = self._engine.process(
-            frame,
-            phase=phase,
-            metadata={"phase": phase, "camera_id": camera_id},
-        )
+        try:
+            outcome = self._engine.process(
+                frame,
+                phase=phase,
+                metadata={"phase": phase, "camera_id": camera_id},
+            )
+        except Exception as exc:
+            raise_if_cuda_unrecoverable(exc)
+            raise
         detections = outcome.detections
         elapsed_ms = (time.perf_counter() - start) * 1000.0
         actual_inference = bool(outcome.models_run)

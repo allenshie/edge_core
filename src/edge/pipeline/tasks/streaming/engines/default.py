@@ -27,6 +27,12 @@ from .policy import (
 LOGGER = logging.getLogger(__name__)
 
 
+def _skipped(status: StreamingStatus, reason: str) -> StreamingStatus:
+    status.result = "skipped"
+    status.reason = reason
+    return status
+
+
 class DefaultStreamingEngine(BaseStreamingEngine):
     def __init__(self, context: TaskContext | None = None, *, start_output_loop: bool = True) -> None:
         super().__init__(context)
@@ -91,18 +97,18 @@ class DefaultStreamingEngine(BaseStreamingEngine):
         if not should_stream:
             deactivate_stream(self, phase, reason="phase_disabled")
             log_health(self, force=False, phase=phase, should_stream=False)
-            return build_status(self, phase=phase, should_stream=False, now=now)
+            return _skipped(build_status(self, phase=phase, should_stream=False, now=now), "phase_disabled")
 
         if not activate_stream(self, phase):
             log_health(self, force=True, phase=phase, should_stream=True)
-            return build_status(self, phase=phase, should_stream=True, now=now)
+            return _skipped(build_status(self, phase=phase, should_stream=True, now=now), "stream_unavailable")
 
         if frame is None:
             self._last_error = "decoded_frame missing"
             if self._last_frame_ts and (now - self._last_frame_ts) >= self._idle_timeout_seconds:
                 deactivate_stream(self, phase, reason="no_frame_timeout")
             log_health(self, force=False, phase=phase, should_stream=True)
-            return build_status(self, phase=phase, should_stream=True, now=now)
+            return _skipped(build_status(self, phase=phase, should_stream=True, now=now), "no_frame")
 
         # task 只負責更新最新畫面與最新 detections；
         # 真正的固定節拍與丟幀 / 重複幀決策交給 _output_loop。

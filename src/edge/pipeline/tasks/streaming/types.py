@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Sequence
 
+from smart_workflow import EngineResult
+
 from edge.schema import EdgeDetection, FrameMeta
 
 
@@ -17,7 +19,12 @@ class StreamPacket:
 
 
 @dataclass
-class StreamingStatus:
+class StreamingStatus(EngineResult):
+    """``result``：畫面已交給輸出執行緒為 ``success``；其他（不在推流時段、沒有畫面、無法啟用）為 ``skipped``。
+
+    ``to_dict()`` 不包含 ``result``／``reason``／``message``，維持原本的內容。
+    """
+
     # 單一 streaming thread 版本不再使用 queue；保留欄位僅為了 summary 相容，固定回傳 0。
     queue_size: int
     dropped_frames: int

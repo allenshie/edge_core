@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List
 
-from smart_workflow import TaskContext, TaskError
+from smart_workflow import EngineResult, TaskContext, TaskError
 from ultralytics import YOLO
 
 from edge.config import ModelConfig
@@ -19,8 +19,11 @@ PROJECT_ROOT = PACKAGE_ROOT.parent
 
 
 @dataclass
-class InferenceOutcome:
-    """Standardized inference output returned by engines."""
+class InferenceOutcome(EngineResult):
+    """Standardized inference output returned by engines.
+
+    ``result``：推理完成（包括沒有偵測到物件）為 ``success``；排程這個時段不推理為 ``skipped``。
+    """
 
     detections: List[EdgeDetection]
     models_run: List[str] = field(default_factory=list)
@@ -74,7 +77,7 @@ class DefaultInferenceEngine(BaseInferenceEngine):
         _ = (phase, metadata)
         if frame is None:
             LOGGER.warning("沒有待推理的 frame，略過")
-            return InferenceOutcome(detections=[])
+            return InferenceOutcome(detections=[], result="skipped", reason="no_frame")
         self._ensure_model()
         model_cfg = self._model_config
         if model_cfg is None:

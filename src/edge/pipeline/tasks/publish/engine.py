@@ -9,21 +9,28 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from smart_messaging_core import MessagingClient
-from smart_workflow import TaskContext
+from smart_workflow import EngineResult, TaskContext
 
 from edge.messaging import EDGE_EVENTS_ROUTE, MESSAGING_CLIENT_RESOURCE, MessagingClientProvider
 from edge.runtime.shutdown_summary import cleanup_record
 from edge.schema import EdgeDetection, EdgeEvent, FrameMeta
 
 LOGGER = logging.getLogger(__name__)
+PUBLISH_FAILED_REASON = "publish_failed"
 
 
 @dataclass
-class PublishOutcome:
-    """標準化的發布結果。"""
+class PublishOutcome(EngineResult):
+    """標準化的發布結果。``status`` 仍是 HTTP 代碼；發布失敗時 ``result="failed"``、``reason="publish_failed"``。"""
 
     published: int
     status: int | None
+
+
+def _outcome(published: int, status: int | None) -> PublishOutcome:
+    if status is None:
+        return PublishOutcome(published=published, status=None, result="failed", reason=PUBLISH_FAILED_REASON)
+    return PublishOutcome(published=published, status=status)
 
 
 class BasePublishEngine:
@@ -96,7 +103,7 @@ class DefaultPublishEngine(BasePublishEngine):
         except urllib.error.URLError as exc:
             LOGGER.debug("無法呼叫整合端 API (%s)：%s", url, exc)
             status = None
-        return PublishOutcome(published=len(detections), status=status)
+        return _outcome(len(detections), status)
 
 
 class MessagingPublishEngine(BasePublishEngine):
@@ -120,7 +127,7 @@ class MessagingPublishEngine(BasePublishEngine):
         payload = event.to_dict()
         ok = self._client.publish(EDGE_EVENTS_ROUTE, payload)
         status = 200 if ok else None
-        return PublishOutcome(published=len(detections), status=status)
+        return _outcome(len(detections), status)
 
     def _resolve_client(self, context: TaskContext | None) -> tuple[MessagingClient, bool]:
         if context is not None:

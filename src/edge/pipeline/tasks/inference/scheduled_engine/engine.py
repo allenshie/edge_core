@@ -70,7 +70,7 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
         tasks = self._tasks_by_phase.get(phase)
         if tasks is None:
             LOGGER.warning("no scheduled tasks for phase=%s", phase)
-            return InferenceOutcome(detections=[])
+            return InferenceOutcome(detections=[], result="skipped", reason="phase_disabled")
         if phase != self._active_phase:
             LOGGER.info("phase changed: %s -> %s", self._active_phase, phase)
             self._reset_phase_state(tasks)
@@ -142,6 +142,14 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
             self._update_forklift_activity(task.name, task_results, now)
         if executed or reused:
             LOGGER.debug("scheduled tasks (phase=%s): run=%s reuse=%s", phase, executed, reused)
+        if not tasks:
+            return InferenceOutcome(
+                detections=detections,
+                models_run=executed,
+                models_reuse=reused,
+                result="skipped",
+                reason="phase_disabled",
+            )
         return InferenceOutcome(detections=detections, models_run=executed, models_reuse=reused)
 
     # --- schedule helpers -------------------------------------------------
