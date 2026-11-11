@@ -152,6 +152,10 @@ class ScheduledInferenceEngine(BaseInferenceEngine):
             )
         return InferenceOutcome(detections=detections, models_run=executed, models_reuse=reused)
 
+    def has_work_for(self, phase: str) -> bool:
+        """排程這個時段是否有推理任務。"""
+        return bool(self._tasks_by_phase.get(phase))
+
     # --- schedule helpers -------------------------------------------------
 
     def _resolve_resource_root(self) -> Path:

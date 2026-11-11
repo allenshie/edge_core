@@ -48,6 +48,7 @@ class BaseIngestionEngine(IngestionStatusMixin):
         self._reconnect_backoff_s = 0.0
         self._latest_frame: Any = None
         self._latest_capture_ts: datetime | None = None
+        self._latest_capture_monotonic: float | None = None
         self._latest_frame_seq: int = 0
         self._last_error: str | None = None
         self._health = IngestionHealthTracker(source_label=self.source_label)
@@ -165,7 +166,9 @@ class BaseIngestionEngine(IngestionStatusMixin):
         if not self._wait_for_frame():
             detail = f"：{self._last_error}" if self._last_error else ""
             raise TaskError(f"{self.source_label} 無法取得影格{detail}")
-        frame, capture_ts, frame_seq = self._snapshot_latest_frame()
+        with self._frame_lock:
+            frame, capture_ts, frame_seq = self._latest_frame, self._latest_capture_ts, self._latest_frame_seq
+            capture_monotonic = self._latest_capture_monotonic
         if frame is None:
             raise TaskError(f"{self.source_label} 無法取得影格")
         if capture_ts is None:
@@ -175,6 +178,8 @@ class BaseIngestionEngine(IngestionStatusMixin):
             "source": self.source_label,
             "capture_ts": capture_ts,
             "frame_seq": frame_seq,
+            # 只供健康回報計算 capture_age_ms；IngestionTask 的回傳 payload 不含它。
+            "capture_monotonic": capture_monotonic,
         }
 
     # ------------------------------------------------------------------ subclass hooks
@@ -326,6 +331,7 @@ class BaseIngestionEngine(IngestionStatusMixin):
             self._latest_frame_seq += 1
             self._latest_frame = frame.image
             self._latest_capture_ts = capture_ts
+            self._latest_capture_monotonic = time.monotonic()
             self._last_error = None
             self._reconnect_backoff_s = 0.0
             self._health.mark_frame_success()

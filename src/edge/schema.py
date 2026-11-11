@@ -13,6 +13,8 @@ class FrameMeta:
     session_id: str
     frame_seq: int
     capture_ts: datetime
+    # 讀到畫面時的 monotonic 時間，只供健康回報計算 capture_age_ms；不送給 App，也不參與比較。
+    capture_monotonic: float | None = field(default=None, compare=False)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

@@ -14,11 +14,13 @@ from edge.runtime.rate_meter import RateMeter
 from edge.runtime.task_health import TaskHealthReporter
 from edge.schema import FrameMeta, StageStats
 
+from .capture_age import CaptureAgeWindow
 from .engine import BasePublishEngine, MessagingPublishEngine
 
 
 class PublishResultTask(FrameTaskSupportMixin, BaseTask):
     name = "edge-publish"
+    health_node = "publish"
 
     def __init__(self, context: TaskContext | None = None) -> None:
         self._enabled = self._resolve_enabled(context)
@@ -29,6 +31,7 @@ class PublishResultTask(FrameTaskSupportMixin, BaseTask):
         self._publish_latency = DurationMeter()
         self._publish_rate = RateMeter()
         self._health = TaskHealthReporter(self._stats)
+        self._capture_age = CaptureAgeWindow()
         if not self._enabled:
             self._health.report_execution(
                 context,
@@ -168,7 +171,30 @@ class PublishResultTask(FrameTaskSupportMixin, BaseTask):
             stale_threshold_seconds=runtime.stale_threshold_seconds,
             report_interval_seconds=runtime.report_interval_seconds,
         )
-        return self._build_task_result({"published": outcome.published, "status": outcome.status}, frame_meta)
+        result, reason, message = self._engine_result(outcome)
+        if result == "success":
+            self._set_capture_age_metrics(context, frame_meta)
+        return self._build_task_result(
+            {"published": outcome.published, "status": outcome.status},
+            frame_meta,
+            status=result,
+            reason=reason,
+            message=message,
+        )
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    def _set_capture_age_metrics(self, context: TaskContext, frame_meta: FrameMeta | None) -> None:
+        captured = frame_meta.capture_monotonic if isinstance(frame_meta, FrameMeta) else None
+        if captured is None:
+            return
+        now = context.health.clock()
+        age_ms = max(0.0, (now - captured) * 1000.0)
+        age_max = self._capture_age.add(age_ms, now=now, window_s=self._health_report_interval(context))
+        self.set_metric("capture_age_ms", age_ms)
+        self.set_metric("capture_age_ms_max", age_max)
 
     def snapshot_health(self, context: TaskContext | None = None) -> dict:
         _ = context

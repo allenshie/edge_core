@@ -125,6 +125,9 @@ class DefaultStreamingEngine(BaseStreamingEngine):
         log_health(self, force=False, phase=phase, should_stream=True)
         return build_status(self, phase=phase, should_stream=True, now=now)
 
+    def wants_stream_for(self, phase: str) -> bool:
+        return should_stream_for_phase(self._enabled, self._streaming_enabled_by_phase, phase)
+
     def close(self) -> list[dict[str, Any]]:
         records = super().close()
         ffmpeg_alive_before = self._ffmpeg.is_alive()

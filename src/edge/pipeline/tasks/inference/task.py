@@ -20,6 +20,7 @@ from .errors import raise_if_cuda_unrecoverable
 
 class InferenceTask(FrameTaskSupportMixin, BaseTask):
     name = "edge-inference"
+    health_node = "infer"
 
     def __init__(self, context: TaskContext | None = None) -> None:
         self._engine = self._load_engine(context)
@@ -115,7 +116,20 @@ class InferenceTask(FrameTaskSupportMixin, BaseTask):
             report_interval_seconds=runtime.report_interval_seconds,
             stale_threshold_seconds=runtime.stale_threshold_seconds,
         )
-        return self._build_task_result({"detections": detections}, frame_meta)
+        result, reason, message = self._engine_result(outcome)
+        if result == "success":
+            self.set_metric("detections", len(detections))
+        return self._build_task_result(
+            {"detections": detections}, frame_meta, status=result, reason=reason, message=message
+        )
+
+    @property
+    def engine(self) -> BaseInferenceEngine:
+        return self._engine
+
+    def current_phase(self, context: TaskContext) -> str:
+        """目前的時段，解析方式和推理時相同；供健康架構的 enabled 判斷使用。"""
+        return self._resolve_phase(context)
 
     def _resolve_phase(self, context: TaskContext) -> str:
         phase_resource_name = self._resolve_phase_resource_name(context)

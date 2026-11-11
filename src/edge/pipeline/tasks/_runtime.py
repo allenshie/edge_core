@@ -46,11 +46,27 @@ class FrameTaskSupportMixin:
         )
 
     @staticmethod
-    def _build_task_result(payload: Mapping[str, Any], frame_meta: FrameMeta | None) -> TaskResult:
+    def _build_task_result(
+        payload: Mapping[str, Any],
+        frame_meta: FrameMeta | None,
+        *,
+        status: str = "success",
+        reason: str | None = None,
+        message: str | None = None,
+    ) -> TaskResult:
         result = dict(payload)
         if frame_meta is not None:
             result["frame_meta"] = frame_meta.to_dict()
-        return TaskResult(payload=result)
+        return TaskResult(status=status, payload=result, reason=reason, message=message)
+
+    @staticmethod
+    def _engine_result(outcome: Any) -> tuple[str, str | None, str | None]:
+        """取出 Engine 結果的 result／reason／message；自訂 Engine 沒有這些欄位時視為 success。"""
+        return (
+            getattr(outcome, "result", None) or "success",
+            getattr(outcome, "reason", None),
+            getattr(outcome, "message", None),
+        )
 
     @staticmethod
     def _record_success(
@@ -100,4 +116,4 @@ class FrameTaskSupportMixin:
         )
         for key, value in (skipped_resources or {}).items():
             context.set_resource(key, value)
-        return self._build_task_result(payload, frame_meta)
+        return self._build_task_result(payload, frame_meta, status="skipped", reason=reason)

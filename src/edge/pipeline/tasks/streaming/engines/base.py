@@ -74,6 +74,11 @@ class BaseStreamingEngine(StreamingStatusMixin, ABC):
             getattr(overlay_cfg, "detection_color_bgr", (0, 255, 0)) if overlay_cfg is not None else (0, 255, 0)
         )
 
+    def wants_stream_for(self, phase: str) -> bool:
+        """這個時段是否該推流；供健康架構判斷 stream 節點是否啟用。子類別依排程覆寫。"""
+        _ = phase
+        return True
+
     def begin_shutdown(self) -> None:
         self._stop_event.set()
 

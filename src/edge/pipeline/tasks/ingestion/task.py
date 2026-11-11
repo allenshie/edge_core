@@ -34,6 +34,7 @@ ENGINE_BY_MODE: dict[str, Type[BaseIngestionEngine]] = {
 
 class IngestionTask(FrameTaskSupportMixin, BaseTask):
     name = "edge-ingestion"
+    health_node = "ingest"
 
     def __init__(self, context: TaskContext | None = None) -> None:
         self._engine: BaseIngestionEngine | None = None
@@ -47,6 +48,10 @@ class IngestionTask(FrameTaskSupportMixin, BaseTask):
         if context is not None:
             self._mode = self._resolve_mode(context)
             self._engine = self._load_engine(context, self._mode)
+
+    @property
+    def engine(self) -> BaseIngestionEngine | None:
+        return self._engine
 
     @property
     def source_label(self) -> str:
@@ -133,10 +138,12 @@ class IngestionTask(FrameTaskSupportMixin, BaseTask):
         frame_seq = payload.get("frame_seq")
         if not isinstance(frame_seq, int) or frame_seq <= 0:
             frame_seq = 1
+        capture_monotonic = payload.get("capture_monotonic")
         return FrameMeta(
             session_id=self._ensure_session_id(),
             frame_seq=frame_seq,
             capture_ts=capture_ts,
+            capture_monotonic=float(capture_monotonic) if isinstance(capture_monotonic, (int, float)) else None,
         )
 
     def _process_ingestion(
@@ -168,7 +175,13 @@ class IngestionTask(FrameTaskSupportMixin, BaseTask):
             capture_fps=capture_fps,
         )
         self._report_ingestion(context, evaluation)
-        return self._build_task_result(self._build_ingestion_payload(payload, frame_meta, is_new_frame), frame_meta)
+        # 只有新畫面才算成功；沒有新畫面時這一輪照常進行，健康記錄為 skipped。
+        return self._build_task_result(
+            self._build_ingestion_payload(payload, frame_meta, is_new_frame),
+            frame_meta,
+            status="success" if is_new_frame else "skipped",
+            reason=None if is_new_frame else "no_new_frame",
+        )
 
     def _is_new_frame(self, frame_meta: FrameMeta) -> bool:
         previous_frame_meta = self._last_frame_meta
@@ -263,6 +276,7 @@ class IngestionTask(FrameTaskSupportMixin, BaseTask):
     ) -> dict[str, Any]:
         result = dict(payload)
         result.pop("frame", None)
+        result.pop("capture_monotonic", None)
         result["frame_meta"] = frame_meta.to_dict()
         result["is_new_frame"] = is_new_frame
         return result

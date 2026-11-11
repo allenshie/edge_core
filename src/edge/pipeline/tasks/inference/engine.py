@@ -45,6 +45,11 @@ class BaseInferenceEngine:
     ) -> InferenceOutcome:
         raise NotImplementedError
 
+    def has_work_for(self, phase: str) -> bool:
+        """這個時段是否會推理；供健康架構判斷 infer 節點是否啟用。自訂 Engine 預設為 True。"""
+        _ = phase
+        return True
+
     def close(self) -> list[dict[str, Any]]:
         return [
             cleanup_record(

@@ -18,6 +18,7 @@ from .types import StreamingStatus
 
 class StreamingTask(FrameTaskSupportMixin, BaseTask):
     name = "edge-streaming"
+    health_node = "stream"
 
     def __init__(self, context: TaskContext | None = None) -> None:
         self._enabled = self._resolve_enabled(context)
@@ -131,7 +132,26 @@ class StreamingTask(FrameTaskSupportMixin, BaseTask):
             report_interval_seconds=runtime.report_interval_seconds,
             health_threshold_seconds=runtime.stale_threshold_seconds,
         )
-        return self._build_task_result({"streaming": status.to_dict()}, frame_meta)
+        if runtime.is_new_frame is False:
+            # 沒有新畫面時照舊呼叫 push()（業務行為不變），健康記錄為 skipped。
+            result, reason, message = "skipped", "stale_frame", None
+        else:
+            result, reason, message = self._engine_result(status)
+        return self._build_task_result(
+            {"streaming": status.to_dict()}, frame_meta, status=result, reason=reason, message=message
+        )
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    @property
+    def engine(self) -> BaseStreamingEngine | None:
+        return self._engine
+
+    def current_phase(self, context: TaskContext) -> str:
+        """目前的時段，解析方式和推流時相同；供健康架構的 enabled 判斷使用。"""
+        return self._resolve_phase(context)
 
     def _resolve_phase(self, context: TaskContext) -> str:
         phase_resource_name = self._resolve_phase_resource_name(context)
