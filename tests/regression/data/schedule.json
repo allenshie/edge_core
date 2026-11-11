@@ -1,0 +1,13 @@
+{
+  "alpha": {
+    "tasks": [
+      {"name": "detector", "mode": "every_frame", "model_class": "business_fakes:FakeDetector"},
+      {"name": "classifier", "mode": "interval", "interval_seconds": 3600, "model_class": "business_fakes:FakeClassifier"}
+    ]
+  },
+  "beta": {
+    "tasks": [
+      {"name": "detector", "mode": "every_frame", "model_class": "business_fakes:FakeDetector"}
+    ]
+  }
+}

@@ -1,0 +1,603 @@
+{
+  "recorded_with": {
+    "edge_core_commit": "5422b1e",
+    "smart_workflow": "0.1.0 (b5ef4c4)",
+    "python": "3.10.16"
+  },
+  "result": {
+    "routes": {
+      "edge_events": [
+        "mqtt",
+        "edge/cam-regress/events"
+      ],
+      "phase_updates": [
+        "mqtt",
+        "integration/phase"
+      ]
+    },
+    "mqtt": {
+      "host": "broker.invalid",
+      "port": 18830,
+      "qos": 1,
+      "retain": false,
+      "client_id": null,
+      "auth_enabled": false,
+      "username": null,
+      "password": null
+    },
+    "publishes": [
+      {
+        "fetch_index": 1,
+        "route": "edge_events",
+        "payload": {
+          "camera_id": "cam-regress",
+          "session_id": "<session-1>",
+          "frame_seq": 1,
+          "capture_ts": "2026-01-01T00:00:01+00:00",
+          "timestamp": "<timestamp>",
+          "detections": [
+            {
+              "track_id": 10,
+              "class_name": "car",
+              "bbox": [
+                10,
+                11,
+                20,
+                21
+              ],
+              "bbox_confidence_score": 0.9,
+              "score": 0.9,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            },
+            {
+              "track_id": 11,
+              "class_name": "person",
+              "bbox": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "bbox_confidence_score": 0.75,
+              "score": 0.75,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            },
+            {
+              "track_id": null,
+              "class_name": "signal",
+              "bbox": [
+                0,
+                0,
+                1,
+                1
+              ],
+              "bbox_confidence_score": 1.0,
+              "score": null,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": "red",
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            }
+          ],
+          "models": [
+            "detector",
+            "classifier"
+          ]
+        }
+      },
+      {
+        "fetch_index": 2,
+        "route": "edge_events",
+        "payload": {
+          "camera_id": "cam-regress",
+          "session_id": "<session-1>",
+          "frame_seq": 2,
+          "capture_ts": "2026-01-01T00:00:02+00:00",
+          "timestamp": "<timestamp>",
+          "detections": [
+            {
+              "track_id": 20,
+              "class_name": "car",
+              "bbox": [
+                20,
+                21,
+                30,
+                31
+              ],
+              "bbox_confidence_score": 0.9,
+              "score": 0.9,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            },
+            {
+              "track_id": 21,
+              "class_name": "person",
+              "bbox": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "bbox_confidence_score": 0.75,
+              "score": 0.75,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            },
+            {
+              "track_id": null,
+              "class_name": "signal",
+              "bbox": [
+                0,
+                0,
+                1,
+                1
+              ],
+              "bbox_confidence_score": 1.0,
+              "score": null,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": "red",
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            }
+          ],
+          "models": [
+            "detector",
+            "classifier"
+          ]
+        }
+      },
+      {
+        "fetch_index": 4,
+        "route": "edge_events",
+        "payload": {
+          "camera_id": "cam-regress",
+          "session_id": "<session-1>",
+          "frame_seq": 3,
+          "capture_ts": "2026-01-01T00:00:03+00:00",
+          "timestamp": "<timestamp>",
+          "detections": [
+            {
+              "track_id": null,
+              "class_name": "signal",
+              "bbox": [
+                0,
+                0,
+                1,
+                1
+              ],
+              "bbox_confidence_score": 1.0,
+              "score": null,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": "red",
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            }
+          ],
+          "models": [
+            "detector",
+            "classifier"
+          ]
+        }
+      },
+      {
+        "fetch_index": 5,
+        "route": "edge_events",
+        "payload": {
+          "camera_id": "cam-regress",
+          "session_id": "<session-1>",
+          "frame_seq": 4,
+          "capture_ts": "2026-01-01T00:00:04+00:00",
+          "timestamp": "<timestamp>",
+          "detections": [
+            {
+              "track_id": 40,
+              "class_name": "car",
+              "bbox": [
+                40,
+                41,
+                50,
+                51
+              ],
+              "bbox_confidence_score": 0.9,
+              "score": 0.9,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            },
+            {
+              "track_id": 41,
+              "class_name": "person",
+              "bbox": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "bbox_confidence_score": 0.75,
+              "score": 0.75,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            }
+          ],
+          "models": [
+            "detector"
+          ]
+        }
+      },
+      {
+        "fetch_index": 6,
+        "route": "edge_events",
+        "payload": {
+          "camera_id": "cam-regress",
+          "session_id": "<session-1>",
+          "frame_seq": 5,
+          "capture_ts": "2026-01-01T00:00:05+00:00",
+          "timestamp": "<timestamp>",
+          "detections": [
+            {
+              "track_id": 50,
+              "class_name": "car",
+              "bbox": [
+                50,
+                51,
+                60,
+                61
+              ],
+              "bbox_confidence_score": 0.9,
+              "score": 0.9,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            },
+            {
+              "track_id": 51,
+              "class_name": "person",
+              "bbox": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "bbox_confidence_score": 0.75,
+              "score": 0.75,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            }
+          ],
+          "models": [
+            "detector"
+          ]
+        }
+      },
+      {
+        "fetch_index": 8,
+        "route": "edge_events",
+        "payload": {
+          "camera_id": "cam-regress",
+          "session_id": "<session-1>",
+          "frame_seq": 6,
+          "capture_ts": "2026-01-01T00:00:06+00:00",
+          "timestamp": "<timestamp>",
+          "detections": [],
+          "models": []
+        }
+      },
+      {
+        "fetch_index": 9,
+        "route": "edge_events",
+        "payload": {
+          "camera_id": "cam-regress",
+          "session_id": "<session-1>",
+          "frame_seq": 7,
+          "capture_ts": "2026-01-01T00:00:07+00:00",
+          "timestamp": "<timestamp>",
+          "detections": [],
+          "models": []
+        }
+      },
+      {
+        "fetch_index": 10,
+        "route": "edge_events",
+        "payload": {
+          "camera_id": "cam-regress",
+          "session_id": "<session-1>",
+          "frame_seq": 8,
+          "capture_ts": "2026-01-01T00:00:08+00:00",
+          "timestamp": "<timestamp>",
+          "detections": [
+            {
+              "track_id": 80,
+              "class_name": "car",
+              "bbox": [
+                80,
+                81,
+                90,
+                91
+              ],
+              "bbox_confidence_score": 0.9,
+              "score": 0.9,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            },
+            {
+              "track_id": 81,
+              "class_name": "person",
+              "bbox": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "bbox_confidence_score": 0.75,
+              "score": 0.75,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            },
+            {
+              "track_id": null,
+              "class_name": "signal",
+              "bbox": [
+                0,
+                0,
+                1,
+                1
+              ],
+              "bbox_confidence_score": 1.0,
+              "score": null,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": "green",
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            }
+          ],
+          "models": [
+            "detector",
+            "classifier"
+          ]
+        }
+      },
+      {
+        "fetch_index": 11,
+        "route": "edge_events",
+        "payload": {
+          "camera_id": "cam-regress",
+          "session_id": "<session-1>",
+          "frame_seq": 9,
+          "capture_ts": "2026-01-01T00:00:09+00:00",
+          "timestamp": "<timestamp>",
+          "detections": [
+            {
+              "track_id": null,
+              "class_name": "signal",
+              "bbox": [
+                0,
+                0,
+                1,
+                1
+              ],
+              "bbox_confidence_score": 1.0,
+              "score": null,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": "green",
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            }
+          ],
+          "models": [
+            "detector",
+            "classifier"
+          ]
+        }
+      },
+      {
+        "fetch_index": 12,
+        "route": "edge_events",
+        "payload": {
+          "camera_id": "cam-regress",
+          "session_id": "<session-1>",
+          "frame_seq": 10,
+          "capture_ts": "2026-01-01T00:00:10+00:00",
+          "timestamp": "<timestamp>",
+          "detections": [
+            {
+              "track_id": 100,
+              "class_name": "car",
+              "bbox": [
+                100,
+                101,
+                110,
+                111
+              ],
+              "bbox_confidence_score": 0.9,
+              "score": 0.9,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            },
+            {
+              "track_id": 101,
+              "class_name": "person",
+              "bbox": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "bbox_confidence_score": 0.75,
+              "score": 0.75,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": null,
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            },
+            {
+              "track_id": null,
+              "class_name": "signal",
+              "bbox": [
+                0,
+                0,
+                1,
+                1
+              ],
+              "bbox_confidence_score": 1.0,
+              "score": null,
+              "polygon": [],
+              "polygon_confidence_score": 0.0,
+              "keypoint": [],
+              "keypoint_confidence_score": 0.0,
+              "state": "green",
+              "keypoints": null,
+              "category": "",
+              "extra": {}
+            }
+          ],
+          "models": [
+            "detector",
+            "classifier"
+          ]
+        }
+      }
+    ],
+    "model_calls": [
+      [
+        "detector",
+        10,
+        "alpha"
+      ],
+      [
+        "classifier",
+        10,
+        "alpha"
+      ],
+      [
+        "detector",
+        20,
+        "alpha"
+      ],
+      [
+        "detector",
+        30,
+        "alpha"
+      ],
+      [
+        "detector",
+        40,
+        "beta"
+      ],
+      [
+        "detector",
+        50,
+        "beta"
+      ],
+      [
+        "detector",
+        80,
+        "alpha"
+      ],
+      [
+        "classifier",
+        80,
+        "alpha"
+      ],
+      [
+        "detector",
+        90,
+        "alpha"
+      ],
+      [
+        "detector",
+        100,
+        "alpha"
+      ]
+    ]
+  }
+}
