@@ -328,9 +328,6 @@ class EdgeConfig:
     health_report_interval_seconds: float = field(
         default_factory=lambda: float(os.environ.get("EDGE_HEALTH_REPORT_INTERVAL_SEC", "5"))
     )
-    health_stale_threshold_seconds: float = field(
-        default_factory=lambda: float(os.environ.get("EDGE_HEALTH_STALE_THRESHOLD_SEC", "5"))
-    )
     monitor_endpoint: str | None = field(default_factory=lambda: os.environ.get("MONITOR_ENDPOINT"))
     monitor_service_name: str | None = field(
         default_factory=lambda: os.environ.get("EDGE_MONITOR_SERVICE_NAME") or os.environ.get("MONITOR_SERVICE_NAME")

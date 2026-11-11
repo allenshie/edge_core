@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Iterable, List, cast
+from typing import Any, Callable, Iterable, List
 
 from smart_workflow import BaseTask, TaskContext, TaskResult
 
@@ -10,9 +10,6 @@ from edge.pipeline.tasks.inference import InferenceTask
 from edge.pipeline.tasks.ingestion import IngestionTask
 from edge.pipeline.tasks.publish import PublishResultTask
 from edge.pipeline.tasks.streaming import StreamingTask
-from edge.runtime.health_contract import HealthSnapshotProvider, HealthSummaryMetrics
-from edge.runtime.pipeline_summary import build_pipeline_summary
-from edge.runtime.rate_meter import RateMeter
 from edge.runtime.shutdown_summary import (
     append_shutdown_records,
     cleanup_record,
@@ -64,23 +61,6 @@ class EdgePipeline:
             if isinstance(node, task_type):
                 return node
         return None
-
-    def health_rows(self, context: TaskContext) -> list[HealthSummaryMetrics]:
-        rows: list[HealthSummaryMetrics] = []
-        for node in self._nodes:
-            provider: HealthSnapshotProvider | None = node if isinstance(node, HealthSnapshotProvider) else None
-            if provider is not None:
-                snapshot = provider.snapshot_health(context)
-            else:
-                health_snapshot = getattr(node, "snapshot_health", None)
-                if not callable(health_snapshot):
-                    health_snapshot = getattr(node, "health_snapshot", None)
-                if not callable(health_snapshot):
-                    continue
-                snapshot = health_snapshot(context)
-            if snapshot:
-                rows.append(cast(HealthSummaryMetrics, dict(snapshot)))
-        return rows
 
     def begin_shutdown(self) -> None:
         for node in self._nodes:
@@ -152,30 +132,11 @@ class PipelineScheduler(BaseTask):
 
     name = "edge-pipeline-scheduler"
 
-    def __init__(self) -> None:
-        self._last_pipeline_summary_log_ts = 0.0
-        self._pipeline_rate = RateMeter()
-        self._pipeline_latency = self._pipeline_rate
-
     def run(self, context: TaskContext) -> TaskResult:
         pipeline: EdgePipeline = context.require_resource("edge_pipeline")
         target_interval = self._get_target_interval(context)
-        report_interval = float(getattr(context.config, "health_report_interval_seconds", 5.0) or 5.0)
         start_time = time.monotonic()
-        pipeline_completed = False
-
-        context.monitor.heartbeat(phase="edge_pipeline")
-        try:
-            pipeline.execute(context)
-            pipeline_completed = True
-        finally:
-            if pipeline_completed:
-                is_new_frame = bool(context.get_resource("pipeline_frame_is_new"))
-                if is_new_frame:
-                    frame_meta = context.get_resource("frame_meta")
-                    frame_seq = getattr(frame_meta, "frame_seq", None) if frame_meta is not None else None
-                    self._pipeline_rate.mark(frame_seq=frame_seq)
-            self._emit_pipeline_summary(context, pipeline, report_interval_seconds=report_interval)
+        pipeline.execute(context)
 
         elapsed = time.monotonic() - start_time
         sleep_time = max(0.001, target_interval - elapsed) if target_interval else 0.0
@@ -186,19 +147,6 @@ class PipelineScheduler(BaseTask):
     def _get_target_interval(self, context: TaskContext) -> float | None:
         interval = getattr(context.config, "poll_interval", 0.0)
         return interval if interval and interval > 0 else None
-
-    def _emit_pipeline_summary(self, context: TaskContext, pipeline: EdgePipeline, *, report_interval_seconds: float) -> None:
-        now = time.monotonic()
-        if report_interval_seconds > 0 and self._last_pipeline_summary_log_ts > 0:
-            if (now - self._last_pipeline_summary_log_ts) < report_interval_seconds:
-                return
-        rows = pipeline.health_rows(context)
-        if not rows:
-            return
-        summary = build_pipeline_summary(rows, pipeline_fps=self._pipeline_rate.fps())
-        context.logger.info(summary)
-        self._last_pipeline_summary_log_ts = now
-        self._pipeline_rate.mark_reported()
 
     def close(self, context: TaskContext) -> None:
         pipeline: EdgePipeline | None = context.get_resource("edge_pipeline")

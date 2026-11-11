@@ -32,6 +32,8 @@ def _skipped(status: StreamingStatus, reason: str) -> StreamingStatus:
     return status
 
 
+STREAM_HEALTH_LOG_STALE_SECONDS = 5.0
+
 class DefaultStreamingEngine(BaseStreamingEngine):
     def __init__(self, context: TaskContext | None = None, *, start_output_loop: bool = True) -> None:
         super().__init__(context)
@@ -44,9 +46,8 @@ class DefaultStreamingEngine(BaseStreamingEngine):
         self._health_report_interval_seconds = float(
             getattr(context.config, "health_report_interval_seconds", 5.0) if context else 5.0
         )
-        self._health_stale_threshold_seconds = float(
-            getattr(context.config, "health_stale_threshold_seconds", 5.0) if context else 5.0
-        )
+        # debug log「streaming health」判斷 stale 的門檻；原本可用舊健康摘要的 env 設定（已移除），預設 5 秒。
+        self._health_stale_threshold_seconds = STREAM_HEALTH_LOG_STALE_SECONDS
 
         self._dropped_frames = 0
         self._processed_frames = 0
