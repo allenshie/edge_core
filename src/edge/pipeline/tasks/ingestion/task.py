@@ -1,6 +1,7 @@
 """Unified ingestion task with mode-based engine selection."""
 from __future__ import annotations
 
+import importlib
 import logging
 import time
 import uuid
@@ -59,10 +60,31 @@ class IngestionTask(FrameTaskSupportMixin, BaseTask):
         return (mode or "rtsp").strip().lower()
 
     def _load_engine(self, context: TaskContext, mode: str) -> BaseIngestionEngine:
+        engine_path = getattr(context.config, "ingestion_engine_class", None)
+        if engine_path:
+            custom_cls = self._import_engine(engine_path)
+            try:
+                return custom_cls(context=context)
+            except TypeError:
+                return custom_cls()
         engine_cls = ENGINE_BY_MODE.get(mode)
         if engine_cls is None:
             raise TaskError(f"不支援的 ingestion mode: {mode}")
         return engine_cls(context=context)
+
+    def _import_engine(self, path: str) -> Type[BaseIngestionEngine]:
+        """INGESTION_ENGINE_CLASS：寫法和其他 *_ENGINE_CLASS 相同，類別必須繼承 BaseIngestionEngine。"""
+        if ":" in path:
+            module_name, class_name = path.split(":", 1)
+        elif "." in path:
+            module_name, class_name = path.rsplit(".", 1)
+        else:
+            raise TaskError(f"無法解析 Ingestion Engine：{path}")
+        module = importlib.import_module(module_name)
+        engine_cls = getattr(module, class_name, None)
+        if not isinstance(engine_cls, type) or not issubclass(engine_cls, BaseIngestionEngine):
+            raise TaskError(f"{class_name} 必須繼承 BaseIngestionEngine")
+        return engine_cls
 
     def _ensure_session_id(self) -> str:
         if self._session_id:

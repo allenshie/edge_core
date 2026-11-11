@@ -42,6 +42,7 @@ class MessagingClientProvider:
             qos=mqtt_cfg.qos,
             retain=False,
             client_id=mqtt_cfg.client_id,
+            keepalive=mqtt_cfg.keepalive,
             auth_enabled=mqtt_cfg.auth_enabled,
             username=mqtt_cfg.username,
             password=mqtt_cfg.password,
