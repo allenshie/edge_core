@@ -142,7 +142,7 @@ startupProbe 的總時限為 300 秒（`failureThreshold: 150` × `periodSeconds
 | `stream` | `ffmpeg_restarts` | 啟動以來推流 ffmpeg 因寫入失敗而重新啟動的次數。 |
 | `stream` | `write_failures` | 啟動以來寫入 ffmpeg 失敗的次數。 |
 
-錯誤與異常以各節點的錯誤視窗與燈號呈現，沒有另外的累計次數。
+一般的警告與錯誤以各節點的錯誤視窗與燈號呈現；累計次數只有上表列出的計數器。
 
 ### Log
 
