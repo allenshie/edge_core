@@ -1,4 +1,4 @@
-"""spec-edge.md 第 2 節：架構定義。"""
+"""健康架構定義：節點、lane、上游、依賴與啟用條件。"""
 from __future__ import annotations
 
 import logging

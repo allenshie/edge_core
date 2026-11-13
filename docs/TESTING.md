@@ -22,7 +22,7 @@
 ### 單元測試
 - Ingestion sources（`test_ingestion_sources.py`）：OpenCV 來源的開啟參數與 timeout、開啟失敗、讀取失敗與 EOF、影片 loop。需要真實影片的案例在找不到 `test_data/videos/` 時會略過。
 - Ingestion supervisor（`test_ingestion_supervisor.py`）：以假來源驗證 source 只在 worker thread 關閉、沒有新畫面時更換 worker、舊世代畫面被丟棄、退避加倍、卡住的 worker 達上限時 fatal、影片播完不重連。
-- Ingestion task（`test_ingestion_task.py`）：Task 不再重啟 engine、fatal 時標記 health state、file 模式端到端讀取。
+- Ingestion task（`test_ingestion_task.py`）：Task 不再重啟 engine、file 模式端到端讀取、找不到或無法開啟影片時的錯誤訊息。
 - `InferenceTask` 與 `PublishResultTask`：使用 mock 模型與 mock integration client，確認輸入/輸出與 TaskContext 資源更新正確。
 
 執行方式：

@@ -5,7 +5,7 @@
 - Ingestion 任務在初始化/斷線/EOF 時會留下詳細 log。
 - RTSP 重新連線等待秒數由 `EDGE_RTSP_RECONNECT` 控制。
 - `PipelineScheduler` 每圈會輸出實際耗時與 sleep 秒數，可搭配 `EDGE_LOG_LEVEL=DEBUG` 觀察節奏。
-- 若來源無法恢復，任務會拋 `TaskError`，WorkflowRunner 依 `EDGE_RETRY_BACKOFF` 重試並透過 Monitoring 回報。
+- 若來源無法恢復，任務會拋 `TaskError`，WorkflowRunner 依 `EDGE_RETRY_BACKOFF` 重試；失敗會記錄在健康回報的 `ingest` 節點（見 [HEALTH.md](HEALTH.md)）。
 
 ### Phase 切換與串流健康
 
@@ -63,7 +63,7 @@ EDGE_MATCHING_RESULT_RESOURCE_NAME=matching_result_snapshot
 ```bash
 cp env/.env.cam01.example env/.env.cam01
 cp env/.env.cam02.example env/.env.cam02
-# 調整 .env.camXX（MONITOR_ENDPOINT/INTEGRATION_API_BASE/RTSP URL、EDGE_PHASE_*、EDGE_EVENTS_* 等）
+# 調整 .env.camXX（INTEGRATION_API_BASE/RTSP URL、EDGE_PHASE_*、EDGE_EVENTS_* 等）
 
 set -a; source env/.env.cam01; set +a
 
@@ -71,7 +71,7 @@ docker compose up --build              # 只啟動 cam01
 docker compose --profile cam02 up -d   # 同時啟動 cam02 profile
 ```
 
-> 映像會在 `/svc/edge` 內執行 `python main.py`。請確認 runtime `.env` 內的 `MONITOR_ENDPOINT`、`INTEGRATION_API_BASE`、`EDGE_RTSP_URL`/`EDGE_FILE_PATH`、`EDGE_APP_INBOUND_BACKEND`、`EDGE_PHASE_*`、`EDGE_MATCHING_RESULT_*`、`EDGE_EVENTS_*` 指向容器可讀/可連線的來源。
+> 映像會在 `/svc/edge` 內執行 `python main.py`。請確認 runtime `.env` 內的 `INTEGRATION_API_BASE`、`EDGE_RTSP_URL`/`EDGE_FILE_PATH`、`EDGE_APP_INBOUND_BACKEND`、`EDGE_PHASE_*`、`EDGE_MATCHING_RESULT_*`、`EDGE_EVENTS_*` 指向容器可讀/可連線的來源。
 
 > 共用網路：`docker-compose.yml` 預設使用外部 network `smartware_net`。未建立時請先 `docker network create smartware_net`。
 

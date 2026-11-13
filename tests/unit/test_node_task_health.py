@@ -1,4 +1,4 @@
-"""spec-edge.md 第 4 節：NodeTask 的 health_node、結果對應與 metrics。"""
+"""NodeTask 的 health_node、結果對應與 metrics。"""
 from __future__ import annotations
 
 import logging

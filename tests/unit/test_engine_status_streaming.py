@@ -1,4 +1,4 @@
-"""spec-edge.md 2、3.2：BaseStreamingEngine 的背景狀態（stream-output）與 sink_connected()。"""
+"""BaseStreamingEngine 的背景狀態（stream-output 節點）與 sink_connected()。"""
 from __future__ import annotations
 
 import numpy as np

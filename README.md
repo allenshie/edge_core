@@ -7,6 +7,7 @@
 - 核心流程：`RTSP / MP4 / Camera -> IngestionTask -> InferenceTask -> StreamingTask -> PublishResultTask`
 - 支援 phase / schedule 驅動的推論與串流控制
 - 支援可選的 K8s health server
+- 健康回報（smart_health）：各節點的燈號與 `/status`，判斷為無法恢復時結束程式，交給 systemd 或 k8s 重啟（見 [docs/HEALTH.md](docs/HEALTH.md)）
 - 支援 MQTT / HTTP / file-based 的場域整合方式
 - 可由使用端專案提供自訂 model / engine / publish / streaming 類別
 
@@ -34,7 +35,7 @@ python main.py
 - [文件索引](docs/README.md)
 - [設計理念與 DeepStream 的關係](docs/EXPLANATION.md)
 - [環境變數](docs/ENV.md)
-- [健康檢查與 Kubernetes Probe](docs/HEALTH.md)
+- [健康檢查與健康回報](docs/HEALTH.md)
 - [部署與操作](docs/OPERATIONS.md)
 - [常見故障排查](docs/TROUBLESHOOTING.md)
 - [ScheduledInferenceEngine 使用說明](docs/SCHEDULED_INFERENCE.md)

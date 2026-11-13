@@ -1,4 +1,4 @@
-"""Edge 的健康架構定義（spec-edge.md 第 2 節）。
+"""Edge 的健康架構定義：節點、lane、上游與依賴（見 docs/HEALTH.md「節點」）。
 
 在程式啟動時、啟動任務之前建立。enabled 與依賴的 callable 從 context resource
 取得 Engine；Engine 還沒建立時 enabled 回傳 True、依賴回傳 None，任何例外也一樣處理，

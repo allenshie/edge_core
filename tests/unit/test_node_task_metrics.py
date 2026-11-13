@@ -1,4 +1,4 @@
-"""spec-edge.md 9.2：舊機制的資訊改用 smart_health metric 記錄（ingest、publish、stream）。"""
+"""Engine 的計數器與發布資訊以 smart_health metric 記錄（ingest、publish、stream）。"""
 from __future__ import annotations
 
 import logging

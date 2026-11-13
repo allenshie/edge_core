@@ -29,7 +29,7 @@ ENGINE_BY_MODE: dict[str, Type[BaseIngestionEngine]] = {
 }
 
 
-# metric 名稱 → Engine 屬性（spec-edge.md 9.2）
+# metric 名稱 → Engine 屬性（見 docs/HEALTH.md「Metrics」）
 INGEST_COUNTERS = {"reconnects": "reconnect_count", "read_failures": "read_failure_count"}
 
 

@@ -1,4 +1,4 @@
-"""spec-edge.md 第 8 節整合測試：用假的 Engine 跑 run_daemon（合併後的 runner、HealthMonitor、回報執行緒），
+"""健康回報的整合測試：用假的 Engine 跑 run_daemon（合併後的 runner、HealthMonitor、回報執行緒），
 驗證節點燈號與 exit_fn 的呼叫時機。不需要 GPU、相機或 broker。
 """
 from __future__ import annotations

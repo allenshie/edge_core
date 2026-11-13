@@ -1,4 +1,4 @@
-"""啟動與停止健康回報（spec-edge.md 第 5 節第 2～4 步）。
+"""啟動與停止健康回報：啟動時建立 HealthMonitor、StatusServer 與 HealthRuntime，結束時停止 StatusServer 與 HealthMonitor。
 
 EDGE_HEALTH_ENABLED=0 時什麼都不建立：沒有 HealthMonitor、沒有 StatusServer，
 TaskContext.health 維持 smart-workflow 的 no-op，行為和導入前相同。

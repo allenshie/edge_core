@@ -1,4 +1,4 @@
-"""spec-edge.md 1.1、8：導入健康回報前後，送給 messaging client 的 topic 與 payload 必須相同。"""
+"""業務輸出回歸：導入健康回報前後，送給 messaging client 的 topic 與 payload 必須相同（見本目錄的 README.md）。"""
 from __future__ import annotations
 
 import sys

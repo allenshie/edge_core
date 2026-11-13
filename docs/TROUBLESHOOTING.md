@@ -6,7 +6,7 @@
 
 1. 確認目前載入的是哪個 `.env` 檔。
 2. 確認每個 edge instance 都有獨立的 `EDGE_CAMERA_ID`。
-3. 確認 `EDGE_STREAMING_URL`、`EDGE_HTTP_LISTEN_PORT`、`EDGE_MONITOR_SERVICE_NAME` 沒有跟其他 instance 衝突。
+3. 確認 `EDGE_STREAMING_URL`、`EDGE_HTTP_LISTEN_PORT` 沒有跟其他 instance 衝突。
 4. 確認 RTSP / MP4 / camera source 可以直接讀取。
 5. 確認 MediaMTX、MQTT、integration API 等外部依賴都可連線。
 6. 確認權重、config、schedule 路徑在目前工作目錄下可讀。
@@ -49,7 +49,6 @@
 
 當多個 instance 同時跑時，通常需要額外檢查：
 
-- `EDGE_MONITOR_SERVICE_NAME`
 - `EDGE_HTTP_LISTEN_PORT`
 - `EDGE_STREAMING_URL`
 - `EDGE_PHASE_CHANNEL`

@@ -1,4 +1,4 @@
-"""健康回報的設定（spec-edge.md 第 6 節）。
+"""健康回報的設定（環境變數見 docs/ENV.md「smart_health 回報」）。
 
 `config.py` 已經很長，新設定集中在這裡；`EDGE_HEALTH_REPORT_INTERVAL_SEC` 沿用
 `EdgeConfig.health_report_interval_seconds`。

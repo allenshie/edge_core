@@ -87,8 +87,8 @@ EDGE_MATCHING_RESULT_RESOURCE_NAME=matching_result_snapshot
 | `EDGE_RTSP_RECONNECT` | `1` 秒 | RTSP 連線失敗後重新連線等待秒數。|
 | `EDGE_POLL_INTERVAL` | `5` 秒 | Workflow 迴圈等待秒數，也是 pipeline scheduler 的節拍控制。|
 | `INTEGRATION_API_BASE` | `http://localhost:9000` | 模擬整合端 API 伺服器。|
-| `MONITOR_ENDPOINT` | `http://localhost:9400` | monitoring sidecar base URL。|
-| `EDGE_MONITOR_SERVICE_NAME` | `edge-{EDGE_CAMERA_ID}` | 上報到 monitoring server 的服務名稱。|
+| `MONITOR_ENDPOINT` | `http://localhost:9400` | monitoring sidecar base URL。**已淘汰**：設定時啟動會記一次 WARNING（smart-workflow 0.2.0 的 `MonitoringClient`），請改用健康回報（見 [ENV.md 的「smart_health 回報」](ENV.md#smart_health-回報)）。|
+| `EDGE_MONITOR_SERVICE_NAME` | `edge-{EDGE_CAMERA_ID}` | 上報到 monitoring server 的服務名稱。只和已淘汰的 `MONITOR_ENDPOINT` 一起使用。|
 | `EDGE_LOG_LEVEL` | `INFO` | logging level，亦可透過 `LOG_LEVEL` 覆寫。|
 
 ### 設定注意事項

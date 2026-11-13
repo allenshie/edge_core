@@ -1,4 +1,4 @@
-"""spec-edge.md 第 6 節：健康回報的新設定。"""
+"""健康回報的設定（EDGE_HEALTH_* 等環境變數）。"""
 from __future__ import annotations
 
 import logging

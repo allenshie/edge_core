@@ -16,8 +16,8 @@
 | --- | --- | --- |
 | `EDGE_CAMERA_ID` | `cam01` | 邊緣節點識別。 |
 | `EDGE_LOG_LEVEL` | `INFO` | Log 等級。 |
-| `MONITOR_ENDPOINT` | `http://localhost:9400` | 監控服務 endpoint。**已淘汰**：設定時啟動會記一次 WARNING（smart-workflow 0.2.0 的 `MonitoringClient`），請改用下方「健康回報」。 |
-| `EDGE_MONITOR_SERVICE_NAME` | `edge-{EDGE_CAMERA_ID}` | 監控服務名稱。 |
+| `MONITOR_ENDPOINT` | `http://localhost:9400` | 監控服務 endpoint。**已淘汰**：設定時啟動會記一次 WARNING（smart-workflow 0.2.0 的 `MonitoringClient`），請改用下方「健康」一節的 [smart_health 回報](#smart_health-回報)。 |
+| `EDGE_MONITOR_SERVICE_NAME` | `edge-{EDGE_CAMERA_ID}` | 監控服務名稱。只和已淘汰的 `MONITOR_ENDPOINT` 一起使用。 |
 
 ## 取流設定
 
@@ -55,7 +55,7 @@
 | `EDGE_INGESTION_STALL_MIN_FRAMES` | `5` | 時間視窗內最少需要的畫面數。上游凍結但 TCP 連線還在時，每次 read timeout 仍會放出一張舊畫面，只看「最後一張畫面的時間」會一直被重置，所以改看視窗內的張數。設為 `1` 等於只看最後一張畫面。來源 fps 必須高於 `MIN_FRAMES / STALL_SECONDS`（預設 0.25 fps），否則會被誤判。 |
 | `EDGE_INGESTION_RECONNECT_MAX_SECONDS` | `30` | 重連退避的上限秒數。 |
 | `EDGE_INGESTION_WORKER_STOP_TIMEOUT_SECONDS` | `2` | 要求 worker 停止後等待的秒數；逾時仍未結束就列為卡住的 worker。 |
-| `EDGE_INGESTION_MAX_STUCK_WORKERS` | `3` | 卡住的 worker 達到這個數量時，ingestion 標記為 fatal，liveness 隨後失敗（見 [HEALTH.md](HEALTH.md#ingestion-fatal)）。 |
+| `EDGE_INGESTION_MAX_STUCK_WORKERS` | `3` | 卡住的 worker 達到這個數量時，ingestion 標記為 fatal，判斷為無法恢復（見 [HEALTH.md](HEALTH.md#ingestion-fatal)）。 |
 
 ## 推理與排程
 
@@ -97,28 +97,41 @@
 | `EDGE_POLL_INTERVAL` | `5` | workflow loop 間隔，也是 pipeline scheduler 的等待節拍；設為 `0` 時不額外 sleep，loop 以處理速度為準。 |
 | `EDGE_RETRY_BACKOFF` | `5` | 任務失敗重試間隔。 |
 
-## 健康檢查（K8s Probe）
+## 健康
+
+edge_core 對外提供兩種健康資訊，對象不同，各自設定：
+
+| | k8s probe | smart_health 回報 |
+| --- | --- | --- |
+| 端點 | `/startupz`、`/healthz`、`/readyz` | `/status`、`/topology` |
+| 給誰看 | kubelet | Health App、維運人員 |
+| 內容 | 200／503 | 各節點的燈號、原因、metrics |
+| 提供者 | smart-workflow `HealthServer` | smart-health-record `StatusServer` |
+| 設定 | `EDGE_HEALTH_SERVER_*`，預設關閉 | `EDGE_HEALTH_STATUS_*`，設定 port 才啟動 |
+| 場域 | k8s、docker | Orin、k8s |
+
+兩者的關係在 `/healthz`：`EDGE_HEALTH_ENABLED=1` 且不是觀察模式（`EDGE_HEALTH_EXIT_ON_FAILURE=1`）時，`/healthz` 改用回報執行緒的「無法恢復」判斷，四個條件都成立才回 200：已啟動、未停止、判斷正常，而且判斷在 5 秒內更新過。觀察模式或 `EDGE_HEALTH_ENABLED=0` 時，`/healthz` 依主迴圈心跳與 `EDGE_HEALTH_LIVENESS_TIMEOUT_SECONDS` 判斷。`/startupz`、`/readyz` 在兩種情況下的判斷相同。端點合約、probe 範例與判讀方式見 [HEALTH.md](HEALTH.md)。
+
+**兩個開關各自獨立，可以任意組合：** `EDGE_HEALTH_ENABLED`（預設 `1`）管健康回報、暖機、systemd 通知與 StatusServer；`EDGE_HEALTH_SERVER_ENABLED`（預設 `0`）只管 probe server。例如 Orin 上通常只開健康回報，k8s 上兩者都開。
+
+### k8s probe
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
 | `EDGE_HEALTH_SERVER_ENABLED` | `0` | 啟用內建健康檢查 HTTP server。 |
 | `EDGE_HEALTH_SERVER_HOST` | `0.0.0.0` | 健康檢查 server 綁定 host。 |
 | `EDGE_HEALTH_SERVER_PORT` | `8081` | 健康檢查 server port。 |
-| `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康回報定期摘要 log 的間隔秒數（見下方說明）。 |
-| `EDGE_HEALTH_LIVENESS_TIMEOUT_SECONDS` | `30` | `/healthz` loop 心跳逾時門檻。 |
+| `EDGE_HEALTH_LIVENESS_TIMEOUT_SECONDS` | `30` | `/healthz` loop 心跳逾時門檻。只在觀察模式或停用健康回報時使用。 |
 | `EDGE_HEALTH_READINESS_TIMEOUT_SECONDS` | `30` | `/readyz` 最近進度逾時門檻。 |
 | `EDGE_HEALTH_STARTUP_GRACE_SECONDS` | `10` | startup 完成後首次 loop/progress 寬限秒數。 |
 
-端點合約、Kubernetes probe 範例與判讀規則請參考 [HEALTH.md](HEALTH.md)。
-
-`EDGE_HEALTH_REPORT_INTERVAL_SEC` 同時是健康回報定期摘要 log 的間隔，以及 publish 的 `capture_age_ms_max` 的統計區間。舊的 `EDGE_HEALTH_STALE_THRESHOLD_SEC` 已移除（只給舊的健康摘要使用），設定了也不會生效；主迴圈節點的 stale 門檻改用 `EDGE_HEALTH_STALE_AFTER_SECONDS`。
-
-## 健康回報（smart_health）
+### smart_health 回報
 
 | 變數 | 預設 | 說明 |
 | --- | --- | --- |
 | `EDGE_HEALTH_ENABLED` | `1` | 總開關。`0` 時不建立 HealthMonitor、不啟動 StatusServer、不暖機、不送 systemd 通知，行為和導入前相同（systemd 需要搭配 `health-disabled.conf`，見 [DEPLOY_ORIN.md](DEPLOY_ORIN.md)）。 |
 | `EDGE_HEALTH_EXIT_ON_FAILURE` | `1` | `0` 為觀察模式：照常判斷並寫 CRITICAL log，但不結束程式。 |
+| `EDGE_HEALTH_REPORT_INTERVAL_SEC` | `5` | 健康回報定期摘要 log 的間隔秒數，也是 publish 的 `capture_age_ms_max` 的統計區間（見 [HEALTH.md](HEALTH.md#log)）。 |
 | `EDGE_HEALTH_STATUS_HOST` | `127.0.0.1` | StatusServer 綁定位址；Orin 設 `0.0.0.0`，只開放內網。 |
 | `EDGE_HEALTH_STATUS_PORT` | *(未設定)* | 設定時啟動 StatusServer（`GET /status`）。cam01～cam06 用 18081～18086。綁定失敗時記 ERROR，程式繼續執行。 |
 | `EDGE_HEALTH_STALE_AFTER_SECONDS` | *(未設定)* | 覆寫主迴圈節點的 stale 門檻；未設定時為 `max(5, 3 × EDGE_POLL_INTERVAL, 11)`（11 為 `infer` 的 stuck 門檻 10 秒加 1），`EDGE_POLL_INTERVAL=0` 以 1 秒計算。 |

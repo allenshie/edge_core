@@ -1,4 +1,4 @@
-"""spec-edge.md 第 5 節第 7 步：InitPipelineTask 綁定背景執行緒並暖機；停用健康回報時都不做。"""
+"""InitPipelineTask 綁定背景執行緒並暖機；停用健康回報時都不做。"""
 from __future__ import annotations
 
 import logging

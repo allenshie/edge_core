@@ -1,4 +1,4 @@
-"""spec-edge.md 3.2：BaseIngestionEngine 的背景狀態（ingest-worker）。"""
+"""BaseIngestionEngine 的背景狀態（ingest-worker 節點）。"""
 from __future__ import annotations
 
 import threading

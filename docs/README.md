@@ -27,7 +27,7 @@
 
 - [ENV.md](ENV.md)：環境變數與預設值
 - [STREAMING.md](STREAMING.md)：串流設定與 MediaMTX 驗證
-- [HEALTH.md](HEALTH.md)：健康檢查端點與 Kubernetes probe 合約
+- [HEALTH.md](HEALTH.md)：健康檢查（k8s probe）與健康回報（smart_health）
 - [CONFIG.md](CONFIG.md)：設定結構與示例
 - [DETECTIONS.md](DETECTIONS.md)：資料模型與 detections 格式
 - [env/README.md](../env/README.md)：env 目錄與多實例設定檔使用方式（example / runtime 分工）

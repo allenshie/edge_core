@@ -13,7 +13,7 @@ from .engines import BaseStreamingEngine, DefaultStreamingEngine
 from .engines.policy import resolve_phase
 
 
-# metric 名稱 → Engine 屬性（spec-edge.md 9.2）
+# metric 名稱 → Engine 屬性（見 docs/HEALTH.md「Metrics」）
 STREAM_COUNTERS = {"ffmpeg_restarts": "ffmpeg_restarts", "write_failures": "write_failures"}
 
 

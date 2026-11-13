@@ -1,6 +1,7 @@
-"""spec-edge.md 3.4：模型暖機。
+"""模型暖機。
 
-真實 tracker 的追蹤結果無法用假模型驗證，留給 D1 情境 18 用真實模型驗證。
+真實 tracker 的追蹤結果無法用假模型驗證；這裡只驗證 YOLO 暖機用 predict、不經過 tracker，
+暖機後的推理照常以 persist 追蹤。追蹤結果不受暖機影響，需要用真實模型另外確認。
 """
 from __future__ import annotations
 

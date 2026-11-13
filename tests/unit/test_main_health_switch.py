@@ -1,4 +1,4 @@
-"""spec-edge.md 第 5 節、第 8 節：總開關、觀察模式與 StatusServer。"""
+"""健康回報的總開關、觀察模式與 StatusServer。"""
 from __future__ import annotations
 
 import json

@@ -17,7 +17,6 @@ cp env/.env.cam01.example env/.env.cam05
 然後再修改：
 
 - `EDGE_CAMERA_ID`
-- `EDGE_MONITOR_SERVICE_NAME`
 - `EDGE_RTSP_URL` 或 `EDGE_FILE_PATH`
 - `EDGE_STREAMING_URL`
 

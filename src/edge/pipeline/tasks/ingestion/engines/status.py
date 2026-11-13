@@ -1,4 +1,4 @@
-"""BaseIngestionEngine 的健康狀態（ingest-worker，spec-edge.md 3.2）。
+"""BaseIngestionEngine 的健康狀態，回報為背景節點 ingest-worker（見 docs/HEALTH.md「節點」）。
 
 只觀察 worker 的讀取，不影響取流、重連與卡住判定。
 """

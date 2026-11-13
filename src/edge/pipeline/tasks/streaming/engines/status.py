@@ -1,4 +1,4 @@
-"""BaseStreamingEngine 的健康狀態（stream-output，spec-edge.md 2、3.2）。
+"""BaseStreamingEngine 的健康狀態，回報為背景節點 stream-output（見 docs/HEALTH.md「節點」）。
 
 只觀察輸出執行緒寫入輸出的呼叫，不影響推流內容、節拍與重啟。
 """

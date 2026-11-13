@@ -37,7 +37,7 @@ class FrameTaskSupportMixin:
         )
 
     def _set_counter_metrics(self, engine: Any, counters: Mapping[str, str]) -> None:
-        """把 Engine 的計數器寫成這個節點的 metric（spec-edge.md 9.2）；Engine 沒有該屬性時不寫。"""
+        """把 Engine 的計數器寫成這個節點的 metric（見 docs/HEALTH.md「Metrics」）；Engine 沒有該屬性時不寫。"""
         for metric, attribute in counters.items():
             value = getattr(engine, attribute, None) if engine is not None else None
             if isinstance(value, int) and not isinstance(value, bool):

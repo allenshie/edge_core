@@ -1,4 +1,4 @@
-"""spec-edge.md 3.1、3.3：Engine 的統一結果與明確無法恢復的推理錯誤。"""
+"""Engine 的統一結果（EngineResult）與明確無法恢復的推理錯誤（cuda_unrecoverable）。"""
 from __future__ import annotations
 
 from types import SimpleNamespace

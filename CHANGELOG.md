@@ -24,9 +24,10 @@
 
 - `TaskHealthReporter`（`edge/runtime/task_health.py`）、`edge/runtime/stage_logging.py`、`edge/runtime/pipeline_summary.py`、`edge/runtime/health_contract.py`（`HealthSummaryRow`、`HealthSummaryMetrics`、`HealthSnapshotProvider`）、`edge/pipeline/tasks/ingestion/health.py`、`edge.schema.StageStats`。
 - 各 NodeTask 的 `snapshot_health()`／`health_snapshot()`、`EdgePipeline.health_rows()`、`PipelineScheduler` 的 pipeline 摘要 log 與 `MonitoringClient.heartbeat` 呼叫、ingestion 的 `report_event` 呼叫。Engine 的 `health_snapshot()` 保留。
-- `EdgeHealthState.mark_fatal()`、`fatal_reason`：ingestion fatal 不再讓 `/healthz` 失敗。正常模式由 smart-workflow 結束程式；**觀察模式與 `EDGE_HEALTH_ENABLED=0` 時只有 `/readyz` 變 503，k8s 不會自動重啟**（systemd 不受影響），見 `docs/HEALTH.md`。
+- `EdgeHealthState.mark_fatal()`、`fatal_reason`：移除前，ingestion fatal 後會停止更新 loop tick，讓 `/healthz` 失敗、由 k8s 重啟；現在 ingestion fatal 不再讓 `/healthz` 失敗。正常模式由 smart-workflow 以代碼 70 結束程式；**觀察模式與 `EDGE_HEALTH_ENABLED=0` 時只有 `/readyz` 變 503，k8s 不會自動重啟**，k8s 上不建議長期使用這兩種模式。systemd 不看 `/healthz`，ingestion fatal 後是否重啟只取決於程式是否結束，所以三種模式在 systemd 上的行為和移除前相同。見 `docs/HEALTH.md` 的「Ingestion fatal」。
 - Engine 的 `capture_rate_meter`、`write_rate_meter`、`unique_write_rate_meter`（只供舊健康摘要使用）。`RateMeter`、`DurationMeter` 模組保留。
-- env `EDGE_HEALTH_STALE_THRESHOLD_SEC`：設定了也不會生效。
+- env `EDGE_HEALTH_STALE_THRESHOLD_SEC`（只給舊的健康摘要使用）：設定了也不會生效；主迴圈節點的 stale 門檻改用 `EDGE_HEALTH_STALE_AFTER_SECONDS`。
+- 舊健康摘要的欄位改用 smart_health 的 metric：各階段 fps 與 pipeline `bottleneck` 改看各節點的 `rate_per_s`、`duration_ms`；publish 的 `capture_age_s` 改為 `capture_age_ms`（另有 `capture_age_ms_max`）。`session_id`、各階段的 `frame_seq`、warn／err 累計次數已移除，改看錯誤視窗與燈號。
 - `smart_warehouse_edge` 更新 submodule 時，`tests/unit/test_pipeline_summary.py` 與 `tests/unit/test_stage_latency_metrics.py` 中使用 `build_pipeline_summary`、`snapshot_health()`、`_infer_rate` 等的測試需要刪除或修改。
 
 ### 預設行為的改變（升級前請確認）
@@ -37,7 +38,7 @@
 |---|---|---|
 | 判斷為無法恢復時以代碼 70 結束程式 | 交給 systemd 或 k8s 重啟 | `EDGE_HEALTH_EXIT_ON_FAILURE=0`（觀察模式） |
 | 推理錯誤含 `illegal memory access`、`unspecified launch failure`、`device-side assert triggered` 時拋出 `FatalTaskError(cuda_unrecoverable)` | CUDA context 損壞後無法自行恢復；改版前這些錯誤和其他推理錯誤一樣只中斷這一輪並退避，之後每一輪都會失敗 | 觀察模式下不結束，照舊中斷這一輪並退避重試 |
-| 啟動時暖機，啟動時間變長 | 避免第一次推理被誤判為卡住 | `EDGE_HEALTH_ENABLED=0` 時不暖機 |
+| 啟動時暖機，啟動時間變長；檔案來源時，暖機會改變第一次推理拿到的畫面（導入前因第一次推理較慢而略過的畫面不再略過） | 避免第一次推理被誤判為卡住 | `EDGE_HEALTH_ENABLED=0` 時不暖機，畫面和導入前相同 |
 | `EDGE_MQTT_KEEPALIVE` 預設 15 秒，原本固定 60 秒 | 更快發現 messaging 斷線 | 設為 `60` |
 | runner 的 log 完整顯示錯誤原因 | smart-workflow 從 `b5ef4c4` 升級時帶入 `3913438`，只改 4 行 log 的格式 | 無需退回 |
 

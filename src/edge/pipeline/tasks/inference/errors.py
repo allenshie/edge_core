@@ -1,4 +1,4 @@
-"""明確無法恢復的推理錯誤（spec-edge.md 3.3）。"""
+"""明確無法恢復的推理錯誤：CUDA context 損壞後每一輪都會失敗，改為結束程式交給 systemd 或 k8s 重啟（見 docs/HEALTH.md「無法恢復時」）。"""
 from __future__ import annotations
 
 from smart_workflow import FatalTaskError
