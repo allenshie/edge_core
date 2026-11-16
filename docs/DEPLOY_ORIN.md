@@ -82,14 +82,16 @@ python main.py
 
 ## 以 systemd 常駐（健康回報）
 
-launcher repo（例如 `smart_intersection_safety_edge`）的 `deploy/systemd/` 提供 `edge@.service`、`health-disabled.conf` 與 `env/cam01.env.example`。Edge 啟動完成（暖機後）送 `READY=1`，之後每秒送 `WATCHDOG=1`；判斷為無法恢復時以代碼 70 結束，由 `Restart=on-failure` 重啟。
+launcher 的 `deploy/systemd/edgectl` 可以自動完成這些步驟（見 launcher 的 `deploy/systemd/README.md`）。
+
+launcher repo（例如 `smart_intersection_safety_edge`）的 `deploy/systemd/` 提供 `edge@.service`、`health-disabled.conf` 與 `cam01.env.example`。Edge 啟動完成（暖機後）送 `READY=1`，之後每秒送 `WATCHDOG=1`；判斷為無法恢復時以代碼 70 結束，由 `Restart=on-failure` 重啟。
 
 ### 安裝與啟用
 
 ```bash
 # 1) 每台相機一份 env（只放這台的設定；帳密另外填入，不要提交到 repo）
 sudo install -d -m 0750 /etc/smart-edge
-sudo install -m 0640 deploy/systemd/env/cam01.env.example /etc/smart-edge/cam01.env
+sudo install -m 0640 deploy/systemd/cam01.env.example /etc/smart-edge/cam01.env
 sudoedit /etc/smart-edge/cam01.env
 
 # 2) 安裝 unit（ExecStart、WorkingDirectory 預設 /opt/smart_intersection_safety_edge，路徑不同時先修改）
